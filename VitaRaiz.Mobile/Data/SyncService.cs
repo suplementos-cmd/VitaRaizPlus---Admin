@@ -1,43 +1,25 @@
-using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using VitaRaiz.Mobile.Services;
 
 namespace VitaRaiz.Mobile.Data;
 
 public class SyncService
 {
     private readonly LocalDatabase _localDatabase;
-    private readonly HttpClient _httpClient;
-    private const string API_BASE_URL = "https://localhost:7001/api"; // TODO: Cambiar a URL de producción
+    private readonly ApiService _apiService;
 
     public event EventHandler<SyncStatusEventArgs>? SyncStatusChanged;
 
-    public SyncService(LocalDatabase localDatabase)
+    public SyncService(LocalDatabase localDatabase, ApiService apiService)
     {
         _localDatabase = localDatabase;
-        _httpClient = new HttpClient
-        {
-            BaseAddress = new Uri(API_BASE_URL),
-            Timeout = TimeSpan.FromSeconds(30)
-        };
+        _apiService = apiService;
     }
 
     public async Task<bool> IsOnlineAsync()
     {
-        try
-        {
-            var current = Connectivity.Current.NetworkAccess;
-            if (current != NetworkAccess.Internet)
-                return false;
-
-            // Verificar conectividad con el servidor
-            var response = await _httpClient.GetAsync("/health", new CancellationTokenSource(TimeSpan.FromSeconds(5)).Token);
-            return response.IsSuccessStatusCode;
-        }
-        catch
-        {
-            return false;
-        }
+        return await _apiService.IsOnlineAsync();
     }
 
     public async Task<SyncResult> SyncAllAsync()
@@ -54,7 +36,7 @@ public class SyncService
 
         try
         {
-            // Obtener token de autenticación
+            // Verificar token
             var token = await SecureStorage.GetAsync("jwt_token");
             if (string.IsNullOrEmpty(token))
             {
@@ -63,8 +45,6 @@ public class SyncService
                 OnSyncStatusChanged("Error", result.Message);
                 return result;
             }
-
-            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
             OnSyncStatusChanged("Sincronizando", "Descargando datos del servidor...");
 
@@ -103,35 +83,27 @@ public class SyncService
     {
         try
         {
-            var response = await _httpClient.GetAsync("/customers");
-            if (response.IsSuccessStatusCode)
-            {
-                var content = await response.Content.ReadAsStringAsync();
-                var customers = JsonSerializer.Deserialize<List<CustomerDto>>(content, new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                });
+            var customers = await _apiService.GetAsync<List<CustomerDto>>("/api/customers");
 
-                if (customers != null)
+            if (customers != null)
+            {
+                foreach (var customer in customers)
                 {
-                    foreach (var customer in customers)
+                    var localCustomer = new LocalCustomer
                     {
-                        var localCustomer = new LocalCustomer
-                        {
-                            CustomerId = customer.CustomerId,
-                            CustomerName = customer.CustomerName,
-                            PhoneNumber = customer.PhoneNumber,
-                            Email = customer.Email,
-                            Address = customer.Address,
-                            ZoneId = customer.ZoneId,
-                            GpsLatitude = customer.GpsLatitude,
-                            GpsLongitude = customer.GpsLongitude,
-                            IsGoldCustomer = customer.IsGoldCustomer,
-                            IsBlacklisted = customer.IsBlacklisted,
-                            LastSync = DateTime.UtcNow
-                        };
-                        await _localDatabase.SaveCustomerAsync(localCustomer);
-                    }
+                        CustomerId = customer.CustomerId,
+                        CustomerName = customer.CustomerName,
+                        PhoneNumber = customer.PhoneNumber,
+                        Email = customer.Email,
+                        Address = customer.Address,
+                        ZoneId = customer.ZoneId,
+                        GpsLatitude = customer.GpsLatitude,
+                        GpsLongitude = customer.GpsLongitude,
+                        IsGoldCustomer = customer.IsGoldCustomer,
+                        IsBlacklisted = customer.IsBlacklisted,
+                        LastSync = DateTime.UtcNow
+                    };
+                    await _localDatabase.SaveCustomerAsync(localCustomer);
                 }
             }
         }
@@ -146,36 +118,27 @@ public class SyncService
         try
         {
             var userId = await SecureStorage.GetAsync("user_id");
-            var response = await _httpClient.GetAsync($"/sales/user/{userId}");
-            
-            if (response.IsSuccessStatusCode)
-            {
-                var content = await response.Content.ReadAsStringAsync();
-                var sales = JsonSerializer.Deserialize<List<SaleDto>>(content, new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                });
+            var sales = await _apiService.GetAsync<List<SaleDto>>("/api/sales/active");
 
-                if (sales != null)
+            if (sales != null)
+            {
+                foreach (var sale in sales)
                 {
-                    foreach (var sale in sales)
+                    var localSale = new LocalSale
                     {
-                        var localSale = new LocalSale
-                        {
-                            SaleId = sale.SaleId,
-                            CustomerId = sale.CustomerId,
-                            SellerId = sale.SellerId,
-                            SaleDate = sale.SaleDate,
-                            TotalAmount = sale.TotalAmount,
-                            PendingAmount = sale.PendingAmount,
-                            Status = sale.Status,
-                            PaymentTermDays = sale.PaymentTermDays,
-                            DueDate = sale.DueDate,
-                            Notes = sale.Notes,
-                            LastSync = DateTime.UtcNow
-                        };
-                        await _localDatabase.SaveSaleAsync(localSale);
-                    }
+                        SaleId = sale.SaleId,
+                        CustomerId = 0, // TODO: Extraer del DTO si está disponible
+                        SellerId = 0,
+                        SaleDate = sale.SaleDate,
+                        TotalAmount = sale.TotalAmount,
+                        PendingAmount = sale.Balance,
+                        Status = sale.Status,
+                        PaymentTermDays = 30,
+                        DueDate = sale.SaleDate.AddDays(30),
+                        Notes = sale.PaymentTerms,
+                        LastSync = DateTime.UtcNow
+                    };
+                    await _localDatabase.SaveSaleAsync(localSale);
                 }
             }
         }
@@ -200,35 +163,18 @@ public class SyncService
                     {
                         saleId = payment.SaleId,
                         amount = payment.Amount,
-                        collectedBy = payment.CollectedBy,
-                        latitude = decimal.Parse(payment.GpsLatitude ?? "0"),
-                        longitude = decimal.Parse(payment.GpsLongitude ?? "0"),
-                        notes = payment.Notes,
-                        paymentDate = payment.PaymentDate
+                        collectorId = payment.CollectedBy,
+                        gpsLatitude = decimal.TryParse(payment.GpsLatitude, out var lat) ? lat : (decimal?)null,
+                        gpsLongitude = decimal.TryParse(payment.GpsLongitude, out var lon) ? lon : (decimal?)null,
+                        notes = payment.Notes
                     };
 
-                    var jsonContent = JsonSerializer.Serialize(paymentRequest);
-                    var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+                    var success = await _apiService.PostAsync("/api/payments", paymentRequest);
 
-                    var response = await _httpClient.PostAsync("/payments", content);
-
-                    if (response.IsSuccessStatusCode)
+                    if (success)
                     {
-                        var responseContent = await response.Content.ReadAsStringAsync();
-                        var result = JsonSerializer.Deserialize<PaymentResponseDto>(responseContent, new JsonSerializerOptions
-                        {
-                            PropertyNameCaseInsensitive = true
-                        });
-
-                        if (result != null)
-                        {
-                            await _localDatabase.UpdatePaymentStatusAsync(payment.LocalPaymentId, "Synced", result.PaymentId);
-                            
-                            // Sincronizar fotos asociadas
-                            await SyncPaymentPhotosAsync(payment.LocalPaymentId, result.PaymentId);
-                            
-                            syncedCount++;
-                        }
+                        await _localDatabase.UpdatePaymentStatusAsync(payment.LocalPaymentId, "Synced", 0);
+                        syncedCount++;
                     }
                     else
                     {
@@ -248,32 +194,6 @@ public class SyncService
         }
 
         return syncedCount;
-    }
-
-    private async Task SyncPaymentPhotosAsync(int localPaymentId, int paymentId)
-    {
-        try
-        {
-            var photos = await _localDatabase.GetPaymentPhotosAsync(localPaymentId);
-            
-            foreach (var photo in photos.Where(p => !p.IsSynced))
-            {
-                try
-                {
-                    // TODO: Implementar carga de fotos usando MultipartFormDataContent
-                    // Por ahora solo marcar como sincronizada
-                    await _localDatabase.MarkPhotoAsSyncedAsync(photo.LocalPhotoId, 0);
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error syncing photo {photo.LocalPhotoId}: {ex.Message}");
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error in SyncPaymentPhotosAsync: {ex.Message}");
-        }
     }
 
     private async Task<int> ProcessSyncQueueAsync()
@@ -331,27 +251,21 @@ public class SyncService
     {
         try
         {
-            var content = new StringContent(item.JsonData, Encoding.UTF8, "application/json");
-            HttpResponseMessage response;
-
             switch (item.Operation.ToLower())
             {
                 case "create":
-                    response = await _httpClient.PostAsync("/payments", content);
-                    break;
+                    var createRequest = JsonSerializer.Deserialize<Dictionary<string, object>>(item.JsonData);
+                    return await _apiService.PostAsync<Dictionary<string, object>>("/api/payments", createRequest!);
                 case "update":
-                    response = await _httpClient.PutAsync("/payments", content);
-                    break;
+                    var updateRequest = JsonSerializer.Deserialize<Dictionary<string, object>>(item.JsonData);
+                    return await _apiService.PutAsync<Dictionary<string, object>>("/api/payments", updateRequest!);
                 case "delete":
                     var data = JsonSerializer.Deserialize<Dictionary<string, object>>(item.JsonData);
                     var id = data?["id"]?.ToString();
-                    response = await _httpClient.DeleteAsync($"/payments/{id}");
-                    break;
+                    return await _apiService.DeleteAsync($"/api/payments/{id}");
                 default:
                     return false;
             }
-
-            return response.IsSuccessStatusCode;
         }
         catch
         {
@@ -363,27 +277,21 @@ public class SyncService
     {
         try
         {
-            var content = new StringContent(item.JsonData, Encoding.UTF8, "application/json");
-            HttpResponseMessage response;
-
             switch (item.Operation.ToLower())
             {
                 case "create":
-                    response = await _httpClient.PostAsync("/sales", content);
-                    break;
+                    var createRequest = JsonSerializer.Deserialize<Dictionary<string, object>>(item.JsonData);
+                    return await _apiService.PostAsync<Dictionary<string, object>>("/api/sales", createRequest!);
                 case "update":
-                    response = await _httpClient.PutAsync("/sales", content);
-                    break;
+                    var updateRequest = JsonSerializer.Deserialize<Dictionary<string, object>>(item.JsonData);
+                    return await _apiService.PutAsync<Dictionary<string, object>>("/api/sales", updateRequest!);
                 case "delete":
                     var data = JsonSerializer.Deserialize<Dictionary<string, object>>(item.JsonData);
                     var id = data?["id"]?.ToString();
-                    response = await _httpClient.DeleteAsync($"/sales/{id}");
-                    break;
+                    return await _apiService.DeleteAsync($"/api/sales/{id}");
                 default:
                     return false;
             }
-
-            return response.IsSuccessStatusCode;
         }
         catch
         {
@@ -395,27 +303,21 @@ public class SyncService
     {
         try
         {
-            var content = new StringContent(item.JsonData, Encoding.UTF8, "application/json");
-            HttpResponseMessage response;
-
             switch (item.Operation.ToLower())
             {
                 case "create":
-                    response = await _httpClient.PostAsync("/customers", content);
-                    break;
+                    var createRequest = JsonSerializer.Deserialize<Dictionary<string, object>>(item.JsonData);
+                    return await _apiService.PostAsync<Dictionary<string, object>>("/api/customers", createRequest!);
                 case "update":
-                    response = await _httpClient.PutAsync("/customers", content);
-                    break;
+                    var updateRequest = JsonSerializer.Deserialize<Dictionary<string, object>>(item.JsonData);
+                    return await _apiService.PutAsync<Dictionary<string, object>>("/api/customers", updateRequest!);
                 case "delete":
                     var data = JsonSerializer.Deserialize<Dictionary<string, object>>(item.JsonData);
                     var id = data?["id"]?.ToString();
-                    response = await _httpClient.DeleteAsync($"/customers/{id}");
-                    break;
+                    return await _apiService.DeleteAsync($"/api/customers/{id}");
                 default:
                     return false;
             }
-
-            return response.IsSuccessStatusCode;
         }
         catch
         {
@@ -447,20 +349,6 @@ public class CustomerDto
     public string? GpsLongitude { get; set; }
     public bool IsGoldCustomer { get; set; }
     public bool IsBlacklisted { get; set; }
-}
-
-public class SaleDto
-{
-    public int SaleId { get; set; }
-    public int CustomerId { get; set; }
-    public int SellerId { get; set; }
-    public DateTime SaleDate { get; set; }
-    public decimal TotalAmount { get; set; }
-    public decimal PendingAmount { get; set; }
-    public string Status { get; set; } = string.Empty;
-    public int PaymentTermDays { get; set; }
-    public DateTime? DueDate { get; set; }
-    public string? Notes { get; set; }
 }
 
 public class PaymentResponseDto

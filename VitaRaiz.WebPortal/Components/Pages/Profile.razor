@@ -1,8 +1,9 @@
 @page "/profile"
-@using VitaRaiz.Infrastructure.Data
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@using VitaRaiz.WebPortal.Services
 @attribute [Authorize]
-@inject VitaRaizDbContext Context
+@inject ProtectedSessionStorage SessionStorage
 @inject AuthenticationStateProvider AuthStateProvider
 @rendermode InteractiveServer
 
@@ -26,7 +27,7 @@
                                             @GetInitials(currentUser.Username)
                                         </div>
                                         <h5 class="mt-3">@currentUser.Username</h5>
-                                        <span class="badge bg-success">@currentUser.Role?.RoleName</span>
+                                        <span class="badge bg-success">@currentUser.Role</span>
                                     </div>
                                     <div class="col-md-8">
                                         <h5 class="border-bottom pb-2">Información Personal</h5>
@@ -40,15 +41,8 @@
                                         </div>
                                         <div class="info-row">
                                             <strong>Rol:</strong>
-                                            <span>@currentUser.Role?.RoleName</span>
+                                            <span>@currentUser.Role</span>
                                         </div>
-                                        @if (currentUser.Zone != null)
-                                        {
-                                            <div class="info-row">
-                                                <strong>Zona Asignada:</strong>
-                                                <span>@currentUser.Zone.ZoneName</span>
-                                            </div>
-                                        }
                                         <div class="info-row">
                                             <strong>Estado:</strong>
                                             <span class="badge bg-success">Activo</span>
@@ -58,38 +52,12 @@
 
                                 <div class="row mt-4">
                                     <div class="col-md-12">
-                                        <h5 class="border-bottom pb-2">Estadísticas</h5>
-                                        <div class="row text-center">
-                                            <div class="col-md-4">
-                                                <div class="stat-card">
-                                                    <div class="stat-number">@ventasRealizadas</div>
-                                                    <div class="stat-label">Ventas Realizadas</div>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-4">
-                                                <div class="stat-card">
-                                                    <div class="stat-number">@cobrosRealizados</div>
-                                                    <div class="stat-label">Cobros Realizados</div>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-4">
-                                                <div class="stat-card">
-                                                    <div class="stat-number">$@montoTotalCobrado.ToString("N2")</div>
-                                                    <div class="stat-label">Total Cobrado</div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="row mt-4">
-                                    <div class="col-md-12">
                                         <h5 class="border-bottom pb-2">Acciones</h5>
                                         <button class="btn btn-primary me-2" @onclick="CambiarPassword">
-                                            <span class="bi bi-key-fill"></span> Cambiar Contraseña
+                                            🔑 Cambiar Contraseña
                                         </button>
                                         <button class="btn btn-secondary" @onclick="ActualizarPerfil">
-                                            <span class="bi bi-pencil-square"></span> Editar Perfil
+                                            ✏️ Editar Perfil
                                         </button>
                                     </div>
                                 </div>
@@ -161,37 +129,21 @@
 </style>
 
 @code {
-    private User? currentUser;
-    private int ventasRealizadas = 0;
-    private int cobrosRealizados = 0;
-    private decimal montoTotalCobrado = 0;
+    private CurrentUser? currentUser;
 
     protected override async Task OnInitializedAsync()
     {
-        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        var user = authState.User;
-
-        if (user.Identity?.IsAuthenticated == true)
+        try
         {
-            var username = user.Identity.Name;
-            currentUser = Context.Users
-                .Include(u => u.Role)
-                .Include(u => u.Zone)
-                .FirstOrDefault(u => u.Username == username);
-
-            if (currentUser != null)
+            var userResult = await SessionStorage.GetAsync<CurrentUser>("currentUser");
+            if (userResult.Success && userResult.Value != null)
             {
-                // Cargar estadísticas
-                ventasRealizadas = Context.Sales
-                    .Count(s => s.SellerId == currentUser.UserId);
-
-                cobrosRealizados = Context.Payments
-                    .Count(p => p.CollectedBy == currentUser.UserId);
-
-                montoTotalCobrado = Context.Payments
-                    .Where(p => p.CollectedBy == currentUser.UserId && p.Status == "approved")
-                    .Sum(p => (decimal?)p.Amount) ?? 0;
+                currentUser = userResult.Value;
             }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading profile: {ex.Message}");
         }
     }
 
@@ -200,16 +152,21 @@
         if (string.IsNullOrEmpty(username))
             return "??";
 
-        return username.Length >= 2 ? username.Substring(0, 2).ToUpper() : username.ToUpper();
+        var parts = username.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 2)
+        {
+            return $"{parts[0][0]}{parts[1][0]}".ToUpper();
+        }
+        return username.Substring(0, Math.Min(2, username.Length)).ToUpper();
     }
 
     private void CambiarPassword()
     {
-        // TODO: Implementar modal o página para cambiar contraseña
+        // TODO: Implementar cambio de contraseña
     }
 
     private void ActualizarPerfil()
     {
-        // TODO: Implementar modal o página para actualizar perfil
+        // TODO: Implementar edición de perfil
     }
 }

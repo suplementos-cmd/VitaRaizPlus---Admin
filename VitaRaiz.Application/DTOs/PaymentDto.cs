@@ -5,6 +5,8 @@ public class PaymentDto
     public int PaymentId { get; set; }
     public int SaleId { get; set; }
     public int CollectorId { get; set; }
+    public string? CustomerName { get; set; }
+    public string? CollectorName { get; set; }
     public decimal Amount { get; set; }
     public DateTime PaymentDate { get; set; }
     public decimal? GpsLatitude { get; set; }

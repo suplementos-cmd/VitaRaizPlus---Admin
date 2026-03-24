@@ -1,0 +1,311 @@
+@using VitaRaiz.Application.DTOs
+@using VitaRaiz.WebPortal.Services
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@using Microsoft.AspNetCore.Components.Forms
+@inject ApiService ApiService
+@inject ProtectedSessionStorage SessionStorage
+
+<div class="modal fade @(IsVisible ? "show d-block" : "")" tabindex="-1" style="@(IsVisible ? "background-color: rgba(0,0,0,0.5);" : "")">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">🛒 Nueva Venta</h5>
+                <button type="button" class="btn-close" @onclick="Close"></button>
+            </div>
+            <div class="modal-body">
+                <EditForm Model="@saleModel" OnValidSubmit="HandleSubmit">
+                    <DataAnnotationsValidator />
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Cliente *</label>
+                            <select class="form-select" @bind="saleModel.CustomerId" required>
+                                <option value="0">Seleccionar cliente...</option>
+                                @foreach (var customer in customers)
+                                {
+                                    <option value="@customer.CustomerId">@customer.CustomerName</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Días de Crédito *</label>
+                            <input type="number" class="form-control" @bind="saleModel.PaymentTermDays" min="0" required />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Fecha</label>
+                            <input type="text" class="form-control" value="@DateTime.Today.ToString("dd/MM/yyyy")" disabled />
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Notas</label>
+                        <textarea class="form-control" rows="2" @bind="saleModel.Notes"></textarea>
+                    </div>
+
+                    <hr />
+
+                    <h6 class="mb-3">📦 Productos</h6>
+
+                    <div class="table-responsive mb-3">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th style="width: 40%">Producto</th>
+                                    <th style="width: 15%">Cantidad</th>
+                                    <th style="width: 20%">Precio Unit.</th>
+                                    <th style="width: 20%">Subtotal</th>
+                                    <th style="width: 5%"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @for (int i = 0; i < saleModel.Details.Count; i++)
+                                {
+                                    var index = i;
+                                    var detail = saleModel.Details[index];
+                                    <tr>
+                                        <td>
+                                            <select class="form-select form-select-sm" @bind="detail.ProductId" @bind:after="() => OnProductSelected(index)">
+                                                <option value="0">Seleccionar...</option>
+                                                @foreach (var product in products)
+                                                {
+                                                    <option value="@product.ProductId">@product.ProductName</option>
+                                                }
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <input type="number" class="form-control form-control-sm" @bind="detail.Quantity" @bind:after="() => CalculateSubtotal(index)" min="1" />
+                                        </td>
+                                        <td>
+                                            <input type="number" class="form-control form-control-sm" @bind="detail.UnitPrice" @bind:after="() => CalculateSubtotal(index)" min="0" step="0.01" />
+                                        </td>
+                                        <td>
+                                            <input type="text" class="form-control form-control-sm" value="@detail.Subtotal.ToString("N2")" disabled />
+                                        </td>
+                                        <td>
+                                            <button type="button" class="btn btn-sm btn-danger" @onclick="() => RemoveDetail(index)">✖</button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="3" class="text-end"><strong>Total:</strong></td>
+                                    <td colspan="2">
+                                        <strong class="text-success">$@saleModel.Total.ToString("N2")</strong>
+                                    </td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+
+                    <button type="button" class="btn btn-sm btn-outline-primary mb-3" @onclick="AddDetail">
+                        ➕ Agregar Producto
+                    </button>
+
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger">@errorMessage</div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(successMessage))
+                    {
+                        <div class="alert alert-success">@successMessage</div>
+                    }
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="Close">Cancelar</button>
+                        <button type="submit" class="btn btn-success" disabled="@isSaving">
+                            @if (isSaving)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                            }
+                            💾 Guardar Venta
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnSave { get; set; }
+
+    private SaleModel saleModel = new SaleModel();
+    private List<CustomerDto> customers = new();
+    private List<ProductDto> products = new();
+    private bool isSaving = false;
+    private string errorMessage = "";
+    private string successMessage = "";
+    private int currentUserId = 0;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsVisible)
+        {
+            await LoadData();
+            ResetForm();
+        }
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            // Obtener usuario actual
+            var userResult = await SessionStorage.GetAsync<CurrentUser>("currentUser");
+            if (userResult.Success && userResult.Value != null)
+            {
+                currentUserId = userResult.Value.UserId;
+            }
+
+            // Cargar clientes y productos desde la API
+            customers = await ApiService.GetAsync<List<CustomerDto>>("/api/customers") ?? new();
+            
+            var productParams = new Dictionary<string, string?> { { "isActive", "true" } };
+            products = await ApiService.GetAsync<List<ProductDto>>("/api/products", productParams) ?? new();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error cargando datos: {ex.Message}";
+        }
+    }
+
+    private void ResetForm()
+    {
+        saleModel = new SaleModel
+        {
+            PaymentTermDays = 30,
+            Details = new List<SaleDetailModel> { new SaleDetailModel() }
+        };
+        errorMessage = "";
+        successMessage = "";
+    }
+
+    private void AddDetail()
+    {
+        saleModel.Details.Add(new SaleDetailModel());
+    }
+
+    private void RemoveDetail(int index)
+    {
+        if (saleModel.Details.Count > 1)
+        {
+            saleModel.Details.RemoveAt(index);
+            CalculateTotal();
+        }
+    }
+
+    private void OnProductSelected(int index)
+    {
+        var detail = saleModel.Details[index];
+        var product = products.FirstOrDefault(p => p.ProductId == detail.ProductId);
+        
+        if (product != null)
+        {
+            detail.UnitPrice = product.UnitPrice;
+            detail.Quantity = detail.Quantity > 0 ? detail.Quantity : 1;
+            CalculateSubtotal(index);
+        }
+    }
+
+    private void CalculateSubtotal(int index)
+    {
+        var detail = saleModel.Details[index];
+        detail.Subtotal = detail.Quantity * detail.UnitPrice;
+        CalculateTotal();
+    }
+
+    private void CalculateTotal()
+    {
+        saleModel.Total = saleModel.Details.Sum(d => d.Subtotal);
+    }
+
+    private async Task HandleSubmit()
+    {
+        isSaving = true;
+        errorMessage = "";
+        successMessage = "";
+
+        try
+        {
+            // Validar que tenga al menos un detalle válido
+            var validDetails = saleModel.Details.Where(d => d.ProductId > 0 && d.Quantity > 0).ToList();
+            
+            if (validDetails.Count == 0)
+            {
+                errorMessage = "Debe agregar al menos un producto a la venta";
+                return;
+            }
+
+            if (saleModel.CustomerId == 0)
+            {
+                errorMessage = "Debe seleccionar un cliente";
+                return;
+            }
+
+            // Preparar el comando para la API
+            var command = new
+            {
+                customerId = saleModel.CustomerId,
+                sellerId = currentUserId,
+                paymentTermDays = saleModel.PaymentTermDays,
+                notes = saleModel.Notes,
+                details = validDetails.Select(d => new
+                {
+                    productId = d.ProductId,
+                    quantity = d.Quantity,
+                    unitPrice = d.UnitPrice
+                }).ToList()
+            };
+
+            // Enviar a la API
+            var response = await ApiService.PostAsync<object, dynamic>("/api/sales", command);
+            
+            if (response != null)
+            {
+                successMessage = "Venta registrada exitosamente";
+                await Task.Delay(1000);
+                await OnSave.InvokeAsync();
+                await Close();
+            }
+            else
+            {
+                errorMessage = "Error al guardar la venta";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task Close()
+    {
+        IsVisible = false;
+        await OnClose.InvokeAsync();
+    }
+
+    private class SaleModel
+    {
+        public int CustomerId { get; set; }
+        public int PaymentTermDays { get; set; } = 30;
+        public string? Notes { get; set; }
+        public List<SaleDetailModel> Details { get; set; } = new();
+        public decimal Total { get; set; }
+    }
+
+    private class SaleDetailModel
+    {
+        public int ProductId { get; set; }
+        public int Quantity { get; set; } = 1;
+        public decimal UnitPrice { get; set; }
+        public decimal Subtotal { get; set; }
+    }
+}

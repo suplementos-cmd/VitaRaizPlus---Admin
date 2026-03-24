@@ -90,7 +90,7 @@
                            FontAttributes="Bold"
                            TextColor="#333" />
                     
-                    <Label Grid.Row="2" Grid. Column="0"
+                    <Label Grid.Row="2" Grid.Column="0"
                            Text="Saldo Pendiente:"
                            FontSize="12"
                            TextColor="#666" />
@@ -306,3 +306,4 @@
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>
+

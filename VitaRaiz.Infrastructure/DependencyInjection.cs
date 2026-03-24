@@ -18,6 +18,9 @@ public static class DependencyInjection
         // Registrar repositorios
         services.AddScoped<IPaymentRepository, PaymentRepository>();
         services.AddScoped<ISaleRepository, SaleRepository>();
+        services.AddScoped<ICustomerRepository, CustomerRepository>();
+        services.AddScoped<IProductRepository, ProductRepository>();
+        services.AddScoped<IZoneRepository, ZoneRepository>();
 
         return services;
     }

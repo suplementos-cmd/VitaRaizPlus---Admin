@@ -1,4 +1,4 @@
-﻿using MauiApp = Microsoft.Maui.Controls.Application;
+using MauiApp = Microsoft.Maui.Controls.Application;
 using VitaRaiz.Mobile.Pages;
 
 namespace VitaRaiz.Mobile;
@@ -15,7 +15,7 @@ public partial class App : MauiApp
 		// Verificar si existe un token guardado
 		var hasToken = CheckForSavedToken().GetAwaiter().GetResult();
 		
-		var mainPage = hasToken ? new MainPage() : new LoginPage();
+		Page mainPage = hasToken ? new MainPage() : new LoginPage();
 		
 		return new Window(mainPage);
 	}

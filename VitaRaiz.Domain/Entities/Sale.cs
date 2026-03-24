@@ -6,11 +6,14 @@ public class Sale
     public int CustomerId { get; set; }
     public int SellerId { get; set; }
     public decimal TotalAmount { get; set; }
+    public decimal PaidAmount { get; set; } = 0;
     public string? PaymentTerms { get; set; }
+    public int PaymentTermDays { get; set; } = 30;
     public DateTime SaleDate { get; set; } = DateTime.Now;
     public string Status { get; set; } = "active";
     public int? AssignedCollectorId { get; set; }
     public string? Notes { get; set; }
+    public DateTime DueDate => SaleDate.AddDays(PaymentTermDays);
     
     // Navigation properties
     public Customer? Customer { get; set; }

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Oracle.ManagedDataAccess.Client;
 using Oracle.ManagedDataAccess.Types;
+using VitaRaiz.Application.DTOs;
 using VitaRaiz.Application.Interfaces;
 using VitaRaiz.Domain.Entities;
 using VitaRaiz.Infrastructure.Data;
@@ -47,6 +48,111 @@ public class PaymentRepository : IPaymentRepository
         int paymentId = Convert.ToInt32(((OracleDecimal)paymentIdParam.Value).ToInt32());
 
         return paymentId;
+    }
+
+    public async Task<bool> ApprovePaymentAsync(int paymentId, int approvedBy)
+    {
+        var connection = _context.Database.GetDbConnection();
+        if (connection.State != System.Data.ConnectionState.Open)
+            await connection.OpenAsync();
+
+        using var command = connection.CreateCommand();
+        command.CommandText = "EM_VITARAIZ_AD.sp_approve_payment";
+        command.CommandType = System.Data.CommandType.StoredProcedure;
+
+        command.Parameters.Add(new OracleParameter("p_payment_id", paymentId));
+        command.Parameters.Add(new OracleParameter("p_approved_by", approvedBy));
+
+        await command.ExecuteNonQueryAsync();
+        return true;
+    }
+
+    public async Task<bool> RejectPaymentAsync(int paymentId, int rejectedBy, string? reason)
+    {
+        var connection = _context.Database.GetDbConnection();
+        if (connection.State != System.Data.ConnectionState.Open)
+            await connection.OpenAsync();
+
+        using var command = connection.CreateCommand();
+        command.CommandText = "EM_VITARAIZ_AD.sp_reject_payment";
+        command.CommandType = System.Data.CommandType.StoredProcedure;
+
+        command.Parameters.Add(new OracleParameter("p_payment_id", paymentId));
+        command.Parameters.Add(new OracleParameter("p_rejected_by", rejectedBy));
+        command.Parameters.Add(new OracleParameter("p_reason", reason ?? (object)DBNull.Value));
+
+        await command.ExecuteNonQueryAsync();
+        return true;
+    }
+
+    public async Task<List<PaymentDto>> GetPaymentsAsync(int? saleId, int? customerId, int? collectorId, 
+        DateTime? startDate, DateTime? endDate, string? status)
+    {
+        var query = _context.Payments
+            .Include(p => p.Sale)
+                .ThenInclude(s => s.Customer)
+            .Include(p => p.Collector)
+            .AsQueryable();
+
+        if (saleId.HasValue)
+            query = query.Where(p => p.SaleId == saleId.Value);
+
+        if (customerId.HasValue)
+            query = query.Where(p => p.Sale.CustomerId == customerId.Value);
+
+        if (collectorId.HasValue)
+            query = query.Where(p => p.CollectorId == collectorId.Value);
+
+        if (startDate.HasValue)
+            query = query.Where(p => p.PaymentDate >= startDate.Value);
+
+        if (endDate.HasValue)
+            query = query.Where(p => p.PaymentDate <= endDate.Value);
+
+        if (!string.IsNullOrEmpty(status))
+            query = query.Where(p => p.Status.ToLower() == status.ToLower());
+
+        var payments = await query
+            .OrderByDescending(p => p.PaymentDate)
+            .Select(p => new PaymentDto
+            {
+                PaymentId = p.PaymentId,
+                SaleId = p.SaleId,
+                CustomerName = p.Sale.Customer.CustomerName,
+                Amount = p.Amount,
+                PaymentDate = p.PaymentDate,
+                CollectorName = p.Collector.Username,
+                Status = p.Status,
+                Notes = p.Notes,
+                GpsLatitude = p.GpsLatitude,
+                GpsLongitude = p.GpsLongitude
+            })
+            .ToListAsync();
+
+        return payments;
+    }
+
+    public async Task<PaymentDto?> GetPaymentByIdAsync(int paymentId)
+    {
+        return await _context.Payments
+            .Include(p => p.Sale)
+                .ThenInclude(s => s.Customer)
+            .Include(p => p.Collector)
+            .Where(p => p.PaymentId == paymentId)
+            .Select(p => new PaymentDto
+            {
+                PaymentId = p.PaymentId,
+                SaleId = p.SaleId,
+                CustomerName = p.Sale.Customer.CustomerName,
+                Amount = p.Amount,
+                PaymentDate = p.PaymentDate,
+                CollectorName = p.Collector.Username,
+                Status = p.Status,
+                Notes = p.Notes,
+                GpsLatitude = p.GpsLatitude,
+                GpsLongitude = p.GpsLongitude
+            })
+            .FirstOrDefaultAsync();
     }
 
     public async Task<IEnumerable<Payment>> GetPaymentsBySaleIdAsync(int saleId)

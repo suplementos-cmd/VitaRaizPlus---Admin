@@ -1,7 +1,9 @@
-@using VitaRaiz.Application.Commands.Payments
-@using MediatR
-@inject IMediator Mediator
-@inject VitaRaiz.Infrastructure.Data.VitaRaizDbContext Context
+@using VitaRaiz.Application.DTOs
+@using VitaRaiz.WebPortal.Services
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@using Microsoft.AspNetCore.Components.Forms
+@inject ApiService ApiService
+@inject ProtectedSessionStorage SessionStorage
 
 <div class="modal fade @(IsVisible ? "show d-block" : "")" tabindex="-1" style="@(IsVisible ? "background-color: rgba(0,0,0,0.5);" : "")">
     <div class="modal-dialog modal-lg">
@@ -11,29 +13,19 @@
                 <button type="button" class="btn-close" @onclick="Close"></button>
             </div>
             <div class="modal-body">
-                <EditForm Model="@command" OnValidSubmit="HandleSubmit">
+                <EditForm Model="@paymentModel" OnValidSubmit="HandleSubmit">
                     <div class="row mb-3">
-                        <div class="col-md-6">
+                        <div class="col-md-12">
                             <label class="form-label">Venta *</label>
-                            <InputSelect class="form-select" @bind-Value="command.SaleId">
+                            <select class="form-select" @bind="paymentModel.SaleId" required>
                                 <option value="0">Seleccionar venta...</option>
                                 @foreach (var sale in sales)
                                 {
                                     <option value="@sale.SaleId">
-                                        Venta #@sale.SaleId - @sale.Customer?.CustomerName ($@sale.TotalAmount.ToString("N2"))
+                                        Venta #@sale.SaleId - @sale.CustomerName - Balance: $@sale.Balance.ToString("N2")
                                     </option>
                                 }
-                            </InputSelect>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Cobrador *</label>
-                            <InputSelect class="form-select" @bind-Value="command.CollectorId">
-                                <option value="0">Seleccionar cobrador...</option>
-                                @foreach (var collector in collectors)
-                                {
-                                    <option value="@collector.UserId">@collector.Username</option>
-                                }
-                            </InputSelect>
+                            </select>
                         </div>
                     </div>
 
@@ -41,32 +33,32 @@
                         <div class="col-md-12">
                             <label class="form-label">Monto del Pago *</label>
                             <div class="btn-group w-100 mb-2" role="group">
-                                <button type="button" class="btn btn-outline-primary" @onclick='() => command.Amount = 100'>$100</button>
-                                <button type="button" class="btn btn-outline-primary" @onclick='() => command.Amount = 150'>$150</button>
-                                <button type="button" class="btn btn-outline-primary" @onclick='() => command.Amount = 200'>$200</button>
-                                <button type="button" class="btn btn-outline-primary" @onclick='() => command.Amount = 250'>$250</button>
-                                <button type="button" class="btn btn-outline-primary" @onclick='() => command.Amount = 500'>$500</button>
+                                <button type="button" class="btn btn-outline-primary" @onclick='() => paymentModel.Amount = 100'>$100</button>
+                                <button type="button" class="btn btn-outline-primary" @onclick='() => paymentModel.Amount = 150'>$150</button>
+                                <button type="button" class="btn btn-outline-primary" @onclick='() => paymentModel.Amount = 200'>$200</button>
+                                <button type="button" class="btn btn-outline-primary" @onclick='() => paymentModel.Amount = 250'>$250</button>
+                                <button type="button" class="btn btn-outline-primary" @onclick='() => paymentModel.Amount = 500'>$500</button>
                             </div>
-                            <InputNumber class="form-control" @bind-Value="command.Amount" placeholder="Otro monto..." />
+                            <input type="number" class="form-control" @bind="paymentModel.Amount" placeholder="Otro monto..." min="0" step="0.01" required />
                         </div>
                     </div>
 
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label class="form-label">Latitud GPS</label>
-                            <InputNumber class="form-control" @bind-Value="command.GpsLatitude" />
+                            <input type="number" class="form-control" @bind="paymentModel.GpsLatitude" step="any" />
                             <small class="text-muted">Ej: -12.046374</small>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Longitud GPS</label>
-                            <InputNumber class="form-control" @bind-Value="command.GpsLongitude" />
+                            <input type="number" class="form-control" @bind="paymentModel.GpsLongitude" step="any" />
                             <small class="text-muted">Ej: -77.042793</small>
                         </div>
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label">Notas</label>
-                        <InputTextArea class="form-control" rows="3" @bind-Value="command.Notes" />
+                        <textarea class="form-control" rows="3" @bind="paymentModel.Notes"></textarea>
                     </div>
 
                     @if (!string.IsNullOrEmpty(errorMessage))
@@ -100,40 +92,40 @@
     [Parameter] public EventCallback OnClose { get; set; }
     [Parameter] public EventCallback OnSave { get; set; }
 
-    private RegisterPaymentCommand command = new RegisterPaymentCommand();
-    private List<VitaRaiz.Domain.Entities.Sale> sales = new();
-    private List<VitaRaiz.Domain.Entities.User> collectors = new();
+    private PaymentModel paymentModel = new PaymentModel();
+    private List<SaleDto> sales = new();
     private bool isSaving = false;
     private string errorMessage = "";
     private string successMessage = "";
+    private int currentUserId = 0;
 
     protected override async Task OnParametersSetAsync()
     {
         if (IsVisible)
         {
             await LoadData();
-            command = new RegisterPaymentCommand();
+            paymentModel = new PaymentModel();
         }
     }
 
     private async Task LoadData()
     {
-        sales = await Task.Run(() =>
-            Context.Sales
-                .Include(s => s.Customer)
-                .Where(s => s.Status == "active")
-                .OrderByDescending(s => s.SaleDate)
-                .Take(50)
-                .ToList()
-        );
+        try
+        {
+            // Obtener usuario actual
+            var userResult = await SessionStorage.GetAsync<CurrentUser>("currentUser");
+            if (userResult.Success && userResult.Value != null)
+            {
+                currentUserId = userResult.Value.UserId;
+            }
 
-        collectors = await Task.Run(() =>
-            Context.Users
-                .Include(u => u.Role)
-                .Where(u => u.Role.RoleName == "Cobrador" && u.IsActive)
-                .OrderBy(u => u.Username)
-                .ToList()
-        );
+            // Cargar ventas activas con balance pendiente
+            sales = await ApiService.GetAsync<List<SaleDto>>("/api/sales/active") ?? new();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error cargando datos: {ex.Message}";
+        }
     }
 
     private async Task HandleSubmit()
@@ -144,15 +136,47 @@
 
         try
         {
-            var paymentId = await Mediator.Send(command);
-            successMessage = $"Pago #{paymentId} registrado exitosamente";
-            await Task.Delay(1500);
-            await OnSave.InvokeAsync();
-            await Close();
+            if (paymentModel.SaleId == 0)
+            {
+                errorMessage = "Debe seleccionar una venta";
+                return;
+            }
+
+            if (paymentModel.Amount <= 0)
+            {
+                errorMessage = "El monto debe ser mayor a cero";
+                return;
+            }
+
+            // Preparar el comando para la API
+            var command = new
+            {
+                saleId = paymentModel.SaleId,
+                collectorId = currentUserId,
+                amount = paymentModel.Amount,
+                gpsLatitude = paymentModel.GpsLatitude,
+                gpsLongitude = paymentModel.GpsLongitude,
+                notes = paymentModel.Notes
+            };
+
+            // Enviar a la API
+            var response = await ApiService.PostAsync<object, dynamic>("/api/payments", command);
+            
+            if (response != null)
+            {
+                successMessage = "Pago registrado exitosamente";
+                await Task.Delay(1000);
+                await OnSave.InvokeAsync();
+                await Close();
+            }
+            else
+            {
+                errorMessage = "Error al registrar el pago";
+            }
         }
         catch (Exception ex)
         {
-            errorMessage = $"Error al registrar pago: {ex.Message}";
+            errorMessage = $"Error: {ex.Message}";
         }
         finally
         {
@@ -164,5 +188,14 @@
     {
         IsVisible = false;
         await OnClose.InvokeAsync();
+    }
+
+    private class PaymentModel
+    {
+        public int SaleId { get; set; }
+        public decimal Amount { get; set; }
+        public decimal? GpsLatitude { get; set; }
+        public decimal? GpsLongitude { get; set; }
+        public string? Notes { get; set; }
     }
 }

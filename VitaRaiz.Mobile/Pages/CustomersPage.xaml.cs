@@ -2,17 +2,23 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
+using VitaRaiz.Mobile.Services;
+using MauiApp = Microsoft.Maui.Controls.Application;
 
 namespace VitaRaiz.Mobile.Pages;
 
 public partial class CustomersPage : ContentPage, INotifyPropertyChanged
 {
+    private readonly ApiService _apiService;
     private string _searchText = string.Empty;
+    private List<CustomerDto> _allCustomers = new();
 
     public CustomersPage()
     {
         InitializeComponent();
         BindingContext = this;
+        
+        _apiService = MauiApp.Current?.Handler?.MauiContext?.Services.GetService<ApiService>() ?? new ApiService();
         
         SearchCommand = new Command(OnSearch);
         ViewCustomerDetailCommand = new Command(OnViewCustomerDetail);
@@ -39,28 +45,14 @@ public partial class CustomersPage : ContentPage, INotifyPropertyChanged
     {
         try
         {
-            // TODO: Cargar clientes reales desde la API
-            Customers.Clear();
-            Customers.Add(new CustomerItemDto
+            // Cargar clientes desde la API
+            var customersData = await _apiService.GetAsync<List<CustomerDto>>("/api/customers");
+            
+            if (customersData != null)
             {
-                CustomerId = 1,
-                CustomerName = "Juan Pérez",
-                PhoneNumber = "809-555-1234",
-                ZoneName = "Zona Norte",
-                PendingBalance = 2500.00m,
-                IsGoldCustomer = true,
-                AvatarColor = "#9C27B0"
-            });
-            Customers.Add(new CustomerItemDto
-            {
-                CustomerId = 2,
-                CustomerName = "María García",
-                PhoneNumber = "809-555-5678",
-                ZoneName = "Zona Sur",
-                PendingBalance = 1800.00m,
-                IsGoldCustomer = false,
-                AvatarColor = "#2196F3"
-            });
+                _allCustomers = customersData;
+                DisplayCustomers(_allCustomers);
+            }
         }
         catch (Exception ex)
         {
@@ -68,9 +60,44 @@ public partial class CustomersPage : ContentPage, INotifyPropertyChanged
         }
     }
 
+    private void DisplayCustomers(List<CustomerDto> customers)
+    {
+        Customers.Clear();
+        
+        var colors = new[] { "#9C27B0", "#2196F3", "#4CAF50", "#FF9800", "#E91E63", "#00BCD4" };
+        int colorIndex = 0;
+        
+        foreach (var customer in customers)
+        {
+            Customers.Add(new CustomerItemDto
+            {
+                CustomerId = customer.CustomerId,
+                CustomerName = customer.CustomerName,
+                PhoneNumber = customer.PhoneNumber ?? "Sin teléfono",
+                ZoneName = customer.ZoneName ?? "Sin zona",
+                PendingBalance = 0, // TODO: Obtener balance pendiente del cliente
+                IsGoldCustomer = customer.IsGoldCustomer,
+                IsBlacklisted = customer.IsBlacklisted,
+                AvatarColor = colors[colorIndex % colors.Length]
+            });
+            colorIndex++;
+        }
+    }
+
     private void OnSearch()
     {
-        // TODO: Implementar búsqueda
+        if (string.IsNullOrWhiteSpace(SearchText))
+        {
+            DisplayCustomers(_allCustomers);
+        }
+        else
+        {
+            var filtered = _allCustomers.Where(c => 
+                c.CustomerName.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
+                (c.PhoneNumber != null && c.PhoneNumber.Contains(SearchText))
+            ).ToList();
+            DisplayCustomers(filtered);
+        }
     }
 
     private void OnViewCustomerDetail()

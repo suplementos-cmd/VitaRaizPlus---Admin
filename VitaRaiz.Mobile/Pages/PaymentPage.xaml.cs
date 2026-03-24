@@ -1,16 +1,15 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
-using System.Text;
-using System.Text.Json;
 using System.Windows.Input;
+using VitaRaiz.Mobile.Services;
+using MauiApp = Microsoft.Maui.Controls.Application;
 
 namespace VitaRaiz.Mobile.Pages;
 
 public partial class PaymentPage : ContentPage, INotifyPropertyChanged
 {
-    private readonly HttpClient _httpClient;
-    private const string API_BASE_URL = "https://localhost:7001/api"; // TODO: Cambiar a URL de producción
+    private readonly ApiService _apiService;
 
     private string _gpsStatus = "Obteniendo ubicación...";
     private string _gpsCoordinates = string.Empty;
@@ -32,10 +31,7 @@ public partial class PaymentPage : ContentPage, INotifyPropertyChanged
     {
         InitializeComponent();
         
-        _httpClient = new HttpClient
-        {
-            BaseAddress = new Uri(API_BASE_URL)
-        };
+        _apiService = MauiApp.Current?.Handler?.MauiContext?.Services.GetService<ApiService>() ?? new ApiService();
         
         BindingContext = this;
         
@@ -209,40 +205,29 @@ public partial class PaymentPage : ContentPage, INotifyPropertyChanged
     {
         try
         {
-            var token = await SecureStorage.GetAsync("jwt_token");
-            if (string.IsNullOrEmpty(token))
+            // Cargar ventas activas desde la API
+            var salesData = await _apiService.GetAsync<List<VitaRaiz.Mobile.Services.SaleDto>>("/api/sales/active");
+
+            if (salesData != null)
             {
-                ErrorMessage = "No hay sesión activa";
-                HasError = true;
-                return;
-            }
-
-            _httpClient.DefaultRequestHeaders.Authorization = 
-                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-
-            var response = await _httpClient.GetAsync("/sales/active");
-            
-            if (response.IsSuccessStatusCode)
-            {
-                var content = await response.Content.ReadAsStringAsync();
-                var sales = JsonSerializer.Deserialize<List<SaleDto>>(content, new JsonSerializerOptions
+                Sales.Clear();
+                foreach (var sale in salesData)
                 {
-                    PropertyNameCaseInsensitive = true
-                });
-
-                if (sales != null)
-                {
-                    Sales.Clear();
-                    foreach (var sale in sales)
+                    Sales.Add(new SaleDto
                     {
-                        Sales.Add(sale);
-                    }
+                        SaleId = sale.SaleId,
+                        CustomerName = sale.CustomerName,
+                        TotalAmount = sale.TotalAmount,
+                        PendingAmount = sale.Balance
+                    });
                 }
             }
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error loading sales: {ex.Message}");
+            ErrorMessage = "Error al cargar ventas";
+            HasError = true;
         }
     }
 
@@ -308,7 +293,7 @@ public partial class PaymentPage : ContentPage, INotifyPropertyChanged
 
         if (string.IsNullOrWhiteSpace(PaymentAmount) || !decimal.TryParse(PaymentAmount, out var amount) || amount <= 0)
         {
-            Error Message = "Ingresa un monto válido";
+            ErrorMessage = "Ingresa un monto válido";
             HasError = true;
             return;
         }
@@ -328,44 +313,60 @@ public partial class PaymentPage : ContentPage, INotifyPropertyChanged
 
         try
         {
-            var token = await SecureStorage.GetAsync("jwt_token");
             var userId = await SecureStorage.GetAsync("user_id");
 
-            if (string.IsNullOrEmpty(token))
+            // Crear MultipartFormDataContent para enviar fotos
+            var multipartContent = new MultipartFormDataContent();
+
+            // Agregar datos del pago
+            multipartContent.Add(new StringContent(SelectedSale.SaleId.ToString()), "saleId");
+            multipartContent.Add(new StringContent(amount.ToString()), "amount");
+            multipartContent.Add(new StringContent(userId ?? "0"), "collectorId");
+            multipartContent.Add(new StringContent(_latitude.ToString()), "gpsLatitude");
+            multipartContent.Add(new StringContent(_longitude.ToString()), "gpsLongitude");
+            multipartContent.Add(new StringContent(Notes ?? ""), "notes");
+
+            // Agregar fotos
+            int photoIndex = 0;
+            foreach (var photo in Photos)
             {
-                ErrorMessage = "No hay sesión activa";
-                HasError = true;
-                return;
+                if (File.Exists(photo.ImagePath))
+                {
+                    var fileBytes = await File.ReadAllBytesAsync(photo.ImagePath);
+                    var imageContent = new ByteArrayContent(fileBytes);
+                    imageContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/jpeg");
+                    
+                    multipartContent.Add(imageContent, $"photos", $"photo_{photoIndex}_{photo.PhotoType}.jpg");
+                    multipartContent.Add(new StringContent(photo.PhotoType), $"photoTypes[{photoIndex}]");
+                    multipartContent.Add(new StringContent(photo.Latitude.ToString()), $"photoLatitudes[{photoIndex}]");
+                    multipartContent.Add(new StringContent(photo.Longitude.ToString()), $"photoLongitudes[{photoIndex}]");
+                    
+                    photoIndex++;
+                }
             }
 
-            _httpClient.DefaultRequestHeaders.Authorization = 
-                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-
-            // Preparar request
-            var paymentRequest = new
+            // Enviar a la API (si hay fotos usar multipart, sino JSON simple)
+            bool success;
+            if (Photos.Count > 0)
             {
-                saleId = SelectedSale.SaleId,
-                amount = amount,
-                collectedBy = int.Parse(userId ?? "0"),
-                latitude = _latitude,
-                longitude = _longitude,
-                notes = Notes,
-                photos = Photos.Select(p => new
+                success = await _apiService.PostMultipartAsync("/api/payments", multipartContent);
+            }
+            else
+            {
+                // Fallback sin fotos
+                var paymentData = new
                 {
-                    imagePath = p.ImagePath,
-                    photoType = p.PhotoType,
-                    latitude = p.Latitude,
-                    longitude = p.Longitude
-                }).ToList()
-            };
+                    saleId = SelectedSale.SaleId,
+                    amount = amount,
+                    collectorId = int.Parse(userId ?? "0"),
+                    gpsLatitude = _latitude,
+                    gpsLongitude = _longitude,
+                    notes = Notes
+                };
+                success = await _apiService.PostAsync("/api/payments", paymentData);
+            }
 
-            var jsonContent = JsonSerializer.Serialize(paymentRequest);
-            var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
-
-            // Llamar API
-            var response = await _httpClient.PostAsync("/payments", content);
-
-            if (response.IsSuccessStatusCode)
+            if (success)
             {
                 SuccessMessage = "✓ Pago registrado exitosamente";
                 HasSuccess = true;
@@ -378,8 +379,7 @@ public partial class PaymentPage : ContentPage, INotifyPropertyChanged
             }
             else
             {
-                var errorContent = await response.Content.ReadAsStringAsync();
-                ErrorMessage = $"Error al registrar pago: {response.StatusCode}";
+                ErrorMessage = "Error al registrar el pago. Intenta nuevamente.";
                 HasError = true;
             }
         }
@@ -438,3 +438,4 @@ public class PaymentPhoto
     public double Latitude { get; set; }
     public double Longitude { get; set; }
 }
+

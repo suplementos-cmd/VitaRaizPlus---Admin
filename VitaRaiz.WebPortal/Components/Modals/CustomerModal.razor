@@ -1,6 +1,7 @@
-@using VitaRaiz.Domain.Entities
-@using VitaRaiz.Infrastructure.Data
-@inject VitaRaizDbContext Context
+@using VitaRaiz.Application.DTOs
+@using VitaRaiz.WebPortal.Services
+@using Microsoft.AspNetCore.Components.Forms
+@inject ApiService ApiService
 
 <div class="modal fade @(IsVisible ? "show d-block" : "")" tabindex="-1" style="@(IsVisible ? "background-color: rgba(0,0,0,0.5);" : "")">
     <div class="modal-dialog modal-lg">
@@ -10,58 +11,58 @@
                 <button type="button" class="btn-close" @onclick="Close"></button>
             </div>
             <div class="modal-body">
-                <EditForm Model="@customer" OnValidSubmit="HandleSubmit">
+                <EditForm Model="@customerModel" OnValidSubmit="HandleSubmit">
                     <DataAnnotationsValidator />
                     <ValidationSummary class="text-danger" />
 
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Nombre del Cliente *</label>
-                            <InputText class="form-control" @bind-Value="customer.CustomerName" />
+                            <input type="text" class="form-control" @bind="customerModel.CustomerName" required />
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Teléfono</label>
-                            <InputText class="form-control" @bind-Value="customer.Phone" />
+                            <input type="text" class="form-control" @bind="customerModel.PhoneNumber" />
                         </div>
                     </div>
 
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Email</label>
-                            <InputText class="form-control" type="email" @bind-Value="customer.Email" />
+                            <input type="email" class="form-control" @bind="customerModel.Email" />
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Zona</label>
-                            <InputSelect class="form-select" @bind-Value="customer.ZoneId">
-                                <option value="">Seleccionar zona...</option>
+                            <select class="form-select" @bind="customerModel.ZoneId">
+                                <option value="0">Seleccionar zona...</option>
                                 @foreach (var zone in zones)
                                 {
                                     <option value="@zone.ZoneId">@zone.ZoneName</option>
                                 }
-                            </InputSelect>
+                            </select>
                         </div>
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label">Dirección</label>
-                        <InputTextArea class="form-control" rows="2" @bind-Value="customer.Address" />
+                        <textarea class="form-control" rows="2" @bind="customerModel.Address"></textarea>
                     </div>
 
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Latitud GPS</label>
-                            <InputNumber class="form-control" @bind-Value="customer.GpsLatitude" />
+                            <input type="text" class="form-control" @bind="customerModel.GpsLatitude" />
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Longitud GPS</label>
-                            <InputNumber class="form-control" @bind-Value="customer.GpsLongitude" />
+                            <input type="text" class="form-control" @bind="customerModel.GpsLongitude" />
                         </div>
                     </div>
 
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <div class="form-check">
-                                <InputCheckbox class="form-check-input" id="goldCustomer" @bind-Value="customer.IsGoldCustomer" />
+                                <input type="checkbox" class="form-check-input" id="goldCustomer" @bind="customerModel.IsGoldCustomer" />
                                 <label class="form-check-label" for="goldCustomer">
                                     ⭐ Cliente Gold
                                 </label>
@@ -69,7 +70,7 @@
                         </div>
                         <div class="col-md-6 mb-3">
                             <div class="form-check">
-                                <InputCheckbox class="form-check-input" id="blacklisted" @bind-Value="customer.IsBlacklisted" />
+                                <input type="checkbox" class="form-check-input" id="blacklisted" @bind="customerModel.IsBlacklisted" />
                                 <label class="form-check-label" for="blacklisted">
                                     🚫 Blacklist
                                 </label>
@@ -77,14 +78,14 @@
                         </div>
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label">Notas</label>
-                        <InputTextArea class="form-control" rows="3" @bind-Value="customer.Notes" />
-                    </div>
-
                     @if (!string.IsNullOrEmpty(errorMessage))
                     {
                         <div class="alert alert-danger">@errorMessage</div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(successMessage))
+                    {
+                        <div class="alert alert-success">@successMessage</div>
                     }
 
                     <div class="modal-footer">
@@ -109,10 +110,11 @@
     [Parameter] public EventCallback OnClose { get; set; }
     [Parameter] public EventCallback OnSave { get; set; }
 
-    private Customer customer = new Customer();
-    private List<Zone> zones = new();
+    private CustomerModel customerModel = new CustomerModel();
+    private List<ZoneDto> zones = new();
     private bool isSaving = false;
     private string errorMessage = "";
+    private string successMessage = "";
 
     protected override async Task OnParametersSetAsync()
     {
@@ -126,22 +128,47 @@
             }
             else
             {
-                customer = new Customer { RegisteredAt = DateTime.Now };
+                customerModel = new CustomerModel();
             }
         }
     }
 
     private async Task LoadZones()
     {
-        zones = await Task.Run(() => Context.Zones.OrderBy(z => z.ZoneName).ToList());
+        try
+        {
+            zones = await ApiService.GetAsync<List<ZoneDto>>("/api/zones") ?? new();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error cargando zonas: {ex.Message}";
+        }
     }
 
     private async Task LoadCustomer()
     {
-        var existing = await Task.Run(() => Context.Customers.FirstOrDefault(c => c.CustomerId == CustomerId));
-        if (existing != null)
+        try
         {
-            customer = existing;
+            var customer = await ApiService.GetAsync<CustomerDto>($"/api/customers/{CustomerId}");
+            if (customer != null)
+            {
+                customerModel = new CustomerModel
+                {
+                    CustomerName = customer.CustomerName,
+                    PhoneNumber = customer.PhoneNumber,
+                    Email = customer.Email,
+                    Address = customer.Address,
+                    ZoneId = customer.ZoneId ?? 0,
+                    GpsLatitude = customer.GpsLatitude?.ToString(),
+                    GpsLongitude = customer.GpsLongitude?.ToString(),
+                    IsGoldCustomer = customer.IsGoldCustomer,
+                    IsBlacklisted = customer.IsBlacklisted
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error cargando cliente: {ex.Message}";
         }
     }
 
@@ -149,25 +176,63 @@
     {
         isSaving = true;
         errorMessage = "";
+        successMessage = "";
 
         try
         {
+            var command = new
+            {
+                customerName = customerModel.CustomerName,
+                phoneNumber = customerModel.PhoneNumber,
+                email = customerModel.Email,
+                address = customerModel.Address,
+                zoneId = customerModel.ZoneId > 0 ? customerModel.ZoneId : (int?)null,
+                gpsLatitude = customerModel.GpsLatitude,
+                gpsLongitude = customerModel.GpsLongitude,
+                isGoldCustomer = customerModel.IsGoldCustomer,
+                isBlacklisted = customerModel.IsBlacklisted
+            };
+
+            bool success = false;
             if (CustomerId.HasValue)
             {
-                Context.Customers.Update(customer);
+                // Actualizar cliente existente
+                var updateCommand = new
+                {
+                    customerId = CustomerId.Value,
+                    customerName = customerModel.CustomerName,
+                    phoneNumber = customerModel.PhoneNumber,
+                    email = customerModel.Email,
+                    address = customerModel.Address,
+                    zoneId = customerModel.ZoneId > 0 ? customerModel.ZoneId : (int?)null,
+                    gpsLatitude = customerModel.GpsLatitude,
+                    gpsLongitude = customerModel.GpsLongitude,
+                    isGoldCustomer = customerModel.IsGoldCustomer,
+                    isBlacklisted = customerModel.IsBlacklisted
+                };
+                success = await ApiService.PutAsync($"/api/customers/{CustomerId.Value}", updateCommand);
             }
             else
             {
-                Context.Customers.Add(customer);
+                // Crear nuevo cliente
+                success = await ApiService.PostAsync("/api/customers", command);
             }
 
-            await Context.SaveChangesAsync();
-            await OnSave.InvokeAsync();
-            await Close();
+            if (success)
+            {
+                successMessage = "Cliente guardado exitosamente";
+                await Task.Delay(1000);
+                await OnSave.InvokeAsync();
+                await Close();
+            }
+            else
+            {
+                errorMessage = "Error al guardar el cliente";
+            }
         }
         catch (Exception ex)
         {
-            errorMessage = $"Error al guardar: {ex.Message}";
+            errorMessage = $"Error: {ex.Message}";
         }
         finally
         {
@@ -179,5 +244,18 @@
     {
         IsVisible = false;
         await OnClose.InvokeAsync();
+    }
+
+    private class CustomerModel
+    {
+        public string CustomerName { get; set; } = string.Empty;
+        public string? PhoneNumber { get; set; }
+        public string? Email { get; set; }
+        public string? Address { get; set; }
+        public int ZoneId { get; set; }
+        public string? GpsLatitude { get; set; }
+        public string? GpsLongitude { get; set; }
+        public bool IsGoldCustomer { get; set; }
+        public bool IsBlacklisted { get; set; }
     }
 }

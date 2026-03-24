@@ -2,11 +2,14 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
+using VitaRaiz.Mobile.Services;
+using MauiApp = Microsoft.Maui.Controls.Application;
 
 namespace VitaRaiz.Mobile.Pages;
 
 public partial class SalesPage : ContentPage, INotifyPropertyChanged
 {
+    private readonly ApiService _apiService;
     private ObservableCollection<string> _statusFilters = new() { "Todas", "Activas", "Completadas", "Vencidas" };
     private string _selectedStatus = "Todas";
 
@@ -14,6 +17,8 @@ public partial class SalesPage : ContentPage, INotifyPropertyChanged
     {
         InitializeComponent();
         BindingContext = this;
+        
+        _apiService = MauiApp.Current?.Handler?.MauiContext?.Services.GetService<ApiService>() ?? new ApiService();
         
         SearchCommand = new Command(OnSearch);
         ViewSaleDetailCommand = new Command(OnViewSaleDetail);
@@ -51,28 +56,58 @@ public partial class SalesPage : ContentPage, INotifyPropertyChanged
     {
         try
         {
-            // TODO: Cargar ventas reales desde la API
+            // Obtener userId del usuario actual
+            var userIdStr = await SecureStorage.GetAsync("user_id");
+            int userId = int.TryParse(userIdStr, out var id) ? id : 0;
+            
+            // Cargar ventas activas desde la API
+            var queryParams = new Dictionary<string, string?>();
+            
+            if (_selectedStatus == "Activas")
+            {
+                queryParams.Add("status", "active");
+            }
+            else if (_selectedStatus == "Completadas")
+            {
+                queryParams.Add("status", "completed");
+            }
+            else if (_selectedStatus == "Vencidas")
+            {
+                // Filtrar ventas vencidas (TODO: implementar lógica en API)
+                queryParams.Add("status", "active");
+            }
+            
+            var salesData = await _apiService.GetAsync<List<VitaRaiz.Mobile.Services.SaleDto>>("/api/sales", queryParams);
+            
             Sales.Clear();
-            Sales.Add(new SaleItemDto
+            if (salesData != null)
             {
-                SaleId = 1,
-                CustomerName = "Juan Pérez",
-                SaleDate = DateTime.Now.AddDays(-5),
-                TotalAmount = 5000.00m,
-                PendingAmount = 2000.00m,
-                Status = "Activa",
-                StatusColor = "#28A745"
-            });
-            Sales.Add(new SaleItemDto
-            {
-                SaleId = 2,
-                CustomerName = "María García",
-                SaleDate = DateTime.Now.AddDays(-3),
-                TotalAmount = 3500.00m,
-                PendingAmount = 1500.00m,
-                Status = "Activa",
-                StatusColor = "#28A745"
-            });
+                foreach (var sale in salesData)
+                {
+                    Sales.Add(new SaleItemDto
+                    {
+                        SaleId = sale.SaleId,
+                        CustomerName = sale.CustomerName,
+                        SaleDate = sale.SaleDate,
+                        TotalAmount = sale.TotalAmount,
+                        PendingAmount = sale.Balance,
+                        Status = sale.Status switch
+                        {
+                            "active" => "Activa",
+                            "completed" => "Completada",
+                            "cancelled" => "Cancelada",
+                            _ => sale.Status
+                        },
+                        StatusColor = sale.Status switch
+                        {
+                            "active" => "#28A745",
+                            "completed" => "#17A2B8",
+                            "cancelled" => "#DC3545",
+                            _ => "#999"
+                        }
+                    });
+                }
+            }
         }
         catch (Exception ex)
         {

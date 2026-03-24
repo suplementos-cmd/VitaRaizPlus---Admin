@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using System.Windows.Input;
+using MauiApp = Microsoft.Maui.Controls.Application;
 
 namespace VitaRaiz.Mobile.Pages;
 
@@ -184,3 +185,4 @@ public class LoginResponse
     public string Username { get; set; } = string.Empty;
     public string Role { get; set; } = string.Empty;
 }
+

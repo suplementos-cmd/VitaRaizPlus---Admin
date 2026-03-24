@@ -1,18 +1,13 @@
 using VitaRaiz.WebPortal.Components;
 using VitaRaiz.WebPortal.Services;
-using VitaRaiz.Application;
-using VitaRaiz.Infrastructure;
 using Microsoft.AspNetCore.Components.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container
-builder.Services.AddApplication();
-builder.Services.AddInfrastructure(builder.Configuration);
-
 // Autenticación y autorización
 builder.Services.AddAuthorizationCore();
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<ApiService>();
 builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthenticationStateProvider>();
 builder.Services.AddScoped<CustomAuthenticationStateProvider>();
 

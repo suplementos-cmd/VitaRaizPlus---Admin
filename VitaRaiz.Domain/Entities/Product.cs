@@ -6,6 +6,8 @@ public class Product
     public string ProductName { get; set; } = string.Empty;
     public string? Description { get; set; }
     public decimal Price { get; set; }
+    public decimal UnitPrice => Price;
+    public int Stock { get; set; } = 0;
     public string Category { get; set; } = string.Empty;
     public bool IsActive { get; set; } = true;
     

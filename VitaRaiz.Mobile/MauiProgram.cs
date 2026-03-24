@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using VitaRaiz.Mobile.Data;
+using VitaRaiz.Mobile.Services;
 
 namespace VitaRaiz.Mobile;
 
@@ -21,6 +22,7 @@ public static class MauiProgram
 		
 		// Registrar servicios
 		builder.Services.AddSingleton<LocalDatabase>(s => new LocalDatabase(dbPath));
+		builder.Services.AddSingleton<ApiService>();
 		builder.Services.AddSingleton<SyncService>();
 
 #if DEBUG

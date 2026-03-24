@@ -1,10 +1,10 @@
 @page "/ventas"
-@using VitaRaiz.Infrastructure.Data
-@using MediatR
+@using VitaRaiz.Application.DTOs
+@using VitaRaiz.WebPortal.Services
+@using VitaRaiz.WebPortal.Components.Modals
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
-@inject VitaRaizDbContext Context
-@inject IMediator Mediator
+@inject ApiService ApiService
 @rendermode InteractiveServer
 
 <PageTitle>Ventas - VitaRaiz</PageTitle>
@@ -23,10 +23,10 @@
 </div>
 
 <div class="btn-group mb-3" role="group">
-    <button class="btn @(filtroEstado == "todas" ? "btn-primary" : "btn-outline-primary")" @onclick='() => filtroEstado = "todas"'>Todas</button>
-    <button class="btn @(filtroEstado == "active" ? "btn-success" : "btn-outline-success")" @onclick='() => filtroEstado = "active"'>Activas</button>
-    <button class="btn @(filtroEstado == "completed" ? "btn-info" : "btn-outline-info")" @onclick='() => filtroEstado = "completed"'>Completadas</button>
-    <button class="btn @(filtroEstado == "cancelled" ? "btn-danger" : "btn-outline-danger")" @onclick='() => filtroEstado = "cancelled"'>Canceladas</button>
+    <button class="btn @(filtroEstado == "todas" ? "btn-primary" : "btn-outline-primary")" @onclick='() => CambiarFiltro("todas")'>Todas</button>
+    <button class="btn @(filtroEstado == "active" ? "btn-success" : "btn-outline-success")" @onclick='() => CambiarFiltro("active")'>Activas</button>
+    <button class="btn @(filtroEstado == "completed" ? "btn-info" : "btn-outline-info")" @onclick='() => CambiarFiltro("completed")'>Completadas</button>
+    <button class="btn @(filtroEstado == "cancelled" ? "btn-danger" : "btn-outline-danger")" @onclick='() => CambiarFiltro("cancelled")'>Canceladas</button>
 </div>
 
 @if (ventas == null)
@@ -42,10 +42,10 @@ else
                     <th>ID</th>
                     <th>Fecha</th>
                     <th>Cliente</th>
-                    <th>Vendedor</th>
                     <th>Total</th>
+                    <th>Pagado</th>
+                    <th>Balance</th>
                     <th>Estado</th>
-                    <th>Cobrador Asignado</th>
                     <th>Acciones</th>
                 </tr>
             </thead>
@@ -55,9 +55,14 @@ else
                     <tr>
                         <td>@venta.SaleId</td>
                         <td>@venta.SaleDate.ToString("dd/MM/yyyy")</td>
-                        <td>@venta.Customer?.CustomerName</td>
-                        <td>@venta.Seller?.Username</td>
+                        <td>@venta.CustomerName</td>
                         <td>$@venta.TotalAmount.ToString("N2")</td>
+                        <td>$@venta.PaidAmount.ToString("N2")</td>
+                        <td>
+                            <strong class="@(venta.Balance > 0 ? "text-warning" : "text-success")">
+                                $@venta.Balance.ToString("N2")
+                            </strong>
+                        </td>
                         <td>
                             @switch (venta.Status)
                             {
@@ -75,10 +80,12 @@ else
                                     break;
                             }
                         </td>
-                        <td>@(venta.AssignedCollector?.Username ?? "Sin asignar")</td>
                         <td>
                             <button class="btn btn-sm btn-info" @onclick="() => VerDetalle(venta.SaleId)">Ver</button>
-                            <button class="btn btn-sm btn-success" @onclick="() => VerBalance(venta.SaleId)">Balance</button>
+                            @if (venta.Status == "active")
+                            {
+                                <button class="btn btn-sm btn-danger" @onclick="() => CancelarVenta(venta.SaleId)">Cancelar</button>
+                            }
                         </td>
                     </tr>
                 }
@@ -86,27 +93,33 @@ else
         </table>
     </div>
 
-    <p class="text-muted">Total de ventas: @ventas.Count</p>
+    <p class="text-muted">Total de ventas: @ventas.Count | Filtradas: @ventasFiltradas.Count()</p>
 }
 
-@if (!string.IsNullOrEmpty(balanceInfo))
+@if (!string.IsNullOrEmpty(messageInfo))
 {
     <div class="alert alert-info mt-3">
-        @balanceInfo
+        @messageInfo
     </div>
 }
 
+<!-- Modal de Nueva Venta -->
+<SaleModal IsVisible="@showSaleModal" 
+           OnClose="@CerrarModal" 
+           OnSave="@GuardarVenta" />
+
 @code {
-    private List<VitaRaiz.Domain.Entities.Sale>? ventas;
+    private List<SaleDto>? ventas;
     private string searchTerm = "";
     private string filtroEstado = "todas";
-    private string balanceInfo = "";
+    private string messageInfo = "";
+    private bool showSaleModal = false;
 
-    private IEnumerable<VitaRaiz.Domain.Entities.Sale> ventasFiltradas
+    private IEnumerable<SaleDto> ventasFiltradas
     {
         get
         {
-            var resultado = ventas ?? Enumerable.Empty<VitaRaiz.Domain.Entities.Sale>();
+            var resultado = ventas ?? Enumerable.Empty<SaleDto>();
 
             if (filtroEstado != "todas")
             {
@@ -116,7 +129,7 @@ else
             if (!string.IsNullOrEmpty(searchTerm))
             {
                 resultado = resultado.Where(v =>
-                    v.Customer != null && v.Customer.CustomerName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                    v.CustomerName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
                     v.SaleId.ToString().Contains(searchTerm)
                 );
             }
@@ -132,37 +145,75 @@ else
 
     private async Task CargarVentas()
     {
-        ventas = await Task.Run(() =>
-            Context.Sales
-                .Include(s => s.Customer)
-                .Include(s => s.Seller)
-                .Include(s => s.AssignedCollector)
-                .OrderByDescending(s => s.SaleDate)
-                .ToList()
-        );
+        try
+        {
+            var queryParams = new Dictionary<string, string?>();
+            
+            if (filtroEstado != "todas")
+            {
+                queryParams.Add("status", filtroEstado);
+            }
+
+            ventas = await ApiService.GetAsync<List<SaleDto>>("/api/sales", queryParams);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading sales: {ex.Message}");
+            ventas = new List<SaleDto>();
+        }
+    }
+
+    private async Task CambiarFiltro(string filtro)
+    {
+        filtroEstado = filtro;
+        await CargarVentas();
     }
 
     private void NuevaVenta()
     {
-        // TODO: Abrir modal o navegar a formulario de nueva venta
+        showSaleModal = true;
     }
 
     private void VerDetalle(int saleId)
     {
-        // TODO: Navegar a detalle de venta
+        // TODO: Implementar detalle de venta
+        messageInfo = $"Detalle de venta #{saleId} - Funcionalidad en desarrollo";
     }
 
-    private async Task VerBalance(int saleId)
+    private async Task CancelarVenta(int saleId)
     {
-        try
+        if (confirm($"¿Está seguro de cancelar la venta #{saleId}?"))
         {
-            var query = new VitaRaiz.Application.Queries.Sales.GetSaleBalanceQuery(saleId);
-            var balance = await Mediator.Send(query);
-            balanceInfo = $"Venta #{saleId} - Balance pendiente: ${balance:N2}";
+            var cancelData = new { reason = "Cancelada por usuario" };
+            var success = await ApiService.PutAsync($"/api/sales/{saleId}/cancel", cancelData);
+            
+            if (success)
+            {
+                messageInfo = $"Venta #{saleId} cancelada exitosamente";
+                await CargarVentas();
+                StateHasChanged();
+            }
+            else
+            {
+                messageInfo = $"Error al cancelar venta #{saleId}";
+            }
         }
-        catch (Exception ex)
-        {
-            balanceInfo = $"Error al obtener balance: {ex.Message}";
-        }
+    }
+
+    private void CerrarModal()
+    {
+        showSaleModal = false;
+    }
+
+    private async Task GuardarVenta()
+    {
+        await CargarVentas();
+        StateHasChanged();
+    }
+
+    private bool confirm(string message)
+    {
+        // TODO: Implementar confirmación con JS Interop
+        return true;
     }
 }
