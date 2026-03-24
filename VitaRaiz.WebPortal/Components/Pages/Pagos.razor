@@ -1,0 +1,188 @@
+@page "/pagos"
+@using VitaRaiz.Infrastructure.Data
+@using VitaRaiz.Application.Commands.Payments
+@using MediatR
+@inject VitaRaizDbContext Context
+@inject IMediator Mediator
+@rendermode InteractiveServer
+
+<PageTitle>Pagos - VitaRaiz</PageTitle>
+
+<h1 class="mb-4">💵 Gestión de Pagos</h1>
+
+<div class="row mb-3">
+    <div class="col-md-8">
+        <input type="text" class="form-control" placeholder="Buscar pago..." @bind="searchTerm" @bind:event="oninput" />
+    </div>
+    <div class="col-md-4">
+        <button class="btn btn-primary w-100" @onclick="NuevoPago">
+            ➕ Registrar Pago
+        </button>
+    </div>
+</div>
+
+<div class="btn-group mb-3" role="group">
+    <button class="btn @(filtroEstado == "todos" ? "btn-primary" : "btn-outline-primary")" @onclick='() => filtroEstado = "todos"'>Todos</button>
+    <button class="btn @(filtroEstado == "pending" ? "btn-warning" : "btn-outline-warning")" @onclick='() => filtroEstado = "pending"'>Pendientes</button>
+    <button class="btn @(filtroEstado == "approved" ? "btn-success" : "btn-outline-success")" @onclick='() => filtroEstado = "approved"'>Aprobados</button>
+    <button class="btn @(filtroEstado == "rejected" ? "btn-danger" : "btn-outline-danger")" @onclick='() => filtroEstado = "rejected"'>Rechazados</button>
+</div>
+
+@if (pagos == null)
+{
+    <p><em>Cargando pagos...</em></p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Fecha</th>
+                    <th>Venta ID</th>
+                    <th>Cliente</th>
+                    <th>Cobrador</th>
+                    <th>Monto</th>
+                    <th>GPS</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var pago in pagosFiltrados)
+                {
+                    <tr>
+                        <td>@pago.PaymentId</td>
+                        <td>@pago.PaymentDate.ToString("dd/MM/yyyy HH:mm")</td>
+                        <td>@pago.SaleId</td>
+                        <td>@pago.Sale?.Customer?.CustomerName</td>
+                        <td>@pago.Collector?.Username</td>
+                        <td>$@pago.Amount.ToString("N2")</td>
+                        <td>
+                            @if (pago.GpsLatitude.HasValue && pago.GpsLongitude.HasValue)
+                            {
+                                <span class="text-success" title="@($"Lat: {pago.GpsLatitude}, Lon: {pago.GpsLongitude}")">📍</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted">-</span>
+                            }
+                        </td>
+                        <td>
+                            @switch (pago.Status)
+                            {
+                                case "pending":
+                                    <span class="badge bg-warning">Pendiente</span>
+                                    break;
+                                case "approved":
+                                    <span class="badge bg-success">Aprobado</span>
+                                    break;
+                                case "rejected":
+                                    <span class="badge bg-danger">Rechazado</span>
+                                    break;
+                                default:
+                                    <span class="badge bg-secondary">@pago.Status</span>
+                                    break;
+                            }
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-info" @onclick="() => VerDetalle(pago.PaymentId)">Ver</button>
+                            @if (pago.Status == "pending")
+                            {
+                                <button class="btn btn-sm btn-success" @onclick="() => Aprobar(pago.PaymentId)">✓</button>
+                                <button class="btn btn-sm btn-danger" @onclick="() => Rechazar(pago.PaymentId)">✗</button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <p class="text-muted">Total de pagos: @pagos.Count | Monto total: $@pagos.Sum(p => p.Amount).ToString("N2")</p>
+}
+
+@if (!string.IsNullOrEmpty(mensaje))
+{
+    <div class="alert @(mensajeExito ? "alert-success" : "alert-danger") mt-3">
+        @mensaje
+    </div>
+}
+
+@code {
+    private List<VitaRaiz.Domain.Entities.Payment>? pagos;
+    private string searchTerm = "";
+    private string filtroEstado = "todos";
+    private string mensaje = "";
+    private bool mensajeExito = false;
+
+    private IEnumerable<VitaRaiz.Domain.Entities.Payment> pagosFiltrados
+    {
+        get
+        {
+            var resultado = pagos ?? Enumerable.Empty<VitaRaiz.Domain.Entities.Payment>();
+
+            if (filtroEstado != "todos")
+            {
+                resultado = resultado.Where(p => p.Status == filtroEstado);
+            }
+
+            if (!string.IsNullOrEmpty(searchTerm))
+            {
+                resultado = resultado.Where(p =>
+                    p.PaymentId.ToString().Contains(searchTerm) ||
+                    p.SaleId.ToString().Contains(searchTerm) ||
+                    (p.Sale?.Customer != null && p.Sale.Customer.CustomerName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+                );
+            }
+
+            return resultado;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarPagos();
+    }
+
+    private async Task CargarPagos()
+    {
+        pagos = await Task.Run(() =>
+            Context.Payments
+                .Include(p => p.Sale)
+                    .ThenInclude(s => s.Customer)
+                .Include(p => p.Collector)
+                .OrderByDescending(p => p.PaymentDate)
+                .ToList()
+        );
+    }
+
+    private void NuevoPago()
+    {
+        // TODO: Abrir modal o navegar a formulario de nuevo pago
+    }
+
+    private void VerDetalle(int paymentId)
+    {
+        // TODO: Navegar a detalle de pago con fotos
+    }
+
+    private async Task Aprobar(int paymentId)
+    {
+        // TODO: Implementar comando de aprobación
+        mensaje = $"Pago #{paymentId} aprobado";
+        mensajeExito = true;
+        await Task.Delay(3000);
+        mensaje = "";
+    }
+
+    private async Task Rechazar(int paymentId)
+    {
+        // TODO: Implementar comando de rechazo
+        mensaje = $"Pago #{paymentId} rechazado";
+        mensajeExito = false;
+        await Task.Delay(3000);
+        mensaje = "";
+    }
+}

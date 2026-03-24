@@ -1,0 +1,183 @@
+@page "/reportes"
+@using VitaRaiz.Infrastructure.Data
+@inject VitaRaizDbContext Context
+@rendermode InteractiveServer
+
+<PageTitle>Reportes - VitaRaiz</PageTitle>
+
+<h1 class="mb-4">📈 Reportes</h1>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Reporte de Cobranza Diaria</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">Fecha:</label>
+                    <input type="date" class="form-control" @bind="fechaReporte" />
+                </div>
+                <button class="btn btn-primary" @onclick="GenerarReporteDiario">
+                    Generar Reporte
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Reporte de Ventas por Periodo</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">Desde:</label>
+                    <input type="date" class="form-control" @bind="fechaDesde" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Hasta:</label>
+                    <input type="date" class="form-control" @bind="fechaHasta" />
+                </div>
+                <button class="btn btn-primary" @onclick="GenerarReportePeriodo">
+                    Generar Reporte
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>Reportes Disponibles</h5>
+            </div>
+            <div class="card-body">
+                <div class="list-group">
+                    <a href="#" class="list-group-item list-group-item-action" @onclick="ReporteCobradores">
+                        📊 Rendimiento de Cobradores
+                    </a>
+                    <a href="#" class="list-group-item list-group-item-action" @onclick="ReporteClientesOro">
+                        ⭐ Clientes Gold
+                    </a>
+                    <a href="#" class="list-group-item list-group-item-action" @onclick="ReporteBlacklist">
+                        🚫 Clientes en Blacklist
+                    </a>
+                    <a href="#" class="list-group-item list-group-item-action" @onclick="ReporteMorosidad">
+                        ⚠️ Análisis de Morosidad
+                    </a>
+                    <a href="#" class="list-group-item list-group-item-action" @onclick="ReporteZonas">
+                        🗺️ Ventas por Zona
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(resultadoReporte))
+{
+    <div class="alert alert-info mt-4">
+        <h5>Resultado del Reporte</h5>
+        <pre>@resultadoReporte</pre>
+    </div>
+}
+
+@code {
+    private DateTime fechaReporte = DateTime.Today;
+    private DateTime fechaDesde = DateTime.Today.AddDays(-30);
+    private DateTime fechaHasta = DateTime.Today;
+    private string resultadoReporte = "";
+
+    private async Task GenerarReporteDiario()
+    {
+        resultadoReporte = $"Generando reporte de cobranza para {fechaReporte:dd/MM/yyyy}...\n";
+        
+        var pagosDelDia = await Task.Run(() =>
+            Context.Payments
+                .Where(p => p.PaymentDate.Date == fechaReporte.Date)
+                .Include(p => p.Sale)
+                    .ThenInclude(s => s.Customer)
+                .Include(p => p.Collector)
+                .ToList()
+        );
+
+        resultadoReporte += $"\nTotal de pagos: {pagosDelDia.Count}\n";
+        resultadoReporte += $"Monto total: ${pagosDelDia.Sum(p => p.Amount):N2}\n";
+        resultadoReporte += $"Pagos aprobados: {pagosDelDia.Count(p => p.Status == "approved")}\n";
+        resultadoReporte += $"Pagos pendientes: {pagosDelDia.Count(p => p.Status == "pending")}\n";
+    }
+
+    private async Task GenerarReportePeriodo()
+    {
+        resultadoReporte = $"Generando reporte de ventas del {fechaDesde:dd/MM/yyyy} al {fechaHasta:dd/MM/yyyy}...\n";
+
+        var ventasPeriodo = await Task.Run(() =>
+            Context.Sales
+                .Where(s => s.SaleDate >= fechaDesde && s.SaleDate <= fechaHasta)
+                .Include(s => s.Customer)
+                .Include(s => s.Seller)
+                .ToList()
+        );
+
+        resultadoReporte += $"\nTotal de ventas: {ventasPeriodo.Count}\n";
+        resultadoReporte += $"Monto total: ${ventasPeriodo.Sum(v => v.TotalAmount):N2}\n";
+        resultadoReporte += $"Ventas activas: {ventasPeriodo.Count(v => v.Status == "active")}\n";
+        resultadoReporte += $"Ventas completadas: {ventasPeriodo.Count(v => v.Status == "completed")}\n";
+    }
+
+    private async Task ReporteCobradores()
+    {
+        resultadoReporte = "Generando reporte de rendimiento de cobradores...\n";
+        // TODO: Implementar llamada al procedimiento sp_daily_collection_stats del paquete Oracle
+        await Task.CompletedTask;
+    }
+
+    private async Task ReporteClientesOro()
+    {
+        var clientesOro = await Task.Run(() =>
+            Context.Customers
+                .Where(c => c.IsGoldCustomer)
+                .ToList()
+        );
+
+        resultadoReporte = $"Clientes Gold: {clientesOro.Count}\n";
+        resultadoReporte += string.Join("\n", clientesOro.Select(c => $"- {c.CustomerName} ({c.Phone})"));
+    }
+
+    private async Task ReporteBlacklist()
+    {
+        var clientesBlacklist = await Task.Run(() =>
+            Context.Customers
+                .Where(c => c.IsBlacklisted)
+                .ToList()
+        );
+
+        resultadoReporte = $"Clientes en Blacklist: {clientesBlacklist.Count}\n";
+        resultadoReporte += string.Join("\n", clientesBlacklist.Select(c => $"- {c.CustomerName} ({c.Phone})"));
+    }
+
+    private async Task ReporteMorosidad()
+    {
+        resultadoReporte = "Generando análisis de morosidad...\n";
+        // TODO: Implementar análisis usando fn_get_risk_status del paquete Oracle
+        await Task.CompletedTask;
+    }
+
+    private async Task ReporteZonas()
+    {
+        var ventasPorZona = await Task.Run(() =>
+            Context.Sales
+                .Include(s => s.Customer)
+                    .ThenInclude(c => c.Zone)
+                .GroupBy(s => s.Customer.Zone.ZoneName)
+                .Select(g => new { Zona = g.Key, Total = g.Sum(s => s.TotalAmount), Cantidad = g.Count() })
+                .ToList()
+        );
+
+        resultadoReporte = "Ventas por Zona:\n\n";
+        resultadoReporte += string.Join("\n", ventasPorZona.Select(z =>
+            $"{z.Zona}: {z.Cantidad} ventas - ${z.Total:N2}"
+        ));
+    }
+}

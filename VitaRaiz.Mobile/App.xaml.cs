@@ -1,6 +1,8 @@
-﻿namespace VitaRaiz.Mobile;
+﻿using MauiApp = Microsoft.Maui.Controls.Application;
 
-public partial class App : Application
+namespace VitaRaiz.Mobile;
+
+public partial class App : MauiApp
 {
 	public App()
 	{

@@ -1,0 +1,17 @@
+[
+  {
+    "Name": "VitaRaiz API+WEB",
+    "Projects": [
+      {
+        "Path": "VitaRaiz.API\\VitaRaiz.API.csproj",
+        "Action": "Start",
+        "DebugTarget": "http"
+      },
+      {
+        "Path": "VitaRaiz.WebPortal\\VitaRaiz.WebPortal.csproj",
+        "Action": "Start",
+        "DebugTarget": "http"
+      }
+    ]
+  }
+]

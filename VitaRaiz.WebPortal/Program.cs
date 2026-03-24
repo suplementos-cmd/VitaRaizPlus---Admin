@@ -1,8 +1,13 @@
 using VitaRaiz.WebPortal.Components;
+using VitaRaiz.Application;
+using VitaRaiz.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// Add services to the container
+builder.Services.AddApplication();
+builder.Services.AddInfrastructure(builder.Configuration);
+
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 

@@ -1,0 +1,79 @@
+@page "/dashboard"
+@using MediatR
+@inject IMediator Mediator
+@rendermode InteractiveServer
+
+<PageTitle>Dashboard - VitaRaiz</PageTitle>
+
+<h1 class="mb-4">📊 Dashboard</h1>
+
+<div class="row">
+    <div class="col-md-3">
+        <div class="card text-white bg-primary mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Ventas Hoy</h5>
+                <h2>@ventasHoy</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-success mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Cobros Hoy</h5>
+                <h2>$@cobrosHoy.ToString("N2")</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-warning mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Pendiente</h5>
+                <h2>$@pendiente.ToString("N2")</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-info mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Clientes Activos</h5>
+                <h2>@clientesActivos</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Últimos Pagos</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Aquí se mostrarán los últimos pagos registrados</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Ventas por Cobrador</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Estadísticas de cobradores</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private int ventasHoy = 15;
+    private decimal cobrosHoy = 25000.00m;
+    private decimal pendiente = 125000.00m;
+    private int clientesActivos = 230;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // TODO: Cargar datos reales desde la base de datos usando MediatR queries
+        await Task.CompletedTask;
+    }
+}
