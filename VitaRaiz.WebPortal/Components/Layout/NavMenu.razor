@@ -1,6 +1,20 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
+﻿@inject CustomAuthenticationStateProvider AuthStateProvider
+@inject NavigationManager NavigationManager
+
+<div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
-        <a class="navbar-brand" href="">VitaRaiz.WebPortal</a>
+        <a class="navbar-brand" href="">🌿 VitaRaiz Admin</a>
+        <AuthorizeView>
+            <Authorized>
+                <div class="user-info">
+                    <span class="user-icon">👤</span>
+                    <span class="username">@context.User.Identity?.Name</span>
+                    <button class="btn btn-sm btn-outline-light ms-2" @onclick="Logout">
+                        <span class="bi bi-box-arrow-right"></span> Salir
+                    </button>
+                </div>
+            </Authorized>
+        </AuthorizeView>
     </div>
 </div>
 
@@ -37,6 +51,48 @@
                 <span class="bi bi-bar-chart-fill" aria-hidden="true"></span> Reportes
             </NavLink>
         </div>
+
+        <AuthorizeView Roles="Admin">
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="profile">
+                        <span class="bi bi-person-circle" aria-hidden="true"></span> Mi Perfil
+                    </NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
     </nav>
 </div>
+
+<style>
+    .user-info {
+        display: flex;
+        align-items: center;
+        color: white;
+        font-size: 14px;
+    }
+
+    .user-icon {
+        font-size: 20px;
+        margin-right: 8px;
+    }
+
+    .username {
+        font-weight: 600;
+    }
+
+    @@media (max-width: 768px) {
+        .user-info {
+            display: none;
+        }
+    }
+</style>
+
+@code {
+    private async Task Logout()
+    {
+        await AuthStateProvider.MarkUserAsLoggedOutAsync();
+        NavigationManager.NavigateTo("/login", forceLoad: true);
+    }
+}
 

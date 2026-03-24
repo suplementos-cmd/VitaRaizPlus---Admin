@@ -1,0 +1,215 @@
+@page "/profile"
+@using VitaRaiz.Infrastructure.Data
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject VitaRaizDbContext Context
+@inject AuthenticationStateProvider AuthStateProvider
+@rendermode InteractiveServer
+
+<PageTitle>Mi Perfil - VitaRaiz</PageTitle>
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">👤 Mi Perfil</h3>
+                </div>
+                <div class="card-body">
+                    <AuthorizeView>
+                        <Authorized>
+                            @if (currentUser != null)
+                            {
+                                <div class="row mb-4">
+                                    <div class="col-md-4 text-center">
+                                        <div class="profile-avatar">
+                                            @GetInitials(currentUser.Username)
+                                        </div>
+                                        <h5 class="mt-3">@currentUser.Username</h5>
+                                        <span class="badge bg-success">@currentUser.Role?.RoleName</span>
+                                    </div>
+                                    <div class="col-md-8">
+                                        <h5 class="border-bottom pb-2">Información Personal</h5>
+                                        <div class="info-row">
+                                            <strong>Nombre de Usuario:</strong>
+                                            <span>@currentUser.Username</span>
+                                        </div>
+                                        <div class="info-row">
+                                            <strong>ID de Usuario:</strong>
+                                            <span>#@currentUser.UserId</span>
+                                        </div>
+                                        <div class="info-row">
+                                            <strong>Rol:</strong>
+                                            <span>@currentUser.Role?.RoleName</span>
+                                        </div>
+                                        @if (currentUser.Zone != null)
+                                        {
+                                            <div class="info-row">
+                                                <strong>Zona Asignada:</strong>
+                                                <span>@currentUser.Zone.ZoneName</span>
+                                            </div>
+                                        }
+                                        <div class="info-row">
+                                            <strong>Estado:</strong>
+                                            <span class="badge bg-success">Activo</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row mt-4">
+                                    <div class="col-md-12">
+                                        <h5 class="border-bottom pb-2">Estadísticas</h5>
+                                        <div class="row text-center">
+                                            <div class="col-md-4">
+                                                <div class="stat-card">
+                                                    <div class="stat-number">@ventasRealizadas</div>
+                                                    <div class="stat-label">Ventas Realizadas</div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="stat-card">
+                                                    <div class="stat-number">@cobrosRealizados</div>
+                                                    <div class="stat-label">Cobros Realizados</div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="stat-card">
+                                                    <div class="stat-number">$@montoTotalCobrado.ToString("N2")</div>
+                                                    <div class="stat-label">Total Cobrado</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row mt-4">
+                                    <div class="col-md-12">
+                                        <h5 class="border-bottom pb-2">Acciones</h5>
+                                        <button class="btn btn-primary me-2" @onclick="CambiarPassword">
+                                            <span class="bi bi-key-fill"></span> Cambiar Contraseña
+                                        </button>
+                                        <button class="btn btn-secondary" @onclick="ActualizarPerfil">
+                                            <span class="bi bi-pencil-square"></span> Editar Perfil
+                                        </button>
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="alert alert-warning">
+                                    Cargando información del perfil...
+                                </div>
+                            }
+                        </Authorized>
+                        <NotAuthorized>
+                            <div class="alert alert-danger">
+                                Debes iniciar sesión para ver tu perfil.
+                            </div>
+                        </NotAuthorized>
+                    </AuthorizeView>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .profile-avatar {
+        width: 120px;
+        height: 120px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 48px;
+        font-weight: bold;
+        color: white;
+        margin: 0 auto;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    .info-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 12px 0;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .info-row:last-child {
+        border-bottom: none;
+    }
+
+    .stat-card {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 10px;
+        margin: 10px 0;
+    }
+
+    .stat-number {
+        font-size: 28px;
+        font-weight: bold;
+        color: #28a745;
+    }
+
+    .stat-label {
+        font-size: 14px;
+        color: #666;
+        margin-top: 5px;
+    }
+</style>
+
+@code {
+    private User? currentUser;
+    private int ventasRealizadas = 0;
+    private int cobrosRealizados = 0;
+    private decimal montoTotalCobrado = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            var username = user.Identity.Name;
+            currentUser = Context.Users
+                .Include(u => u.Role)
+                .Include(u => u.Zone)
+                .FirstOrDefault(u => u.Username == username);
+
+            if (currentUser != null)
+            {
+                // Cargar estadísticas
+                ventasRealizadas = Context.Sales
+                    .Count(s => s.SellerId == currentUser.UserId);
+
+                cobrosRealizados = Context.Payments
+                    .Count(p => p.CollectedBy == currentUser.UserId);
+
+                montoTotalCobrado = Context.Payments
+                    .Where(p => p.CollectedBy == currentUser.UserId && p.Status == "approved")
+                    .Sum(p => (decimal?)p.Amount) ?? 0;
+            }
+        }
+    }
+
+    private string GetInitials(string username)
+    {
+        if (string.IsNullOrEmpty(username))
+            return "??";
+
+        return username.Length >= 2 ? username.Substring(0, 2).ToUpper() : username.ToUpper();
+    }
+
+    private void CambiarPassword()
+    {
+        // TODO: Implementar modal o página para cambiar contraseña
+    }
+
+    private void ActualizarPerfil()
+    {
+        // TODO: Implementar modal o página para actualizar perfil
+    }
+}

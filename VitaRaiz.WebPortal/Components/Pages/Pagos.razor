@@ -3,6 +3,8 @@
 @using VitaRaiz.Application.Commands.Payments
 @using VitaRaiz.WebPortal.Components.Modals
 @using MediatR
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
 @inject VitaRaizDbContext Context
 @inject IMediator Mediator
 @rendermode InteractiveServer

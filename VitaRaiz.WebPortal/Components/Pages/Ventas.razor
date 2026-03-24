@@ -1,6 +1,8 @@
 @page "/ventas"
 @using VitaRaiz.Infrastructure.Data
 @using MediatR
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
 @inject VitaRaizDbContext Context
 @inject IMediator Mediator
 @rendermode InteractiveServer

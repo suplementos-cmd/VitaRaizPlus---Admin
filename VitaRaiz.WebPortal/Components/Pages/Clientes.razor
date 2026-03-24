@@ -1,6 +1,8 @@
 @page "/clientes"
 @using VitaRaiz.Infrastructure.Data
 @using VitaRaiz.WebPortal.Components.Modals
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
 @inject VitaRaizDbContext Context
 @rendermode InteractiveServer
 

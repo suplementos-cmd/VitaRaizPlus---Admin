@@ -1,6 +1,8 @@
 @page "/dashboard"
 @using MediatR
 @using Microsoft.JSInterop
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
 @inject IMediator Mediator
 @inject IJSRuntime JS
 @rendermode InteractiveServer
