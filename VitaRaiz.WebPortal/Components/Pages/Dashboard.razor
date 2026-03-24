@@ -1,6 +1,8 @@
 @page "/dashboard"
 @using MediatR
+@using Microsoft.JSInterop
 @inject IMediator Mediator
+@inject IJSRuntime JS
 @rendermode InteractiveServer
 
 <PageTitle>Dashboard - VitaRaiz</PageTitle>
@@ -46,20 +48,33 @@
     <div class="col-md-6">
         <div class="card">
             <div class="card-header">
-                <h5>Últimos Pagos</h5>
+                <h5>📈 Ventas de la Semana</h5>
             </div>
-            <div class="card-body">
-                <p class="text-muted">Aquí se mostrarán los últimos pagos registrados</p>
+            <div class="card-body" style="height: 300px;">
+                <canvas id="ventasChart"></canvas>
             </div>
         </div>
     </div>
     <div class="col-md-6">
         <div class="card">
             <div class="card-header">
-                <h5>Ventas por Cobrador</h5>
+                <h5>💰 Cobros vs Pendiente</h5>
             </div>
-            <div class="card-body">
-                <p class="text-muted">Estadísticas de cobradores</p>
+            <div class="card-body" style="height: 300px;">
+                <canvas id="cobrosChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>📊 Tendencia de Cobranza (Últimos 7 días)</h5>
+            </div>
+            <div class="card-body" style="height: 300px;">
+                <canvas id="tendenciaChart"></canvas>
             </div>
         </div>
     </div>
@@ -75,5 +90,38 @@
     {
         // TODO: Cargar datos reales desde la base de datos usando MediatR queries
         await Task.CompletedTask;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await RenderCharts();
+        }
+    }
+
+    private async Task RenderCharts()
+    {
+        try
+        {
+            // Gráfico de barras - Ventas por día de la semana
+            var ventasLabels = new[] { "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom" };
+            var ventasData = new[] { 12, 19, 15, 17, 22, 18, 15 };
+            await JS.InvokeVoidAsync("chartHelpers.createBarChart", "ventasChart", ventasLabels, ventasData, "Ventas Diarias");
+
+            // Gráfico de donut - Cobros vs Pendiente
+            var cobrosLabels = new[] { "Cobrado", "Pendiente" };
+            var cobrosData = new[] { 75000, 125000 };
+            await JS.InvokeVoidAsync("chartHelpers.createDoughnutChart", "cobrosChart", cobrosLabels, cobrosData);
+
+            // Gráfico de línea - Tendencia de cobranza
+            var tendenciaLabels = new[] { "Día 1", "Día 2", "Día 3", "Día 4", "Día 5", "Día 6", "Día 7" };
+            var tendenciaData = new[] { 15000, 18000, 12000, 22000, 25000, 19000, 23000 };
+            await JS.InvokeVoidAsync("chartHelpers.createLineChart", "tendenciaChart", tendenciaLabels, tendenciaData, "Monto Cobrado ($)");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error rendering charts: {ex.Message}");
+        }
     }
 }

@@ -1,0 +1,183 @@
+@using VitaRaiz.Domain.Entities
+@using VitaRaiz.Infrastructure.Data
+@inject VitaRaizDbContext Context
+
+<div class="modal fade @(IsVisible ? "show d-block" : "")" tabindex="-1" style="@(IsVisible ? "background-color: rgba(0,0,0,0.5);" : "")">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">@(CustomerId.HasValue ? "Editar Cliente" : "Nuevo Cliente")</h5>
+                <button type="button" class="btn-close" @onclick="Close"></button>
+            </div>
+            <div class="modal-body">
+                <EditForm Model="@customer" OnValidSubmit="HandleSubmit">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary class="text-danger" />
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Nombre del Cliente *</label>
+                            <InputText class="form-control" @bind-Value="customer.CustomerName" />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Teléfono</label>
+                            <InputText class="form-control" @bind-Value="customer.Phone" />
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Email</label>
+                            <InputText class="form-control" type="email" @bind-Value="customer.Email" />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Zona</label>
+                            <InputSelect class="form-select" @bind-Value="customer.ZoneId">
+                                <option value="">Seleccionar zona...</option>
+                                @foreach (var zone in zones)
+                                {
+                                    <option value="@zone.ZoneId">@zone.ZoneName</option>
+                                }
+                            </InputSelect>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Dirección</label>
+                        <InputTextArea class="form-control" rows="2" @bind-Value="customer.Address" />
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Latitud GPS</label>
+                            <InputNumber class="form-control" @bind-Value="customer.GpsLatitude" />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Longitud GPS</label>
+                            <InputNumber class="form-control" @bind-Value="customer.GpsLongitude" />
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="form-check">
+                                <InputCheckbox class="form-check-input" id="goldCustomer" @bind-Value="customer.IsGoldCustomer" />
+                                <label class="form-check-label" for="goldCustomer">
+                                    ⭐ Cliente Gold
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="form-check">
+                                <InputCheckbox class="form-check-input" id="blacklisted" @bind-Value="customer.IsBlacklisted" />
+                                <label class="form-check-label" for="blacklisted">
+                                    🚫 Blacklist
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Notas</label>
+                        <InputTextArea class="form-control" rows="3" @bind-Value="customer.Notes" />
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger">@errorMessage</div>
+                    }
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="Close">Cancelar</button>
+                        <button type="submit" class="btn btn-primary" disabled="@isSaving">
+                            @if (isSaving)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                            }
+                            Guardar
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public int? CustomerId { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnSave { get; set; }
+
+    private Customer customer = new Customer();
+    private List<Zone> zones = new();
+    private bool isSaving = false;
+    private string errorMessage = "";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsVisible)
+        {
+            await LoadZones();
+
+            if (CustomerId.HasValue)
+            {
+                await LoadCustomer();
+            }
+            else
+            {
+                customer = new Customer { RegisteredAt = DateTime.Now };
+            }
+        }
+    }
+
+    private async Task LoadZones()
+    {
+        zones = await Task.Run(() => Context.Zones.OrderBy(z => z.ZoneName).ToList());
+    }
+
+    private async Task LoadCustomer()
+    {
+        var existing = await Task.Run(() => Context.Customers.FirstOrDefault(c => c.CustomerId == CustomerId));
+        if (existing != null)
+        {
+            customer = existing;
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        isSaving = true;
+        errorMessage = "";
+
+        try
+        {
+            if (CustomerId.HasValue)
+            {
+                Context.Customers.Update(customer);
+            }
+            else
+            {
+                Context.Customers.Add(customer);
+            }
+
+            await Context.SaveChangesAsync();
+            await OnSave.InvokeAsync();
+            await Close();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error al guardar: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task Close()
+    {
+        IsVisible = false;
+        await OnClose.InvokeAsync();
+    }
+}

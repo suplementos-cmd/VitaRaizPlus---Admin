@@ -1,0 +1,168 @@
+@using VitaRaiz.Application.Commands.Payments
+@using MediatR
+@inject IMediator Mediator
+@inject VitaRaiz.Infrastructure.Data.VitaRaizDbContext Context
+
+<div class="modal fade @(IsVisible ? "show d-block" : "")" tabindex="-1" style="@(IsVisible ? "background-color: rgba(0,0,0,0.5);" : "")">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">💵 Registrar Pago</h5>
+                <button type="button" class="btn-close" @onclick="Close"></button>
+            </div>
+            <div class="modal-body">
+                <EditForm Model="@command" OnValidSubmit="HandleSubmit">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Venta *</label>
+                            <InputSelect class="form-select" @bind-Value="command.SaleId">
+                                <option value="0">Seleccionar venta...</option>
+                                @foreach (var sale in sales)
+                                {
+                                    <option value="@sale.SaleId">
+                                        Venta #@sale.SaleId - @sale.Customer?.CustomerName ($@sale.TotalAmount.ToString("N2"))
+                                    </option>
+                                }
+                            </InputSelect>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Cobrador *</label>
+                            <InputSelect class="form-select" @bind-Value="command.CollectorId">
+                                <option value="0">Seleccionar cobrador...</option>
+                                @foreach (var collector in collectors)
+                                {
+                                    <option value="@collector.UserId">@collector.Username</option>
+                                }
+                            </InputSelect>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label class="form-label">Monto del Pago *</label>
+                            <div class="btn-group w-100 mb-2" role="group">
+                                <button type="button" class="btn btn-outline-primary" @onclick='() => command.Amount = 100'>$100</button>
+                                <button type="button" class="btn btn-outline-primary" @onclick='() => command.Amount = 150'>$150</button>
+                                <button type="button" class="btn btn-outline-primary" @onclick='() => command.Amount = 200'>$200</button>
+                                <button type="button" class="btn btn-outline-primary" @onclick='() => command.Amount = 250'>$250</button>
+                                <button type="button" class="btn btn-outline-primary" @onclick='() => command.Amount = 500'>$500</button>
+                            </div>
+                            <InputNumber class="form-control" @bind-Value="command.Amount" placeholder="Otro monto..." />
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Latitud GPS</label>
+                            <InputNumber class="form-control" @bind-Value="command.GpsLatitude" />
+                            <small class="text-muted">Ej: -12.046374</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Longitud GPS</label>
+                            <InputNumber class="form-control" @bind-Value="command.GpsLongitude" />
+                            <small class="text-muted">Ej: -77.042793</small>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Notas</label>
+                        <InputTextArea class="form-control" rows="3" @bind-Value="command.Notes" />
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger">@errorMessage</div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(successMessage))
+                    {
+                        <div class="alert alert-success">@successMessage</div>
+                    }
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="Close">Cancelar</button>
+                        <button type="submit" class="btn btn-primary" disabled="@isSaving">
+                            @if (isSaving)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                            }
+                            Registrar Pago
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnSave { get; set; }
+
+    private RegisterPaymentCommand command = new RegisterPaymentCommand();
+    private List<VitaRaiz.Domain.Entities.Sale> sales = new();
+    private List<VitaRaiz.Domain.Entities.User> collectors = new();
+    private bool isSaving = false;
+    private string errorMessage = "";
+    private string successMessage = "";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsVisible)
+        {
+            await LoadData();
+            command = new RegisterPaymentCommand();
+        }
+    }
+
+    private async Task LoadData()
+    {
+        sales = await Task.Run(() =>
+            Context.Sales
+                .Include(s => s.Customer)
+                .Where(s => s.Status == "active")
+                .OrderByDescending(s => s.SaleDate)
+                .Take(50)
+                .ToList()
+        );
+
+        collectors = await Task.Run(() =>
+            Context.Users
+                .Include(u => u.Role)
+                .Where(u => u.Role.RoleName == "Cobrador" && u.IsActive)
+                .OrderBy(u => u.Username)
+                .ToList()
+        );
+    }
+
+    private async Task HandleSubmit()
+    {
+        isSaving = true;
+        errorMessage = "";
+        successMessage = "";
+
+        try
+        {
+            var paymentId = await Mediator.Send(command);
+            successMessage = $"Pago #{paymentId} registrado exitosamente";
+            await Task.Delay(1500);
+            await OnSave.InvokeAsync();
+            await Close();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error al registrar pago: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task Close()
+    {
+        IsVisible = false;
+        await OnClose.InvokeAsync();
+    }
+}

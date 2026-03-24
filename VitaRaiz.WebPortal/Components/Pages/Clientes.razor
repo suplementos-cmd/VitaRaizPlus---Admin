@@ -1,5 +1,6 @@
 @page "/clientes"
 @using VitaRaiz.Infrastructure.Data
+@using VitaRaiz.WebPortal.Components.Modals
 @inject VitaRaizDbContext Context
 @rendermode InteractiveServer
 
@@ -37,7 +38,7 @@ else
                 </tr>
             </thead>
             <tbody>
-                @foreach (var cliente in clientesFiltrados)
+                @foreach (var cliente in clientesPaginados)
                 {
                     <tr>
                         <td>@cliente.CustomerId</td>
@@ -74,12 +75,43 @@ else
         </table>
     </div>
 
-    <p class="text-muted">Total de clientes: @clientes.Count</p>
+    <!-- Paginación -->
+    <nav>
+        <ul class="pagination justify-content-center">
+            <li class="page-item @(paginaActual == 1 ? "disabled" : "")">
+                <button class="page-link" @onclick="() => CambiarPagina(paginaActual - 1)">Anterior</button>
+            </li>
+            @for (int i = 1; i <= totalPaginas; i++)
+            {
+                var pagina = i;
+                <li class="page-item @(paginaActual == pagina ? "active" : "")">
+                    <button class="page-link" @onclick="() => CambiarPagina(pagina)">@pagina</button>
+                </li>
+            }
+            <li class="page-item @(paginaActual == totalPaginas ? "disabled" : "")">
+                <button class="page-link" @onclick="() => CambiarPagina(paginaActual + 1)">Siguiente</button>
+            </li>
+        </ul>
+    </nav>
+
+    <p class="text-muted">
+        Mostrando @((paginaActual - 1) * itemsPorPagina + 1) - @Math.Min(paginaActual * itemsPorPagina, totalItems) de @totalItems clientes
+    </p>
 }
+
+<!-- Modal de Cliente -->
+<CustomerModal IsVisible="@showModal" 
+               CustomerId="@selectedCustomerId" 
+               OnClose="@CerrarModal" 
+               OnSave="@GuardarCliente" />
 
 @code {
     private List<VitaRaiz.Domain.Entities.Customer>? clientes;
     private string searchTerm = "";
+    private int paginaActual = 1;
+    private int itemsPorPagina = 10;
+    private bool showModal = false;
+    private int? selectedCustomerId = null;
 
     private IEnumerable<VitaRaiz.Domain.Entities.Customer> clientesFiltrados =>
         clientes?.Where(c =>
@@ -87,6 +119,20 @@ else
             c.CustomerName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
             (c.Phone != null && c.Phone.Contains(searchTerm))
         ) ?? Enumerable.Empty<VitaRaiz.Domain.Entities.Customer>();
+
+    private IEnumerable<VitaRaiz.Domain.Entities.Customer> clientesPaginados
+    {
+        get
+        {
+            var filtered = clientesFiltrados;
+            return filtered
+                .Skip((paginaActual - 1) * itemsPorPagina)
+                .Take(itemsPorPagina);
+        }
+    }
+
+    private int totalItems => clientesFiltrados.Count();
+    private int totalPaginas => (int)Math.Ceiling(totalItems / (double)itemsPorPagina);
 
     protected override async Task OnInitializedAsync()
     {
@@ -103,9 +149,18 @@ else
         );
     }
 
+    private void CambiarPagina(int pagina)
+    {
+        if (pagina > 0 && pagina <= totalPaginas)
+        {
+            paginaActual = pagina;
+        }
+    }
+
     private void NuevoCliente()
     {
-        // TODO: Abrir modal o navegar a formulario de nuevo cliente
+        selectedCustomerId = null;
+        showModal = true;
     }
 
     private void VerDetalle(int customerId)
@@ -115,6 +170,19 @@ else
 
     private void Editar(int customerId)
     {
-        // TODO: Abrir modal o navegar a formulario de edición
+        selectedCustomerId = customerId;
+        showModal = true;
+    }
+
+    private void CerrarModal()
+    {
+        showModal = false;
+        selectedCustomerId = null;
+    }
+
+    private async Task GuardarCliente()
+    {
+        await CargarClientes();
+        StateHasChanged();
     }
 }

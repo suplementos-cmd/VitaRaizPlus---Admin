@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="VitaRaiz.Mobile.Pages.SalesPage"
+             Title="Mis Ventas"
+             BackgroundColor="#F0F4F8">
+    
+    <Grid RowDefinitions="Auto,*" Padding="20" RowSpacing="15">
+        
+        <!-- Filtros -->
+        <Border Grid.Row="0"
+                BackgroundColor="White"
+                StrokeThickness="0"
+                Padding="15">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="12" />
+            </Border.StrokeShape>
+            <HorizontalStackLayout Spacing="10">
+                <Picker Title="Estado"
+                        ItemsSource="{Binding StatusFilters}"
+                        SelectedItem="{Binding SelectedStatus}"
+                        HorizontalOptions="FillAndExpand"
+                        TextColor="#333" />
+                <Button Text="🔍"
+                        Command="{Binding SearchCommand}"
+                        BackgroundColor="#28A745"
+                        TextColor="White"
+                        WidthRequest="50"
+                        CornerRadius="8" />
+            </HorizontalStackLayout>
+        </Border>
+        
+        <!-- Lista de ventas -->
+        <CollectionView Grid.Row="1"
+                        ItemsSource="{Binding Sales}"
+                        SelectionMode="Single"
+                        SelectedItem="{Binding SelectedSale}"
+                        SelectionChangedCommand="{Binding ViewSaleDetailCommand}">
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Border BackgroundColor="White"
+                            StrokeThickness="0"
+                            Padding="15"
+                            Margin="0,0,0,10">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="12" />
+                        </Border.StrokeShape>
+                        <Grid RowDefinitions="Auto,Auto,Auto,Auto" 
+                              ColumnDefinitions="*,Auto"
+                              RowSpacing="5">
+                            
+                            <Label Grid.Row="0" Grid.Column="0"
+                                   Text="{Binding CustomerName}"
+                                   FontSize="16"
+                                   FontAttributes="Bold"
+                                   TextColor="#333" />
+                            
+                            <Label Grid.Row="0" Grid.Column="1"
+                                   Text="{Binding Status}"
+                                   FontSize="12"
+                                   TextColor="White"
+                                   BackgroundColor="{Binding StatusColor}"
+                                   Padding="8,4"
+                                   HorizontalOptions="End">
+                                <Label.GestureRecognizers>
+                                    <TapGestureRecognizer />
+                                </Label.GestureRecognizers>
+                            </Label>
+                            
+                            <Label Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
+                                   Text="{Binding SaleDate, StringFormat='Fecha: {0:dd/MM/yyyy}'}"
+                                   FontSize="12"
+                                   TextColor="#666" />
+                            
+                            <Label Grid.Row="2" Grid.Column="0"
+                                   Text="{Binding TotalAmount, StringFormat='Total: ${0:N2}'}"
+                                   FontSize="14"
+                                   TextColor="#2196F3" />
+                            
+                            <Label Grid.Row="2" Grid.Column="1"
+                                   Text="{Binding PendingAmount, StringFormat='Pendiente: ${0:N2}'}"
+                                   FontSize="14"
+                                   TextColor="#F44336"
+                                   HorizontalOptions="End" />
+                            
+                            <ProgressBar Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2"
+                                         Progress="{Binding PaymentProgress}"
+                                         ProgressColor="#28A745"
+                                         HeightRequest="8" />
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+            <CollectionView.EmptyView>
+                <VerticalStackLayout HorizontalOptions="Center" 
+                                     VerticalOptions="Center"
+                                     Spacing="10">
+                    <Label Text="📋"
+                           FontSize="48"
+                           HorizontalOptions="Center" />
+                    <Label Text="No hay ventas registradas"
+                           FontSize="16"
+                           TextColor="#999"
+                           HorizontalOptions="Center" />
+                </VerticalStackLayout>
+            </CollectionView.EmptyView>
+        </CollectionView>
+    </Grid>
+</ContentPage>

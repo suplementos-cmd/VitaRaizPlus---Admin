@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="VitaRaiz.Mobile.Pages.HomePage"
+             Title="Inicio"
+             BackgroundColor="#F0F4F8">
+    
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="20">
+            
+            <!-- Header -->
+            <Border BackgroundColor="#28A745"
+                    StrokeThickness="0"
+                    Padding="20">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="15" />
+                </Border.StrokeShape>
+                <VerticalStackLayout Spacing="5">
+                    <Label Text="¡Bienvenido!"
+                           FontSize="24"
+                           FontAttributes="Bold"
+                           TextColor="White" />
+                    <Label Text="{Binding Username}"
+                           FontSize="18"
+                           TextColor="#E8F5E9" />
+                    <Label Text="{Binding Role}"
+                           FontSize="14"
+                           TextColor="#C8E6C9" />
+                </VerticalStackLayout>
+            </Border>
+            
+            <!-- Estadísticas del día -->
+            <Label Text="Resumen de Hoy"
+                   FontSize="20"
+                   FontAttributes="Bold"
+                   TextColor="#333" />
+            
+            <Grid RowDefinitions="Auto,Auto" 
+                  ColumnDefinitions="*,*"
+                  RowSpacing="15"
+                  ColumnSpacing="15">
+                
+                <!-- Cobros Hoy -->
+                <Border Grid.Row="0" Grid.Column="0"
+                        BackgroundColor="White"
+                        StrokeThickness="0"
+                        Padding="15">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="12" />
+                    </Border.StrokeShape>
+                    <VerticalStackLayout Spacing="5">
+                        <Label Text="💰"
+                               FontSize="28"
+                               HorizontalOptions="Center" />
+                        <Label Text="Cobros"
+                               FontSize="12"
+                               TextColor="#666"
+                               HorizontalOptions="Center" />
+                        <Label Text="{Binding TodayPayments, StringFormat='${0:N2}'}"
+                               FontSize="18"
+                               FontAttributes="Bold"
+                               TextColor="#28A745"
+                               HorizontalOptions="Center" />
+                    </VerticalStackLayout>
+                </Border>
+                
+                <!-- Ventas Hoy -->
+                <Border Grid.Row="0" Grid.Column="1"
+                        BackgroundColor="White"
+                        StrokeThickness="0"
+                        Padding="15">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="12" />
+                    </Border.StrokeShape>
+                    <VerticalStackLayout Spacing="5">
+                        <Label Text="🛒"
+                               FontSize="28"
+                               HorizontalOptions="Center" />
+                        <Label Text="Ventas"
+                               FontSize="12"
+                               TextColor="#666"
+                               HorizontalOptions="Center" />
+                        <Label Text="{Binding TodaySales}"
+                               FontSize="18"
+                               FontAttributes="Bold"
+                               TextColor="#2196F3"
+                               HorizontalOptions="Center" />
+                    </VerticalStackLayout>
+                </Border>
+                
+                <!-- Pendiente -->
+                <Border Grid.Row="1" Grid.Column="0"
+                        BackgroundColor="White"
+                        StrokeThickness="0"
+                        Padding="15">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="12" />
+                    </Border.StrokeShape>
+                    <VerticalStackLayout Spacing="5">
+                        <Label Text="⏰"
+                               FontSize="28"
+                               HorizontalOptions="Center" />
+                        <Label Text="Pendiente"
+                               FontSize="12"
+                               TextColor="#666"
+                               HorizontalOptions="Center" />
+                        <Label Text="{Binding PendingAmount, StringFormat='${0:N2}'}"
+                               FontSize="18"
+                               FontAttributes="Bold"
+                               TextColor="#FF9800"
+                               HorizontalOptions="Center" />
+                    </VerticalStackLayout>
+                </Border>
+                
+                <!-- Clientes Visitados -->
+                <Border Grid.Row="1" Grid.Column="1"
+                        BackgroundColor="White"
+                        StrokeThickness="0"
+                        Padding="15">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="12" />
+                    </Border.StrokeShape>
+                    <VerticalStackLayout Spacing="5">
+                        <Label Text="👥"
+                               FontSize="28"
+                                HorizontalOptions="Center" />
+                        <Label Text="Visitas"
+                               FontSize="12"
+                               TextColor="#666"
+                               HorizontalOptions="Center" />
+                        <Label Text="{Binding TodayVisits}"
+                               FontSize="18"
+                               FontAttributes="Bold"
+                               TextColor="#9C27B0"
+                               HorizontalOptions="Center" />
+                    </VerticalStackLayout>
+                </Border>
+            </Grid>
+            
+            <!-- Accesos rápidos -->
+            <Label Text="Accesos Rápidos"
+                   FontSize="20"
+                   FontAttributes="Bold"
+                   TextColor="#333"
+                   Margin="0,20,0,0" />
+            
+            <Button Text="💰 Registrar Pago"
+                    Command="{Binding GoToPaymentsCommand}"
+                    BackgroundColor="#28A745"
+                    TextColor="White"
+                    FontAttributes="Bold"
+                    HeightRequest="60"
+                    CornerRadius="12"
+                    FontSize="16" />
+            
+            <Button Text="📋 Ver Mis Ventas"
+                    Command="{Binding GoToSalesCommand}"
+                    BackgroundColor="#2196F3"
+                    TextColor="White"
+                    FontAttributes="Bold"
+                    HeightRequest="60"
+                    CornerRadius="12"
+                    FontSize="16" />
+            
+            <Button Text="👥 Ver Clientes"
+                    Command="{Binding GoToCustomersCommand}"
+                    BackgroundColor="#9C27B0"
+                    TextColor="White"
+                    FontAttributes="Bold"
+                    HeightRequest="60"
+                    CornerRadius="12"
+                    FontSize="16" />
+            
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

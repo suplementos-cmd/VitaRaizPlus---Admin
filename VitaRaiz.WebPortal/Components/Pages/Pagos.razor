@@ -1,6 +1,7 @@
 @page "/pagos"
 @using VitaRaiz.Infrastructure.Data
 @using VitaRaiz.Application.Commands.Payments
+@using VitaRaiz.WebPortal.Components.Modals
 @using MediatR
 @inject VitaRaizDbContext Context
 @inject IMediator Mediator
@@ -158,9 +159,22 @@ else
         );
     }
 
+    private bool showModal = false;
+
     private void NuevoPago()
     {
-        // TODO: Abrir modal o navegar a formulario de nuevo pago
+        showModal = true;
+    }
+
+    private async Task CerrarModal()
+    {
+        showModal = false;
+    }
+
+    private async Task GuardarPago()
+    {
+        await CargarPagos();
+        StateHasChanged();
     }
 
     private void VerDetalle(int paymentId)
@@ -186,3 +200,8 @@ else
         mensaje = "";
     }
 }
+
+<!-- Modal de Pago -->
+<PaymentModal IsVisible="@showModal" 
+              OnClose="@CerrarModal" 
+              OnSave="@GuardarPago" />
