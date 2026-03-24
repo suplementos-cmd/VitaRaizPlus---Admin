@@ -1,13 +1,10 @@
 using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using VitaRaiz.Mobile.Services;
-using MauiApp = Microsoft.Maui.Controls.Application;
 
 namespace VitaRaiz.Mobile.Pages;
 
-public partial class SalesPage : ContentPage, INotifyPropertyChanged
+public partial class SalesPage : ContentPage
 {
     private readonly ApiService _apiService;
     private ObservableCollection<string> _statusFilters = new() { "Todas", "Activas", "Completadas", "Vencidas" };
@@ -15,15 +12,24 @@ public partial class SalesPage : ContentPage, INotifyPropertyChanged
 
     public SalesPage()
     {
-        InitializeComponent();
-        BindingContext = this;
-        
-        _apiService = MauiApp.Current?.Handler?.MauiContext?.Services.GetService<ApiService>() ?? new ApiService();
-        
-        SearchCommand = new Command(OnSearch);
-        ViewSaleDetailCommand = new Command(OnViewSaleDetail);
-        
-        _ = LoadSalesAsync();
+        try
+        {
+            System.Diagnostics.Debug.WriteLine("=== Inicializando SalesPage ===");
+            InitializeComponent();
+            BindingContext = this;
+            
+            _apiService = new ApiService();
+            
+            SearchCommand = new Command(OnSearch);
+            ViewSaleDetailCommand = new Command(OnViewSaleDetail);
+            
+            _ = LoadSalesAsync();
+            System.Diagnostics.Debug.WriteLine("=== SalesPage inicializado correctamente ===");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"ERROR en SalesPage constructor: {ex.Message}");
+        }
     }
 
     public ObservableCollection<string> StatusFilters
@@ -77,7 +83,7 @@ public partial class SalesPage : ContentPage, INotifyPropertyChanged
                 queryParams.Add("status", "active");
             }
             
-            var salesData = await _apiService.GetAsync<List<VitaRaiz.Mobile.Services.SaleDto>>("/api/sales", queryParams);
+            var salesData = await _apiService.GetAsync<List<VitaRaiz.Mobile.Services.SaleDto>>("api/sales", queryParams);
             
             Sales.Clear();
             if (salesData != null)
@@ -123,13 +129,6 @@ public partial class SalesPage : ContentPage, INotifyPropertyChanged
     private void OnViewSaleDetail()
     {
         // TODO: Navegar a detalle de venta
-    }
-
-    public new event PropertyChangedEventHandler? PropertyChanged;
-
-    protected new void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-    {
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }
 

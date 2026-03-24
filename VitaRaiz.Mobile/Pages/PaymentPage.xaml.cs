@@ -1,13 +1,10 @@
 using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using VitaRaiz.Mobile.Services;
-using MauiApp = Microsoft.Maui.Controls.Application;
 
 namespace VitaRaiz.Mobile.Pages;
 
-public partial class PaymentPage : ContentPage, INotifyPropertyChanged
+public partial class PaymentPage : ContentPage
 {
     private readonly ApiService _apiService;
 
@@ -29,19 +26,28 @@ public partial class PaymentPage : ContentPage, INotifyPropertyChanged
 
     public PaymentPage()
     {
-        InitializeComponent();
-        
-        _apiService = MauiApp.Current?.Handler?.MauiContext?.Services.GetService<ApiService>() ?? new ApiService();
-        
-        BindingContext = this;
-        
-        SelectAmountCommand = new Command<string>(OnSelectAmount);
-        CustomAmountCommand = new Command(OnCustomAmount);
-        TakePhotoCommand = new Command<string>(async (type) => await OnTakePhoto(type));
-        SavePaymentCommand = new Command(async () => await OnSavePayment(), () => IsNotSaving);
-        CancelCommand = new Command(OnCancel);
-        
-        _ = InitializeAsync();
+        try
+        {
+            System.Diagnostics.Debug.WriteLine("=== Inicializando PaymentPage ===");
+            InitializeComponent();
+            
+            _apiService = new ApiService();
+            
+            BindingContext = this;
+            
+            SelectAmountCommand = new Command<string>(OnSelectAmount);
+            CustomAmountCommand = new Command(OnCustomAmount);
+            TakePhotoCommand = new Command<string>(async (type) => await OnTakePhoto(type));
+            SavePaymentCommand = new Command(async () => await OnSavePayment(), () => IsNotSaving);
+            CancelCommand = new Command(OnCancel);
+            
+            _ = InitializeAsync();
+            System.Diagnostics.Debug.WriteLine("=== PaymentPage inicializado correctamente ===");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"ERROR en PaymentPage constructor: {ex.Message}");
+        }
     }
 
     private async Task InitializeAsync()
@@ -206,7 +212,7 @@ public partial class PaymentPage : ContentPage, INotifyPropertyChanged
         try
         {
             // Cargar ventas activas desde la API
-            var salesData = await _apiService.GetAsync<List<VitaRaiz.Mobile.Services.SaleDto>>("/api/sales/active");
+            var salesData = await _apiService.GetAsync<List<VitaRaiz.Mobile.Services.SaleDto>>("api/sales/active");
 
             if (salesData != null)
             {
@@ -349,7 +355,7 @@ public partial class PaymentPage : ContentPage, INotifyPropertyChanged
             bool success;
             if (Photos.Count > 0)
             {
-                success = await _apiService.PostMultipartAsync("/api/payments", multipartContent);
+                success = await _apiService.PostMultipartAsync("api/payments", multipartContent);
             }
             else
             {
@@ -363,7 +369,7 @@ public partial class PaymentPage : ContentPage, INotifyPropertyChanged
                     gpsLongitude = _longitude,
                     notes = Notes
                 };
-                success = await _apiService.PostAsync("/api/payments", paymentData);
+                success = await _apiService.PostAsync("api/payments", paymentData);
             }
 
             if (success)
@@ -411,13 +417,6 @@ public partial class PaymentPage : ContentPage, INotifyPropertyChanged
         HasSuccess = false;
         ErrorMessage = string.Empty;
         SuccessMessage = string.Empty;
-    }
-
-    public new event PropertyChangedEventHandler? PropertyChanged;
-
-    protected new void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-    {
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }
 

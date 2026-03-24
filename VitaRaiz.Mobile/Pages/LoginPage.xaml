@@ -100,15 +100,15 @@
                            Margin="0,5,0,0" />
                     
                     <!-- Botón de login -->
-                    <Button Text="INICIAR SESIÓN"
-                            Command="{Binding LoginCommand}"
+                    <Button x:Name="LoginButton"
+                            Text="INICIAR SESIÓN"
+                            Clicked="LoginButton_Clicked"
                             BackgroundColor="#28A745"
                             TextColor="White"
                             FontAttributes="Bold"
                             HeightRequest="50"
                             CornerRadius="8"
-                            Margin="0,20,0,0"
-                            IsEnabled="{Binding IsNotLoading}" />
+                            Margin="0,20,0,0" />
                     
                     <!-- Indicador de carga -->
                     <ActivityIndicator IsRunning="{Binding IsLoading}"

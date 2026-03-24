@@ -8,11 +8,22 @@ public class ApiService
 {
     private readonly HttpClient _httpClient;
     private readonly JsonSerializerOptions _jsonOptions;
-    private const string API_BASE_URL = "https://localhost:7001"; // TODO: Cambiar en producción
+    
+    // URL para IIS Express - usa HTTP en lugar de HTTPS para evitar problemas de certificado en desarrollo
+#if WINDOWS
+    private const string API_BASE_URL = "http://localhost:58649"; // IIS Express HTTP
+#else
+    private const string API_BASE_URL = "http://10.0.2.2:58649"; // Android emulator
+#endif
 
     public ApiService()
     {
-        _httpClient = new HttpClient
+        var handler = new HttpClientHandler();
+#if DEBUG
+        handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true;
+#endif
+        
+        _httpClient = new HttpClient(handler)
         {
             BaseAddress = new Uri(API_BASE_URL),
             Timeout = TimeSpan.FromSeconds(30)
@@ -22,6 +33,8 @@ public class ApiService
         {
             PropertyNameCaseInsensitive = true
         };
+        
+        System.Diagnostics.Debug.WriteLine($"ApiService: API_BASE_URL = {API_BASE_URL}");
     }
 
     private async Task SetAuthorizationHeaderAsync()

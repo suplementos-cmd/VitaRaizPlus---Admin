@@ -1,65 +1,46 @@
 using Microsoft.EntityFrameworkCore;
 using Oracle.ManagedDataAccess.Client;
-using Oracle.ManagedDataAccess.Types;
 using VitaRaiz.Application.DTOs;
 using VitaRaiz.Application.Interfaces;
 using VitaRaiz.Infrastructure.Data;
 
 namespace VitaRaiz.Infrastructure.Repositories;
 
-public class ProductRepository : IProductRepository
+public class ProductRepository : BaseOracleRepository, IProductRepository
 {
-    private readonly VitaRaizDbContext _context;
-
-    public ProductRepository(VitaRaizDbContext context)
+    public ProductRepository(VitaRaizDbContext context) : base(context)
     {
-        _context = context;
     }
 
     public async Task<int> CreateProductAsync(string productName, string? description, decimal unitPrice, int stock)
     {
-        var connection = _context.Database.GetDbConnection();
-        if (connection.State != System.Data.ConnectionState.Open)
-            await connection.OpenAsync();
+        var connection = await GetOpenConnectionAsync();
+        using var command = CreatePackageProcedureCommand(connection, "sp_register_product");
 
-        using var command = connection.CreateCommand();
-        command.CommandText = "EM_VITARAIZ_AD.sp_register_product";
-        command.CommandType = System.Data.CommandType.StoredProcedure;
+        var productIdParam = AddOutputParameter(command, "p_product_id");
 
-        var productIdParam = new OracleParameter("p_product_id", OracleDbType.Int32)
-        {
-            Direction = System.Data.ParameterDirection.Output
-        };
-        command.Parameters.Add(productIdParam);
-
-        command.Parameters.Add(new OracleParameter("p_name", productName));
-        command.Parameters.Add(new OracleParameter("p_description", description ?? (object)DBNull.Value));
-        command.Parameters.Add(new OracleParameter("p_unit_price", unitPrice));
-        command.Parameters.Add(new OracleParameter("p_stock", stock));
+        AddInputParameter(command, "p_name", productName);
+        AddInputParameter(command, "p_description", description);
+        AddInputParameter(command, "p_unit_price", unitPrice);
+        AddInputParameter(command, "p_stock", stock);
 
         await command.ExecuteNonQueryAsync();
 
-        int productId = Convert.ToInt32(((OracleDecimal)productIdParam.Value).ToInt32());
-        return productId;
+        return GetOutputValue((OracleParameter)productIdParam);
     }
 
     public async Task<bool> UpdateProductAsync(int productId, string productName, string? description, 
         decimal unitPrice, int stock, bool isActive)
     {
-        var connection = _context.Database.GetDbConnection();
-        if (connection.State != System.Data.ConnectionState.Open)
-            await connection.OpenAsync();
+        var connection = await GetOpenConnectionAsync();
+        using var command = CreatePackageProcedureCommand(connection, "sp_update_product");
 
-        using var command = connection.CreateCommand();
-        command.CommandText = "EM_VITARAIZ_AD.sp_update_product";
-        command.CommandType = System.Data.CommandType.StoredProcedure;
-
-        command.Parameters.Add(new OracleParameter("p_product_id", productId));
-        command.Parameters.Add(new OracleParameter("p_name", productName));
-        command.Parameters.Add(new OracleParameter("p_description", description ?? (object)DBNull.Value));
-        command.Parameters.Add(new OracleParameter("p_unit_price", unitPrice));
-        command.Parameters.Add(new OracleParameter("p_stock", stock));
-        command.Parameters.Add(new OracleParameter("p_is_active", isActive ? 1 : 0));
+        AddInputParameter(command, "p_product_id", productId);
+        AddInputParameter(command, "p_name", productName);
+        AddInputParameter(command, "p_description", description);
+        AddInputParameter(command, "p_unit_price", unitPrice);
+        AddInputParameter(command, "p_stock", stock);
+        AddInputParameter(command, "p_is_active", isActive ? 1 : 0);
 
         await command.ExecuteNonQueryAsync();
         return true;
@@ -67,15 +48,10 @@ public class ProductRepository : IProductRepository
 
     public async Task<bool> DeleteProductAsync(int productId)
     {
-        var connection = _context.Database.GetDbConnection();
-        if (connection.State != System.Data.ConnectionState.Open)
-            await connection.OpenAsync();
+        var connection = await GetOpenConnectionAsync();
+        using var command = CreatePackageProcedureCommand(connection, "sp_delete_product");
 
-        using var command = connection.CreateCommand();
-        command.CommandText = "EM_VITARAIZ_AD.sp_delete_product";
-        command.CommandType = System.Data.CommandType.StoredProcedure;
-
-        command.Parameters.Add(new OracleParameter("p_product_id", productId));
+        AddInputParameter(command, "p_product_id", productId);
 
         await command.ExecuteNonQueryAsync();
         return true;

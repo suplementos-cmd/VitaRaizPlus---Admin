@@ -1,13 +1,10 @@
 using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using VitaRaiz.Mobile.Services;
-using MauiApp = Microsoft.Maui.Controls.Application;
 
 namespace VitaRaiz.Mobile.Pages;
 
-public partial class CustomersPage : ContentPage, INotifyPropertyChanged
+public partial class CustomersPage : ContentPage
 {
     private readonly ApiService _apiService;
     private string _searchText = string.Empty;
@@ -15,15 +12,24 @@ public partial class CustomersPage : ContentPage, INotifyPropertyChanged
 
     public CustomersPage()
     {
-        InitializeComponent();
-        BindingContext = this;
-        
-        _apiService = MauiApp.Current?.Handler?.MauiContext?.Services.GetService<ApiService>() ?? new ApiService();
-        
-        SearchCommand = new Command(OnSearch);
-        ViewCustomerDetailCommand = new Command(OnViewCustomerDetail);
-        
-        _ = LoadCustomersAsync();
+        try
+        {
+            System.Diagnostics.Debug.WriteLine("=== Inicializando CustomersPage ===");
+            InitializeComponent();
+            BindingContext = this;
+            
+            _apiService = new ApiService();
+            
+            SearchCommand = new Command(OnSearch);
+            ViewCustomerDetailCommand = new Command(OnViewCustomerDetail);
+            
+            _ = LoadCustomersAsync();
+            System.Diagnostics.Debug.WriteLine("=== CustomersPage inicializado correctamente ===");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"ERROR en CustomersPage constructor: {ex.Message}");
+        }
     }
 
     public string SearchText
@@ -46,7 +52,7 @@ public partial class CustomersPage : ContentPage, INotifyPropertyChanged
         try
         {
             // Cargar clientes desde la API
-            var customersData = await _apiService.GetAsync<List<CustomerDto>>("/api/customers");
+            var customersData = await _apiService.GetAsync<List<CustomerDto>>("api/customers");
             
             if (customersData != null)
             {
@@ -103,13 +109,6 @@ public partial class CustomersPage : ContentPage, INotifyPropertyChanged
     private void OnViewCustomerDetail()
     {
         // TODO: Navegar a detalle de cliente
-    }
-
-    public new event PropertyChangedEventHandler? PropertyChanged;
-
-    protected new void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-    {
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }
 

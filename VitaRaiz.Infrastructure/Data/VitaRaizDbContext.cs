@@ -33,7 +33,7 @@ public class VitaRaizDbContext : DbContext
             entity.Property(e => e.PasswordHash).HasColumnName("PASSWORD_HASH");
             entity.Property(e => e.RoleId).HasColumnName("ROLE_ID");
             entity.Property(e => e.ZoneId).HasColumnName("ZONE_ID");
-            entity.Property(e => e.IsActive).HasColumnName("IS_ACTIVE");
+            entity.Property(e => e.IsActive).HasColumnName("IS_ACTIVE").HasConversion<int>();
             entity.Property(e => e.CreatedAt).HasColumnName("CREATED_AT");
             entity.Property(e => e.LastLogin).HasColumnName("LAST_LOGIN");
 
@@ -55,7 +55,7 @@ public class VitaRaizDbContext : DbContext
             entity.HasKey(e => e.RoleId);
             entity.Property(e => e.RoleId).HasColumnName("ROLE_ID");
             entity.Property(e => e.RoleName).HasColumnName("ROLE_NAME").HasMaxLength(50);
-            entity.Property(e => e.Description).HasColumnName("DESCRIPTION");
+            entity.Property(e => e.Description).HasColumnName("ROLE_DESCRIPTION");
         });
 
         // Zone configuration
@@ -65,7 +65,10 @@ public class VitaRaizDbContext : DbContext
             entity.HasKey(e => e.ZoneId);
             entity.Property(e => e.ZoneId).HasColumnName("ZONE_ID");
             entity.Property(e => e.ZoneName).HasColumnName("ZONE_NAME").HasMaxLength(100);
+            entity.Property(e => e.ZoneCode).HasColumnName("ZONE_CODE").HasMaxLength(50);
             entity.Property(e => e.Description).HasColumnName("DESCRIPTION");
+            entity.Property(e => e.IsActive).HasColumnName("IS_ACTIVE").HasConversion<int>();
+            entity.Property(e => e.CreatedAt).HasColumnName("CREATED_AT");
         });
 
         // Customer configuration
@@ -81,9 +84,9 @@ public class VitaRaizDbContext : DbContext
             entity.Property(e => e.ZoneId).HasColumnName("ZONE_ID");
             entity.Property(e => e.GpsLatitude).HasColumnName("GPS_LATITUDE").HasPrecision(10, 7);
             entity.Property(e => e.GpsLongitude).HasColumnName("GPS_LONGITUDE").HasPrecision(10, 7);
-            entity.Property(e => e.IsBlacklisted).HasColumnName("IS_BLACKLISTED");
-            entity.Property(e => e.IsGoldCustomer).HasColumnName("IS_GOLD_CUSTOMER");
-            entity.Property(e => e.RegisteredAt).HasColumnName("REGISTERED_AT");
+            entity.Property(e => e.IsBlacklisted).HasColumnName("IS_BLACKLISTED").HasConversion<int>();
+            entity.Property(e => e.IsGoldCustomer).HasColumnName("IS_GOLD_CUSTOMER").HasConversion<int>();
+            entity.Property(e => e.RegisteredAt).HasColumnName("CREATED_AT");
             entity.Property(e => e.Notes).HasColumnName("NOTES");
 
             entity.HasOne(e => e.Zone)
@@ -100,9 +103,10 @@ public class VitaRaizDbContext : DbContext
             entity.Property(e => e.ProductId).HasColumnName("PRODUCT_ID");
             entity.Property(e => e.ProductName).HasColumnName("PRODUCT_NAME").HasMaxLength(255);
             entity.Property(e => e.Description).HasColumnName("DESCRIPTION");
-            entity.Property(e => e.Price).HasColumnName("PRICE").HasPrecision(10, 2);
-            entity.Property(e => e.Category).HasColumnName("CATEGORY").HasMaxLength(100);
-            entity.Property(e => e.IsActive).HasColumnName("IS_ACTIVE");
+            entity.Property(e => e.Price).HasColumnName("UNIT_PRICE").HasPrecision(10, 2);
+            entity.Property(e => e.Stock).HasColumnName("STOCK_QUANTITY");
+            entity.Property(e => e.Category).HasColumnName("CATEGORY_ID").HasMaxLength(100);
+            entity.Property(e => e.IsActive).HasColumnName("IS_ACTIVE").HasConversion<int>();
         });
 
         // Sale configuration
@@ -114,16 +118,31 @@ public class VitaRaizDbContext : DbContext
             entity.Property(e => e.CustomerId).HasColumnName("CUSTOMER_ID");
             entity.Property(e => e.SellerId).HasColumnName("SELLER_ID");
             entity.Property(e => e.TotalAmount).HasColumnName("TOTAL_AMOUNT").HasPrecision(10, 2);
+            entity.Property(e => e.PaidAmount).HasColumnName("PAID_AMOUNT").HasPrecision(10, 2).HasDefaultValue(0);
             entity.Property(e => e.PaymentTerms).HasColumnName("PAYMENT_TERMS");
+            entity.Property(e => e.PaymentTermDays).HasColumnName("NUMBER_OF_PAYMENTS");
             entity.Property(e => e.SaleDate).HasColumnName("SALE_DATE");
             entity.Property(e => e.Status).HasColumnName("STATUS").HasMaxLength(50);
             entity.Property(e => e.AssignedCollectorId).HasColumnName("ASSIGNED_COLLECTOR_ID");
             entity.Property(e => e.Notes).HasColumnName("NOTES");
+            entity.Ignore(e => e.DueDate); // Computed property
 
             entity.HasOne(e => e.Customer)
                 .WithMany(c => c.Sales)
                 .HasForeignKey(e => e.CustomerId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // Relación con User como Seller
+            entity.HasOne(e => e.Seller)
+                .WithMany(u => u.SalesCreated)
+                .HasForeignKey(e => e.SellerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Relación con User como AssignedCollector
+            entity.HasOne(e => e.AssignedCollector)
+                .WithMany() // Sin navegación inversa en User
+                .HasForeignKey(e => e.AssignedCollectorId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         // SaleDetail configuration
@@ -169,6 +188,12 @@ public class VitaRaizDbContext : DbContext
                 .WithMany(s => s.Payments)
                 .HasForeignKey(e => e.SaleId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // Relación con User como Collector
+            entity.HasOne(e => e.Collector)
+                .WithMany(u => u.PaymentsCollected)
+                .HasForeignKey(e => e.CollectorId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         // PaymentPhoto configuration

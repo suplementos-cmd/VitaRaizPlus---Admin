@@ -19,7 +19,16 @@ builder.Services.AddControllers();
 
 // Configure JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-var secretKey = jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey not configured");
+var secretKey = jwtSettings["SecretKey"];
+var issuer = jwtSettings["Issuer"];
+var audience = jwtSettings["Audience"];
+
+if (string.IsNullOrEmpty(secretKey))
+    throw new InvalidOperationException("JWT SecretKey not configured in appsettings.json");
+if (string.IsNullOrEmpty(issuer))
+    throw new InvalidOperationException("JWT Issuer not configured in appsettings.json");
+if (string.IsNullOrEmpty(audience))
+    throw new InvalidOperationException("JWT Audience not configured in appsettings.json");
 
 builder.Services.AddAuthentication(options =>
 {
@@ -34,9 +43,27 @@ builder.Services.AddAuthentication(options =>
         ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        ValidIssuer = jwtSettings["Issuer"],
-        ValidAudience = jwtSettings["Audience"],
+        ValidIssuer = issuer,
+        ValidAudience = audience,
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey))
+    };
+    
+    // Suppress redirect on challenge for API
+    options.Events = new JwtBearerEvents
+    {
+        OnChallenge = context =>
+        {
+            // Skip the default logic to avoid redirect
+            context.HandleResponse();
+            
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            context.Response.ContentType = "application/json";
+            return context.Response.WriteAsJsonAsync(new
+            {
+                error = "Unauthorized",
+                message = "A valid JWT token is required to access this resource"
+            });
+        }
     };
 });
 

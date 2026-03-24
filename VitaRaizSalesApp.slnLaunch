@@ -4,13 +4,13 @@
     "Projects": [
       {
         "Path": "VitaRaiz.API\\VitaRaiz.API.csproj",
-        "Action": "Start",
-        "DebugTarget": "http"
+        "Action": "StartWithoutDebugging",
+        "DebugTarget": "IIS Express"
       },
       {
         "Path": "VitaRaiz.WebPortal\\VitaRaiz.WebPortal.csproj",
         "Action": "Start",
-        "DebugTarget": "http"
+        "DebugTarget": "IIS Express"
       }
     ]
   }

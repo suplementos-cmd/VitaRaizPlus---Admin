@@ -4,7 +4,10 @@ public class Zone
 {
     public int ZoneId { get; set; }
     public string ZoneName { get; set; } = string.Empty;
+    public string? ZoneCode { get; set; }
     public string? Description { get; set; }
+    public bool IsActive { get; set; } = true;
+    public DateTime CreatedAt { get; set; } = DateTime.Now;
     
     // Navigation properties
     public ICollection<User> Users { get; set; } = new List<User>();

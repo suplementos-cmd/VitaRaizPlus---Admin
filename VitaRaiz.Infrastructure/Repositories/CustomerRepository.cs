@@ -1,77 +1,58 @@
 using Microsoft.EntityFrameworkCore;
 using Oracle.ManagedDataAccess.Client;
-using Oracle.ManagedDataAccess.Types;
 using VitaRaiz.Application.DTOs;
 using VitaRaiz.Application.Interfaces;
 using VitaRaiz.Infrastructure.Data;
 
 namespace VitaRaiz.Infrastructure.Repositories;
 
-public class CustomerRepository : ICustomerRepository
+public class CustomerRepository : BaseOracleRepository, ICustomerRepository
 {
-    private readonly VitaRaizDbContext _context;
-
-    public CustomerRepository(VitaRaizDbContext context)
+    public CustomerRepository(VitaRaizDbContext context) : base(context)
     {
-        _context = context;
     }
 
     public async Task<int> CreateCustomerAsync(string customerName, string? phoneNumber, string? email, 
         string? address, int? zoneId, string? gpsLatitude, string? gpsLongitude, 
         bool isGoldCustomer, bool isBlacklisted)
     {
-        var connection = _context.Database.GetDbConnection();
-        if (connection.State != System.Data.ConnectionState.Open)
-            await connection.OpenAsync();
+        var connection = await GetOpenConnectionAsync();
+        using var command = CreatePackageProcedureCommand(connection, "sp_register_customer");
 
-        using var command = connection.CreateCommand();
-        command.CommandText = "EM_VITARAIZ_AD.sp_register_customer";
-        command.CommandType = System.Data.CommandType.StoredProcedure;
+        var customerIdParam = AddOutputParameter(command, "p_customer_id");
 
-        var customerIdParam = new OracleParameter("p_customer_id", OracleDbType.Int32)
-        {
-            Direction = System.Data.ParameterDirection.Output
-        };
-        command.Parameters.Add(customerIdParam);
-
-        command.Parameters.Add(new OracleParameter("p_name", customerName));
-        command.Parameters.Add(new OracleParameter("p_phone", phoneNumber ?? (object)DBNull.Value));
-        command.Parameters.Add(new OracleParameter("p_email", email ?? (object)DBNull.Value));
-        command.Parameters.Add(new OracleParameter("p_address", address ?? (object)DBNull.Value));
-        command.Parameters.Add(new OracleParameter("p_zone_id", zoneId ?? (object)DBNull.Value));
-        command.Parameters.Add(new OracleParameter("p_gps_lat", gpsLatitude ?? (object)DBNull.Value));
-        command.Parameters.Add(new OracleParameter("p_gps_lon", gpsLongitude ?? (object)DBNull.Value));
-        command.Parameters.Add(new OracleParameter("p_is_gold", isGoldCustomer ? 1 : 0));
-        command.Parameters.Add(new OracleParameter("p_is_blacklisted", isBlacklisted ? 1 : 0));
+        AddInputParameter(command, "p_name", customerName);
+        AddInputParameter(command, "p_phone", phoneNumber);
+        AddInputParameter(command, "p_email", email);
+        AddInputParameter(command, "p_address", address);
+        AddInputParameter(command, "p_zone_id", zoneId);
+        AddInputParameter(command, "p_gps_lat", gpsLatitude);
+        AddInputParameter(command, "p_gps_lon", gpsLongitude);
+        AddInputParameter(command, "p_is_gold", isGoldCustomer ? 1 : 0);
+        AddInputParameter(command, "p_is_blacklisted", isBlacklisted ? 1 : 0);
 
         await command.ExecuteNonQueryAsync();
 
-        int customerId = Convert.ToInt32(((OracleDecimal)customerIdParam.Value).ToInt32());
-        return customerId;
+        return GetOutputValue((OracleParameter)customerIdParam);
     }
 
     public async Task<bool> UpdateCustomerAsync(int customerId, string customerName, string? phoneNumber, 
         string? email, string? address, int? zoneId, string? gpsLatitude, string? gpsLongitude, 
         bool isGoldCustomer, bool isBlacklisted)
     {
-        var connection = _context.Database.GetDbConnection();
-        if (connection.State != System.Data.ConnectionState.Open)
-            await connection.OpenAsync();
+        var connection = await GetOpenConnectionAsync();
+        using var command = CreatePackageProcedureCommand(connection, "sp_update_customer");
 
-        using var command = connection.CreateCommand();
-        command.CommandText = "EM_VITARAIZ_AD.sp_update_customer";
-        command.CommandType = System.Data.CommandType.StoredProcedure;
-
-        command.Parameters.Add(new OracleParameter("p_customer_id", customerId));
-        command.Parameters.Add(new OracleParameter("p_name", customerName));
-        command.Parameters.Add(new OracleParameter("p_phone", phoneNumber ?? (object)DBNull.Value));
-        command.Parameters.Add(new OracleParameter("p_email", email ?? (object)DBNull.Value));
-        command.Parameters.Add(new OracleParameter("p_address", address ?? (object)DBNull.Value));
-        command.Parameters.Add(new OracleParameter("p_zone_id", zoneId ?? (object)DBNull.Value));
-        command.Parameters.Add(new OracleParameter("p_gps_lat", gpsLatitude ?? (object)DBNull.Value));
-        command.Parameters.Add(new OracleParameter("p_gps_lon", gpsLongitude ?? (object)DBNull.Value));
-        command.Parameters.Add(new OracleParameter("p_is_gold", isGoldCustomer ? 1 : 0));
-        command.Parameters.Add(new OracleParameter("p_is_blacklisted", isBlacklisted ? 1 : 0));
+        AddInputParameter(command, "p_customer_id", customerId);
+        AddInputParameter(command, "p_name", customerName);
+        AddInputParameter(command, "p_phone", phoneNumber);
+        AddInputParameter(command, "p_email", email);
+        AddInputParameter(command, "p_address", address);
+        AddInputParameter(command, "p_zone_id", zoneId);
+        AddInputParameter(command, "p_gps_lat", gpsLatitude);
+        AddInputParameter(command, "p_gps_lon", gpsLongitude);
+        AddInputParameter(command, "p_is_gold", isGoldCustomer ? 1 : 0);
+        AddInputParameter(command, "p_is_blacklisted", isBlacklisted ? 1 : 0);
 
         await command.ExecuteNonQueryAsync();
         return true;
@@ -79,15 +60,10 @@ public class CustomerRepository : ICustomerRepository
 
     public async Task<bool> DeleteCustomerAsync(int customerId)
     {
-        var connection = _context.Database.GetDbConnection();
-        if (connection.State != System.Data.ConnectionState.Open)
-            await connection.OpenAsync();
+        var connection = await GetOpenConnectionAsync();
+        using var command = CreatePackageProcedureCommand(connection, "sp_delete_customer");
 
-        using var command = connection.CreateCommand();
-        command.CommandText = "EM_VITARAIZ_AD.sp_delete_customer";
-        command.CommandType = System.Data.CommandType.StoredProcedure;
-
-        command.Parameters.Add(new OracleParameter("p_customer_id", customerId));
+        AddInputParameter(command, "p_customer_id", customerId);
 
         await command.ExecuteNonQueryAsync();
         return true;

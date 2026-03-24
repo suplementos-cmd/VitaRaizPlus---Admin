@@ -1,59 +1,45 @@
 using Microsoft.EntityFrameworkCore;
 using Oracle.ManagedDataAccess.Client;
-using Oracle.ManagedDataAccess.Types;
 using VitaRaiz.Application.DTOs;
 using VitaRaiz.Application.Interfaces;
 using VitaRaiz.Domain.Entities;
 using VitaRaiz.Infrastructure.Data;
+using System.Data;
 
 namespace VitaRaiz.Infrastructure.Repositories;
 
-public class SaleRepository : ISaleRepository
+public class SaleRepository : BaseOracleRepository, ISaleRepository
 {
-    private readonly VitaRaizDbContext _context;
-
-    public SaleRepository(VitaRaizDbContext context)
+    public SaleRepository(VitaRaizDbContext context) : base(context)
     {
-        _context = context;
     }
 
     public async Task<int> CreateSaleAsync(int customerId, int sellerId, int paymentTermDays, 
         string? notes, List<SaleDetailDto> details)
     {
-        var connection = _context.Database.GetDbConnection();
-        if (connection.State != System.Data.ConnectionState.Open)
-            await connection.OpenAsync();
+        var connection = await GetOpenConnectionAsync();
+        using var command = CreatePackageProcedureCommand(connection, "sp_register_sale");
 
-        using var command = connection.CreateCommand();
-        command.CommandText = "EM_VITARAIZ_AD.sp_register_sale";
-        command.CommandType = System.Data.CommandType.StoredProcedure;
+        var saleIdParam = AddOutputParameter(command, "p_sale_id");
 
-        var saleIdParam = new OracleParameter("p_sale_id", OracleDbType.Int32)
-        {
-            Direction = System.Data.ParameterDirection.Output
-        };
-        command.Parameters.Add(saleIdParam);
-
-        command.Parameters.Add(new OracleParameter("p_customer_id", customerId));
-        command.Parameters.Add(new OracleParameter("p_seller_id", sellerId));
-        command.Parameters.Add(new OracleParameter("p_payment_term_days", paymentTermDays));
-        command.Parameters.Add(new OracleParameter("p_notes", notes ?? (object)DBNull.Value));
+        AddInputParameter(command, "p_customer_id", customerId);
+        AddInputParameter(command, "p_seller_id", sellerId);
+        AddInputParameter(command, "p_payment_term_days", paymentTermDays);
+        AddInputParameter(command, "p_notes", notes);
 
         await command.ExecuteNonQueryAsync();
 
-        int saleId = Convert.ToInt32(((OracleDecimal)saleIdParam.Value).ToInt32());
+        int saleId = GetOutputValue((OracleParameter)saleIdParam);
 
         // Agregar detalles de venta
         foreach (var detail in details)
         {
-            using var detailCommand = connection.CreateCommand();
-            detailCommand.CommandText = "EM_VITARAIZ_AD.sp_add_sale_detail";
-            detailCommand.CommandType = System.Data.CommandType.StoredProcedure;
+            using var detailCommand = CreatePackageProcedureCommand(connection, "sp_add_sale_detail");
 
-            detailCommand.Parameters.Add(new OracleParameter("p_sale_id", saleId));
-            detailCommand.Parameters.Add(new OracleParameter("p_product_id", detail.ProductId));
-            detailCommand.Parameters.Add(new OracleParameter("p_quantity", detail.Quantity));
-            detailCommand.Parameters.Add(new OracleParameter("p_unit_price", detail.UnitPrice));
+            AddInputParameter(detailCommand, "p_sale_id", saleId);
+            AddInputParameter(detailCommand, "p_product_id", detail.ProductId);
+            AddInputParameter(detailCommand, "p_quantity", detail.Quantity);
+            AddInputParameter(detailCommand, "p_unit_price", detail.UnitPrice);
 
             await detailCommand.ExecuteNonQueryAsync();
         }
@@ -63,16 +49,12 @@ public class SaleRepository : ISaleRepository
 
     public async Task<bool> CancelSaleAsync(int saleId, string? reason)
     {
-        var connection = _context.Database.GetDbConnection();
-        if (connection.State != System.Data.ConnectionState.Open)
-            await connection.OpenAsync();
+        var connection = await GetOpenConnectionAsync();
+        using var command = CreatePackageProcedureCommand(connection, "sp_cancel_sale");
 
-        using var command = connection.CreateCommand();
-        command.CommandText = "EM_VITARAIZ_AD.sp_cancel_sale";
-        command.CommandType = System.Data.CommandType.StoredProcedure;
-
-        command.Parameters.Add(new OracleParameter("p_sale_id", saleId));
-        command.Parameters.Add(new OracleParameter("p_reason", reason ?? (object)DBNull.Value));
+        AddInputParameter(command, "p_sale_id", saleId);
+        AddInputParameter(command, "p_user_id", DBNull.Value);
+        AddInputParameter(command, "p_reason", reason);
 
         await command.ExecuteNonQueryAsync();
         return true;
@@ -181,39 +163,35 @@ public class SaleRepository : ISaleRepository
 
     public async Task<decimal> GetSaleBalanceAsync(int saleId)
     {
-        // Llamar a la función del paquete Oracle: EM_VITARAIZ_AD.fn_get_sale_balance
-        var connection = _context.Database.GetDbConnection();
-        if (connection.State != System.Data.ConnectionState.Open)
-            await connection.OpenAsync();
-
-        using var command = connection.CreateCommand();
-        command.CommandText = "SELECT EM_VITARAIZ_AD.fn_get_sale_balance(:p_sale_id) FROM DUAL";
-        command.CommandType = System.Data.CommandType.Text;
-
-        command.Parameters.Add(new OracleParameter("p_sale_id", saleId));
-
-        var result = await command.ExecuteScalarAsync();
-        decimal balance = result != null && result != DBNull.Value ? Convert.ToDecimal(result) : 0;
-
-        return balance;
+        var connection = await GetOpenConnectionAsync();
+        var parameters = new Dictionary<string, object> { { "p_sale_id", saleId } };
+        
+        using var command = CreatePackageFunctionCommand(connection, "fn_get_sale_balance", parameters);
+        await command.ExecuteNonQueryAsync();
+        
+        var resultParam = (OracleParameter)command.Parameters["result"];
+        var resultValue = resultParam.Value;
+        
+        if (resultValue == null || resultValue == DBNull.Value)
+            return 0;
+            
+        return Convert.ToDecimal(((Oracle.ManagedDataAccess.Types.OracleDecimal)resultValue).Value);
     }
 
     public async Task<string> GetSaleRiskStatusAsync(int saleId)
     {
-        // Llamar a la función del paquete Oracle: EM_VITARAIZ_AD.fn_get_risk_status
-        var connection = _context.Database.GetDbConnection();
-        if (connection.State != System.Data.ConnectionState.Open)
-            await connection.OpenAsync();
-
-        using var command = connection.CreateCommand();
-        command.CommandText = "SELECT EM_VITARAIZ_AD.fn_get_risk_status(:p_sale_id) FROM DUAL";
-        command.CommandType = System.Data.CommandType.Text;
-
-        command.Parameters.Add(new OracleParameter("p_sale_id", saleId));
-
-        var result = await command.ExecuteScalarAsync();
-        string riskStatus = result != null ? result.ToString() ?? "DESCONOCIDO" : "DESCONOCIDO";
-
-        return riskStatus;
+        var connection = await GetOpenConnectionAsync();
+        var parameters = new Dictionary<string, object> { { "p_sale_id", saleId } };
+        
+        using var command = CreatePackageStringFunctionCommand(connection, "fn_get_risk_status", parameters);
+        await command.ExecuteNonQueryAsync();
+        
+        var resultParam = (OracleParameter)command.Parameters["result"];
+        var resultValue = resultParam.Value;
+        
+        if (resultValue == null || resultValue == DBNull.Value)
+            return "DESCONOCIDO";
+            
+        return resultValue.ToString() ?? "DESCONOCIDO";
     }
 }
