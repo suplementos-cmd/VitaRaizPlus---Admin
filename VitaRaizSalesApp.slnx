@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="VitaRaiz.API/VitaRaiz.API.csproj" />
+  <Project Path="VitaRaiz.Application/VitaRaiz.Application.csproj" />
+  <Project Path="VitaRaiz.Domain/VitaRaiz.Domain.csproj" />
+  <Project Path="VitaRaiz.Infrastructure/VitaRaiz.Infrastructure.csproj" />
+  <Project Path="VitaRaiz.Mobile/VitaRaiz.Mobile.csproj" />
+  <Project Path="VitaRaiz.WebPortal/VitaRaiz.WebPortal.csproj" />
+</Solution>
