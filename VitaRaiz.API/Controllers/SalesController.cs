@@ -29,17 +29,42 @@ public class SalesController : ControllerBase
         [FromQuery] DateTime? endDate = null,
         [FromQuery] string? status = null)
     {
-        var query = new GetSalesQuery
+        try
         {
-            CustomerId = customerId,
-            SellerId = sellerId,
-            StartDate = startDate,
-            EndDate = endDate,
-            Status = status
-        };
+            var query = new GetSalesQuery
+            {
+                CustomerId = customerId,
+                SellerId = sellerId,
+                StartDate = startDate,
+                EndDate = endDate,
+                Status = status
+            };
 
-        var sales = await _mediator.Send(query);
-        return Ok(sales);
+            var sales = await _mediator.Send(query);
+            return Ok(sales);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = ex.Message, stackTrace = ex.StackTrace });
+        }
+    }
+
+    /// <summary>
+    /// DEBUG: Obtener conteo de ventas directamente de la tabla
+    /// </summary>
+    [HttpGet("debug/count")]
+    public async Task<IActionResult> GetSalesCount()
+    {
+        try
+        {
+            var query = new GetSalesQuery();
+            var sales = await _mediator.Send(query);
+            return Ok(new { totalSales = sales?.Count ?? 0, sales = sales });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = ex.Message, stackTrace = ex.StackTrace });
+        }
     }
 
     /// <summary>

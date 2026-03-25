@@ -211,8 +211,11 @@ public partial class PaymentPage : ContentPage
     {
         try
         {
+            System.Diagnostics.Debug.WriteLine("PaymentPage: Cargando ventas activas desde API...");
             // Cargar ventas activas desde la API
             var salesData = await _apiService.GetAsync<List<VitaRaiz.Mobile.Services.SaleDto>>("api/sales/active");
+
+            System.Diagnostics.Debug.WriteLine($"PaymentPage: Recibidas {salesData?.Count ?? 0} ventas activas");
 
             if (salesData != null)
             {
@@ -227,11 +230,17 @@ public partial class PaymentPage : ContentPage
                         PendingAmount = sale.Balance
                     });
                 }
+                System.Diagnostics.Debug.WriteLine($"PaymentPage: Mostrando {Sales.Count} ventas");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine("PaymentPage: No se recibieron datos (null)");
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error loading sales: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"PaymentPage: Error loading sales: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"StackTrace: {ex.StackTrace}");
             ErrorMessage = "Error al cargar ventas";
             HasError = true;
         }

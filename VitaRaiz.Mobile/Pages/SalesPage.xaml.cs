@@ -62,9 +62,11 @@ public partial class SalesPage : ContentPage
     {
         try
         {
+            System.Diagnostics.Debug.WriteLine("SalesPage: Cargando ventas desde API...");
             // Obtener userId del usuario actual
             var userIdStr = await SecureStorage.GetAsync("user_id");
             int userId = int.TryParse(userIdStr, out var id) ? id : 0;
+            System.Diagnostics.Debug.WriteLine($"SalesPage: UserId={userId}, Status={_selectedStatus}");
             
             // Cargar ventas activas desde la API
             var queryParams = new Dictionary<string, string?>();
@@ -84,6 +86,8 @@ public partial class SalesPage : ContentPage
             }
             
             var salesData = await _apiService.GetAsync<List<VitaRaiz.Mobile.Services.SaleDto>>("api/sales", queryParams);
+            
+            System.Diagnostics.Debug.WriteLine($"SalesPage: Recibidas {salesData?.Count ?? 0} ventas");
             
             Sales.Clear();
             if (salesData != null)
@@ -113,11 +117,17 @@ public partial class SalesPage : ContentPage
                         }
                     });
                 }
+                System.Diagnostics.Debug.WriteLine($"SalesPage: Mostrando {Sales.Count} ventas");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine("SalesPage: No se recibieron datos (null)");
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error loading sales: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"SalesPage: Error loading sales: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"StackTrace: {ex.StackTrace}");
         }
     }
 

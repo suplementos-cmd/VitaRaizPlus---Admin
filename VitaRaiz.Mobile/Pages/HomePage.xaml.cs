@@ -1,4 +1,3 @@
-using System.Windows.Input;
 using VitaRaiz.Mobile.Services;
 
 namespace VitaRaiz.Mobile.Pages;
@@ -23,11 +22,7 @@ public partial class HomePage : ContentPage
             
             _apiService = new ApiService();
             
-            GoToPaymentsCommand = new Command(async () => await Shell.Current.GoToAsync("//PaymentPage"));
-            GoToSalesCommand = new Command(async () => await Shell.Current.GoToAsync("//SalesPage"));
-            GoToCustomersCommand = new Command(async () => await Shell.Current.GoToAsync("//CustomersPage"));
-            
-            System.Diagnostics.Debug.WriteLine("HomePage: Comandos creados");
+            System.Diagnostics.Debug.WriteLine("HomePage: Inicialización completa");
             
             _ = LoadDataAsync();
             
@@ -100,10 +95,6 @@ public partial class HomePage : ContentPage
         }
     }
 
-    public ICommand GoToPaymentsCommand { get; }
-    public ICommand GoToSalesCommand { get; }
-    public ICommand GoToCustomersCommand { get; }
-
     private async Task LoadDataAsync()
     {
         try
@@ -172,5 +163,68 @@ public partial class HomePage : ContentPage
             PendingAmount = 0;
             TodayVisits = 0;
         }
+    }
+
+    private async Task OnGoToPayments()
+    {
+        try
+        {
+            System.Diagnostics.Debug.WriteLine("=== OnGoToPayments START ===");
+            await Shell.Current.GoToAsync("//PaymentPage");
+            System.Diagnostics.Debug.WriteLine("=== Navegación a PaymentPage completada ===");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"ERROR en OnGoToPayments: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"StackTrace: {ex.StackTrace}");
+        }
+    }
+
+    private async void OnPaymentsClicked(object sender, EventArgs e)
+    {
+        System.Diagnostics.Debug.WriteLine("=== OnPaymentsClicked EVENT ===");
+        await OnGoToPayments();
+    }
+
+    private async Task OnGoToSales()
+    {
+        try
+        {
+            System.Diagnostics.Debug.WriteLine("=== OnGoToSales START ===");
+            await Shell.Current.GoToAsync("//SalesPage");
+            System.Diagnostics.Debug.WriteLine("=== Navegación a SalesPage completada ===");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"ERROR en OnGoToSales: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"StackTrace: {ex.StackTrace}");
+        }
+    }
+
+    private async void OnSalesClicked(object sender, EventArgs e)
+    {
+        System.Diagnostics.Debug.WriteLine("=== OnSalesClicked EVENT ===");
+        await OnGoToSales();
+    }
+
+    private async Task OnGoToCustomers()
+    {
+        try
+        {
+            System.Diagnostics.Debug.WriteLine("=== OnGoToCustomers START ===");
+            await Shell.Current.GoToAsync("//CustomersPage");
+            System.Diagnostics.Debug.WriteLine("=== Navegación a CustomersPage completada ===");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"ERROR en OnGoToCustomers: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"StackTrace: {ex.StackTrace}");
+        }
+    }
+
+    private async void OnCustomersClicked(object sender, EventArgs e)
+    {
+        System.Diagnostics.Debug.WriteLine("=== OnCustomersClicked EVENT ===");
+        await OnGoToCustomers();
     }
 }

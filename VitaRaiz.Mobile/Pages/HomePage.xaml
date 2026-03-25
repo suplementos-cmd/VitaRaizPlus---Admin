@@ -144,8 +144,9 @@
                    TextColor="#333"
                    Margin="0,20,0,0" />
             
-            <Button Text="💰 Registrar Pago"
-                    Command="{Binding GoToPaymentsCommand}"
+            <Button x:Name="PaymentsButton"
+                    Text="💰 Registrar Pago"
+                    Clicked="OnPaymentsClicked"
                     BackgroundColor="#28A745"
                     TextColor="White"
                     FontAttributes="Bold"
@@ -153,8 +154,9 @@
                     CornerRadius="12"
                     FontSize="16" />
             
-            <Button Text="📋 Ver Mis Ventas"
-                    Command="{Binding GoToSalesCommand}"
+            <Button x:Name="SalesButton"
+                    Text="📋 Ver Mis Ventas"
+                    Clicked="OnSalesClicked"
                     BackgroundColor="#2196F3"
                     TextColor="White"
                     FontAttributes="Bold"
@@ -162,8 +164,9 @@
                     CornerRadius="12"
                     FontSize="16" />
             
-            <Button Text="👥 Ver Clientes"
-                    Command="{Binding GoToCustomersCommand}"
+            <Button x:Name="CustomersButton"
+                    Text="👥 Ver Clientes"
+                    Clicked="OnCustomersClicked"
                     BackgroundColor="#9C27B0"
                     TextColor="White"
                     FontAttributes="Bold"

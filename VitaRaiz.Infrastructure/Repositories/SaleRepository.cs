@@ -63,42 +63,83 @@ public class SaleRepository : BaseOracleRepository, ISaleRepository
     public async Task<List<SaleDto>> GetSalesAsync(int? customerId, int? sellerId, 
         DateTime? startDate, DateTime? endDate, string? status)
     {
-        var query = _context.Sales
-            .Include(s => s.Customer)
-            .Include(s => s.Seller)
-            .AsQueryable();
+        try
+        {
+            Console.WriteLine($"[SaleRepository] GetSalesAsync - Params: customerId={customerId}, sellerId={sellerId}, status={status}");
+            
+            var query = _context.Sales
+                .Include(s => s.Customer)
+                .Include(s => s.Seller)
+                .AsQueryable();
 
-        if (customerId.HasValue)
-            query = query.Where(s => s.CustomerId == customerId.Value);
+            // Contar total antes de filtros
+            var totalCount = await query.CountAsync();
+            Console.WriteLine($"[SaleRepository] Total registros en SALES: {totalCount}");
 
-        if (sellerId.HasValue)
-            query = query.Where(s => s.SellerId == sellerId.Value);
-
-        if (startDate.HasValue)
-            query = query.Where(s => s.SaleDate >= startDate.Value);
-
-        if (endDate.HasValue)
-            query = query.Where(s => s.SaleDate <= endDate.Value);
-
-        if (!string.IsNullOrEmpty(status))
-            query = query.Where(s => s.Status.ToLower() == status.ToLower());
-
-        var sales = await query
-            .OrderByDescending(s => s.SaleDate)
-            .Select(s => new SaleDto
+            if (customerId.HasValue)
             {
-                SaleId = s.SaleId,
-                CustomerName = s.Customer.CustomerName,
-                TotalAmount = s.TotalAmount,
-                PaidAmount = s.PaidAmount,
-                Balance = s.TotalAmount - s.PaidAmount,
-                SaleDate = s.SaleDate,
-                Status = s.Status,
-                PaymentTerms = $"{s.PaymentTermDays} días"
-            })
-            .ToListAsync();
+                query = query.Where(s => s.CustomerId == customerId.Value);
+                Console.WriteLine($"[SaleRepository] Después de filtro customerId: {await query.CountAsync()}");
+            }
 
-        return sales;
+            if (sellerId.HasValue)
+            {
+                query = query.Where(s => s.SellerId == sellerId.Value);
+                Console.WriteLine($"[SaleRepository] Después de filtro sellerId: {await query.CountAsync()}");
+            }
+
+            if (startDate.HasValue)
+            {
+                query = query.Where(s => s.SaleDate >= startDate.Value);
+                Console.WriteLine($"[SaleRepository] Después de filtro startDate: {await query.CountAsync()}");
+            }
+
+            if (endDate.HasValue)
+            {
+                query = query.Where(s => s.SaleDate <= endDate.Value);
+                Console.WriteLine($"[SaleRepository] Después de filtro endDate: {await query.CountAsync()}");
+            }
+
+            if (!string.IsNullOrEmpty(status))
+            {
+                // Mapear estados de inglés a Oracle
+                var oracleStatus = status.ToLower() switch
+                {
+                    "active" => "EN_PROCESO",
+                    "pending" => "POR_INICIAR",
+                    "completed" => "LIQUIDADO",
+                    "cancelled" => "CANCELADO",
+                    _ => status.ToUpper()
+                };
+                
+                query = query.Where(s => s.Status.ToUpper() == oracleStatus);
+                Console.WriteLine($"[SaleRepository] Filtro status: '{status}' -> '{oracleStatus}', Count: {await query.CountAsync()}");
+            }
+
+            var sales = await query
+                .OrderByDescending(s => s.SaleDate)
+                .Select(s => new SaleDto
+                {
+                    SaleId = s.SaleId,
+                    CustomerName = s.Customer != null ? s.Customer.CustomerName : "Sin cliente",
+                    TotalAmount = s.TotalAmount,
+                    PaidAmount = s.PaidAmount,
+                    Balance = s.TotalAmount - s.PaidAmount,
+                    SaleDate = s.SaleDate,
+                    Status = s.Status,
+                    PaymentTerms = $"{s.PaymentTermDays} días"
+                })
+                .ToListAsync();
+
+            Console.WriteLine($"[SaleRepository] GetSalesAsync - Devolviendo {sales.Count} ventas");
+            return sales;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[SaleRepository] ERROR en GetSalesAsync: {ex.Message}");
+            Console.WriteLine($"[SaleRepository] StackTrace: {ex.StackTrace}");
+            throw;
+        }
     }
 
     public async Task<List<SaleDto>> GetActiveSalesAsync(int? collectorId)

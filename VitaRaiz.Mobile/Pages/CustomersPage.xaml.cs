@@ -51,18 +51,27 @@ public partial class CustomersPage : ContentPage
     {
         try
         {
+            System.Diagnostics.Debug.WriteLine("CustomersPage: Cargando clientes desde API...");
             // Cargar clientes desde la API
             var customersData = await _apiService.GetAsync<List<CustomerDto>>("api/customers");
+            
+            System.Diagnostics.Debug.WriteLine($"CustomersPage: Recibidos {customersData?.Count ?? 0} clientes");
             
             if (customersData != null)
             {
                 _allCustomers = customersData;
                 DisplayCustomers(_allCustomers);
+                System.Diagnostics.Debug.WriteLine($"CustomersPage: Mostrando {Customers.Count} clientes");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine("CustomersPage: No se recibieron datos (null)");
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error loading customers: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"CustomersPage: Error loading customers: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"StackTrace: {ex.StackTrace}");
         }
     }
 
