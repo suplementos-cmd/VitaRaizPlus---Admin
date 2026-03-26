@@ -21,24 +21,38 @@ public class ProductsController : ControllerBase
     /// <summary>
     /// Obtener todos los productos con filtros opcionales
     /// </summary>
+    [AllowAnonymous]
     [HttpGet]
     public async Task<IActionResult> GetProducts(
         [FromQuery] string? searchTerm = null,
         [FromQuery] bool? isActive = null)
     {
-        var query = new GetProductsQuery
+        try
         {
-            SearchTerm = searchTerm,
-            IsActive = isActive
-        };
+            var username = User.Identity?.Name ?? "Anonymous";
+            Console.WriteLine($"[ProductsController] GetProducts called by {username}, Params: searchTerm={searchTerm}, isActive={isActive}");
 
-        var products = await _mediator.Send(query);
-        return Ok(products);
+            var query = new GetProductsQuery
+            {
+                SearchTerm = searchTerm,
+                IsActive = isActive
+            };
+
+            var products = await _mediator.Send(query);
+            Console.WriteLine($"[ProductsController] Returning {products?.Count ?? 0} products");
+            return Ok(products);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ProductsController] ERROR: {ex.Message}");
+            return StatusCode(500, new { error = ex.Message, stackTrace = ex.StackTrace });
+        }
     }
 
     /// <summary>
     /// Obtener un producto por ID
     /// </summary>
+    [AllowAnonymous]
     [HttpGet("{id}")]
     public async Task<IActionResult> GetProductById(int id)
     {
@@ -55,7 +69,7 @@ public class ProductsController : ControllerBase
     /// Crear un nuevo producto
     /// </summary>
     [HttpPost]
-    [Authorize(Roles = "Admin,Supervisor")]
+    [Authorize(Roles = "AdminFull,Admin,Supervisor")]
     public async Task<IActionResult> CreateProduct([FromBody] CreateProductCommand command)
     {
         var productId = await _mediator.Send(command);
@@ -66,7 +80,7 @@ public class ProductsController : ControllerBase
     /// Actualizar un producto existente
     /// </summary>
     [HttpPut("{id}")]
-    [Authorize(Roles = "Admin,Supervisor")]
+    [Authorize(Roles = "AdminFull,Admin,Supervisor")]
     public async Task<IActionResult> UpdateProduct(int id, [FromBody] UpdateProductCommand command)
     {
         if (id != command.ProductId)
@@ -84,7 +98,7 @@ public class ProductsController : ControllerBase
     /// Eliminar un producto
     /// </summary>
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "AdminFull,Admin")]
     public async Task<IActionResult> DeleteProduct(int id)
     {
         var command = new DeleteProductCommand { ProductId = id };

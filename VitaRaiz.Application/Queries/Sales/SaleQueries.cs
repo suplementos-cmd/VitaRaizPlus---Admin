@@ -21,3 +21,8 @@ public class GetSaleByIdQuery : IRequest<SaleDto?>
 {
     public int SaleId { get; set; }
 }
+
+public class GetSaleFullQuery : IRequest<SaleFullDto?>
+{
+    public int SaleId { get; set; }
+}

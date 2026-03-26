@@ -119,6 +119,11 @@ public partial class CustomersPage : ContentPage
     {
         // TODO: Navegar a detalle de cliente
     }
+
+    // ═══ Bottom Tab Navigation ═══
+    private async void OnTabInicio(object? s, EventArgs e) => await Shell.Current.GoToAsync("//HomePage");
+    private async void OnTabVentas(object? s, EventArgs e) => await Shell.Current.GoToAsync("//SalesPage");
+    private async void OnTabCobranza(object? s, EventArgs e) => await Shell.Current.GoToAsync("//PaymentPage");
 }
 
 public class CustomerItemDto

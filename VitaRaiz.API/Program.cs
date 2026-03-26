@@ -37,6 +37,7 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
+    options.MapInboundClaims = false; // Usar nombres JWT estándar (sub, name, etc.)
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer = true,
@@ -45,14 +46,27 @@ builder.Services.AddAuthentication(options =>
         ValidateIssuerSigningKey = true,
         ValidIssuer = issuer,
         ValidAudience = audience,
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey))
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
+        ClockSkew = TimeSpan.FromMinutes(5) // Tolerancia de 5 minutos
     };
     
-    // Suppress redirect on challenge for API
+    // Add events for detailed logging
     options.Events = new JwtBearerEvents
     {
+        OnAuthenticationFailed = context =>
+        {
+            Console.WriteLine($"[JWT] Authentication failed: {context.Exception.Message}");
+            return Task.CompletedTask;
+        },
+        OnTokenValidated = context =>
+        {
+            var userName = context.Principal?.Identity?.Name ?? "Unknown";
+            Console.WriteLine($"[JWT] Token validated successfully for user: {userName}");
+            return Task.CompletedTask;
+        },
         OnChallenge = context =>
         {
+            Console.WriteLine($"[JWT] Challenge triggered: {context.Error}, {context.ErrorDescription}");
             // Skip the default logic to avoid redirect
             context.HandleResponse();
             
@@ -61,7 +75,8 @@ builder.Services.AddAuthentication(options =>
             return context.Response.WriteAsJsonAsync(new
             {
                 error = "Unauthorized",
-                message = "A valid JWT token is required to access this resource"
+                message = "A valid JWT token is required to access this resource",
+                details = context.ErrorDescription
             });
         }
     };
@@ -73,6 +88,26 @@ builder.Services.AddAuthorization();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowMobileApp", policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+    
+    options.AddPolicy("AllowWebPortal", policy =>
+    {
+        policy.WithOrigins(
+                "http://localhost:5145",     // WebPortal HTTP (Development - dotnet run)
+                "https://localhost:7115",    // WebPortal HTTPS (Development - dotnet run)
+                "http://localhost:32733",    // WebPortal HTTP (IIS Express)
+                "https://localhost:44305"    // WebPortal HTTPS (IIS Express)
+              )
+              .AllowAnyMethod()
+              .AllowAnyHeader()
+              .AllowCredentials();
+    });
+    
+    options.AddPolicy("AllowAll", policy =>
     {
         policy.AllowAnyOrigin()
               .AllowAnyMethod()
@@ -118,8 +153,20 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
-app.UseCors("AllowMobileApp");
+// DISABLED: Causes issues with HTTP localhost requests during development
+// app.UseHttpsRedirection();
+
+// Apply CORS - En desarrollo usamos AllowAll para facilitar testing
+if (app.Environment.IsDevelopment())
+{
+    app.UseCors("AllowAll");
+}
+else
+{
+    // En producción, configurar orígenes específicos
+    app.UseCors("AllowMobileApp");
+}
+
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using VitaRaiz.Mobile.Data;
+using VitaRaiz.Mobile.Pages;
 using VitaRaiz.Mobile.Services;
 
 namespace VitaRaiz.Mobile;
@@ -23,7 +24,12 @@ public static class MauiProgram
 		// Registrar servicios
 		builder.Services.AddSingleton<LocalDatabase>(s => new LocalDatabase(dbPath));
 		builder.Services.AddSingleton<ApiService>();
+		builder.Services.AddSingleton<CatalogService>();
 		builder.Services.AddSingleton<SyncService>();
+		
+		// Registrar páginas con DI
+		builder.Services.AddTransient<SaleDetailPage>();
+		builder.Services.AddTransient<CreateSalePage>();
 
 #if DEBUG
 		builder.Logging.AddDebug();

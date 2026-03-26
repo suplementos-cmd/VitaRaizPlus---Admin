@@ -111,7 +111,7 @@ public abstract class BaseOracleRepository
     /// </summary>
     protected OracleParameter AddOutputParameter(DbCommand command, string parameterName)
     {
-        var param = new OracleParameter(parameterName, OracleDbType.Int32)
+        var param = new OracleParameter(parameterName, OracleDbType.Decimal)
         {
             Direction = ParameterDirection.Output
         };
@@ -140,6 +140,11 @@ public abstract class BaseOracleRepository
     /// </summary>
     protected int GetOutputValue(OracleParameter parameter)
     {
-        return Convert.ToInt32(((Oracle.ManagedDataAccess.Types.OracleDecimal)parameter.Value).ToInt32());
+        var val = parameter.Value;
+        if (val == null || val == DBNull.Value)
+            return 0;
+        if (val is Oracle.ManagedDataAccess.Types.OracleDecimal oraDecimal)
+            return oraDecimal.IsNull ? 0 : oraDecimal.ToInt32();
+        return Convert.ToInt32(val);
     }
 }

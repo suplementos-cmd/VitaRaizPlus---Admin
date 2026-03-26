@@ -59,47 +59,66 @@ public class ProductRepository : BaseOracleRepository, IProductRepository
 
     public async Task<List<ProductDto>> GetProductsAsync(string? searchTerm, bool? isActive)
     {
-        var query = _context.Products.AsQueryable();
-
-        if (!string.IsNullOrEmpty(searchTerm))
+        try
         {
-            query = query.Where(p => 
-                p.ProductName.Contains(searchTerm) || 
-                (p.Description != null && p.Description.Contains(searchTerm)));
+            Console.WriteLine($"[ProductRepository] GetProductsAsync - Params: searchTerm={searchTerm}, isActive={isActive}");
+            
+            var products = await _context.Products
+                .OrderBy(p => p.ProductName)
+                .Select(p => new ProductDto
+                {
+                    ProductId = p.ProductId,
+                    ProductName = p.ProductName,
+                    Description = p.Description,
+                    UnitPrice = p.Price,
+                    Stock = p.Stock,
+                    IsActive = p.IsActive
+                })
+                .ToListAsync();
+
+            // Filter in-memory to avoid Oracle bool/NUMBER conversion issues
+            if (isActive.HasValue)
+                products = products.Where(p => p.IsActive == isActive.Value).ToList();
+
+            if (!string.IsNullOrEmpty(searchTerm))
+                products = products.Where(p => p.ProductName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)).ToList();
+
+            Console.WriteLine($"[ProductRepository] Devolviendo {products.Count} productos");
+            return products;
         }
-
-        if (isActive.HasValue)
-            query = query.Where(p => p.IsActive == isActive.Value);
-
-        var products = await query
-            .OrderBy(p => p.ProductName)
-            .Select(p => new ProductDto
-            {
-                ProductId = p.ProductId,
-                ProductName = p.ProductName,
-                Description = p.Description,
-                UnitPrice = p.UnitPrice,
-                Stock = p.Stock,
-                IsActive = p.IsActive
-            })
-            .ToListAsync();
-
-        return products;
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ProductRepository] ERROR: {ex.Message}");
+            throw;
+        }
     }
 
     public async Task<ProductDto?> GetProductByIdAsync(int productId)
     {
-        return await _context.Products
-            .Where(p => p.ProductId == productId)
-            .Select(p => new ProductDto
-            {
-                ProductId = p.ProductId,
-                ProductName = p.ProductName,
-                Description = p.Description,
-                UnitPrice = p.UnitPrice,
-                Stock = p.Stock,
-                IsActive = p.IsActive
-            })
-            .FirstOrDefaultAsync();
+        try
+        {
+            Console.WriteLine($"[ProductRepository] GetProductByIdAsync - productId={productId}");
+            
+            var product = await _context.Products
+                .Where(p => p.ProductId == productId)
+                .Select(p => new ProductDto
+                {
+                    ProductId = p.ProductId,
+                    ProductName = p.ProductName,
+                    Description = p.Description,
+                    UnitPrice = p.Price,
+                    Stock = p.Stock,
+                    IsActive = p.IsActive
+                })
+                .FirstOrDefaultAsync();
+
+            Console.WriteLine($"[ProductRepository] Producto encontrado: {product != null}");
+            return product;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ProductRepository] ERROR en GetProductByIdAsync: {ex.Message}");
+            throw;
+        }
     }
 }

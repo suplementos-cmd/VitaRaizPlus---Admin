@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Windows.Input;
+using VitaRaiz.Mobile.Models;
 using VitaRaiz.Mobile.Services;
 
 namespace VitaRaiz.Mobile.Pages;
@@ -7,149 +8,170 @@ namespace VitaRaiz.Mobile.Pages;
 public partial class SalesPage : ContentPage
 {
     private readonly ApiService _apiService;
-    private ObservableCollection<string> _statusFilters = new() { "Todas", "Activas", "Completadas", "Vencidas" };
-    private string _selectedStatus = "Todas";
+    private readonly CatalogService _catalogService;
+    private List<SaleListItem> _allSales = new();
+    private string _searchText = "";
+    private bool _isRefreshing;
 
     public SalesPage()
     {
+        InitializeComponent();
+        BindingContext = this;
+
+        _apiService = new ApiService();
+        _catalogService = Application.Current?.Handler?.MauiContext?.Services
+            .GetService<CatalogService>() ?? new CatalogService(_apiService);
+
+        OpenDetailCommand = new Command<int>(OnOpenDetail);
+        RefreshCommand = new Command(async () => await LoadDataAsync());
+
+        _ = InitAsync();
+    }
+
+    // ═══ Bindable Properties ═══
+    public ObservableCollection<SaleGroup> FilteredSales { get; } = new();
+
+    public string SearchText
+    {
+        get => _searchText;
+        set { _searchText = value; OnPropertyChanged(); ApplyFilter(); }
+    }
+
+    public bool IsRefreshing
+    {
+        get => _isRefreshing;
+        set { _isRefreshing = value; OnPropertyChanged(); }
+    }
+
+    // ═══ Commands ═══
+    public ICommand OpenDetailCommand { get; }
+    public ICommand RefreshCommand { get; }
+
+    // ═══ Init ═══
+    private async Task InitAsync()
+    {
         try
         {
-            System.Diagnostics.Debug.WriteLine("=== Inicializando SalesPage ===");
-            InitializeComponent();
-            BindingContext = this;
-            
-            _apiService = new ApiService();
-            
-            SearchCommand = new Command(OnSearch);
-            ViewSaleDetailCommand = new Command(OnViewSaleDetail);
-            
-            _ = LoadSalesAsync();
-            System.Diagnostics.Debug.WriteLine("=== SalesPage inicializado correctamente ===");
+            await _catalogService.LoadAsync();
+            await LoadDataAsync();
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"ERROR en SalesPage constructor: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[SalesPage] Init error: {ex.Message}");
         }
     }
 
-    public ObservableCollection<string> StatusFilters
+    protected override void OnAppearing()
     {
-        get => _statusFilters;
-        set
-        {
-            _statusFilters = value;
-            OnPropertyChanged();
-        }
+        base.OnAppearing();
+        _ = LoadDataAsync();
     }
 
-    public string SelectedStatus
-    {
-        get => _selectedStatus;
-        set
-        {
-            _selectedStatus = value;
-            OnPropertyChanged();
-            OnSearch();
-        }
-    }
-
-    public ObservableCollection<SaleItemDto> Sales { get; set; } = new();
-
-    public ICommand SearchCommand { get; }
-    public ICommand ViewSaleDetailCommand { get; }
-
-    private async Task LoadSalesAsync()
+    private async Task LoadDataAsync()
     {
         try
         {
-            System.Diagnostics.Debug.WriteLine("SalesPage: Cargando ventas desde API...");
-            // Obtener userId del usuario actual
-            var userIdStr = await SecureStorage.GetAsync("user_id");
-            int userId = int.TryParse(userIdStr, out var id) ? id : 0;
-            System.Diagnostics.Debug.WriteLine($"SalesPage: UserId={userId}, Status={_selectedStatus}");
-            
-            // Cargar ventas activas desde la API
-            var queryParams = new Dictionary<string, string?>();
-            
-            if (_selectedStatus == "Activas")
-            {
-                queryParams.Add("status", "active");
-            }
-            else if (_selectedStatus == "Completadas")
-            {
-                queryParams.Add("status", "completed");
-            }
-            else if (_selectedStatus == "Vencidas")
-            {
-                // Filtrar ventas vencidas (TODO: implementar lógica en API)
-                queryParams.Add("status", "active");
-            }
-            
-            var salesData = await _apiService.GetAsync<List<VitaRaiz.Mobile.Services.SaleDto>>("api/sales", queryParams);
-            
-            System.Diagnostics.Debug.WriteLine($"SalesPage: Recibidas {salesData?.Count ?? 0} ventas");
-            
-            Sales.Clear();
+            IsRefreshing = true;
+            var salesData = await _apiService.GetAsync<List<SaleDto>>("api/sales");
+
+            _allSales.Clear();
             if (salesData != null)
             {
-                foreach (var sale in salesData)
+                foreach (var s in salesData)
                 {
-                    Sales.Add(new SaleItemDto
+                    var (label, color, icon) = _catalogService.ResolveSaleStatus(s.Status);
+
+                    _allSales.Add(new SaleListItem
                     {
-                        SaleId = sale.SaleId,
-                        CustomerName = sale.CustomerName,
-                        SaleDate = sale.SaleDate,
-                        TotalAmount = sale.TotalAmount,
-                        PendingAmount = sale.Balance,
-                        Status = sale.Status switch
-                        {
-                            "active" => "Activa",
-                            "completed" => "Completada",
-                            "cancelled" => "Cancelada",
-                            _ => sale.Status
-                        },
-                        StatusColor = sale.Status switch
-                        {
-                            "active" => "#28A745",
-                            "completed" => "#17A2B8",
-                            "cancelled" => "#DC3545",
-                            _ => "#999"
-                        }
+                        SaleId = s.SaleId,
+                        CustomerName = s.CustomerName,
+                        TotalAmount = s.TotalAmount,
+                        PaidAmount = s.PaidAmount,
+                        Balance = s.Balance,
+                        SaleDate = s.SaleDate,
+                        Status = s.Status,
+                        StatusLabel = label,
+                        StatusColor = color,
+                        StatusIcon = icon,
+                        PaymentTerms = s.PaymentTerms ?? ""
                     });
                 }
-                System.Diagnostics.Debug.WriteLine($"SalesPage: Mostrando {Sales.Count} ventas");
             }
-            else
-            {
-                System.Diagnostics.Debug.WriteLine("SalesPage: No se recibieron datos (null)");
-            }
+
+            ApplyFilter();
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"SalesPage: Error loading sales: {ex.Message}");
-            System.Diagnostics.Debug.WriteLine($"StackTrace: {ex.StackTrace}");
+            System.Diagnostics.Debug.WriteLine($"[SalesPage] Error: {ex.Message}");
+        }
+        finally
+        {
+            IsRefreshing = false;
         }
     }
 
-    private void OnSearch()
+    // ═══ Filtering + Grouping ═══
+    private void ApplyFilter()
     {
-        // TODO: Implementar filtrado por estado
+        var filtered = _allSales.AsEnumerable();
+
+        if (!string.IsNullOrWhiteSpace(_searchText))
+        {
+            filtered = filtered.Where(s =>
+                s.CustomerName.Contains(_searchText, StringComparison.OrdinalIgnoreCase));
+        }
+
+        var groups = filtered
+            .OrderByDescending(s => s.SaleDate)
+            .GroupBy(s => s.SaleDate.ToString("dd/M/yyyy"))
+            .Select(g => new SaleGroup(g.Key, g.Count(), g.ToList()))
+            .ToList();
+
+        FilteredSales.Clear();
+        foreach (var g in groups)
+            FilteredSales.Add(g);
     }
 
-    private void OnViewSaleDetail()
+    // ═══ Event Handlers ═══
+    private void OnSearchCompleted(object? sender, EventArgs e) => ApplyFilter();
+
+    private void OnSearchToggle(object? sender, EventArgs e)
     {
-        // TODO: Navegar a detalle de venta
+        SearchBar.IsVisible = !SearchBar.IsVisible;
     }
+
+    private async void OnRefreshTapped(object? sender, EventArgs e)
+    {
+        await LoadDataAsync();
+    }
+
+    private async void OnAddSaleTapped(object? sender, EventArgs e)
+    {
+        await Shell.Current.GoToAsync("CreateSalePage");
+    }
+
+    private async void OnOpenDetail(int saleId)
+    {
+        await Shell.Current.GoToAsync($"SaleDetailPage?saleId={saleId}");
+    }
+
+    // ═══ Bottom Tab Navigation ═══
+    private async void OnTabInicio(object? s, EventArgs e) => await Shell.Current.GoToAsync("//HomePage");
+    private async void OnTabCobranza(object? s, EventArgs e) => await Shell.Current.GoToAsync("//PaymentPage");
+    private async void OnTabClientes(object? s, EventArgs e) => await Shell.Current.GoToAsync("//CustomersPage");
 }
 
-public class SaleItemDto
+/// <summary>
+/// Grouped sales by date for CollectionView IsGrouped.
+/// </summary>
+public class SaleGroup : List<SaleListItem>
 {
-    public int SaleId { get; set; }
-    public string CustomerName { get; set; } = string.Empty;
-    public DateTime SaleDate { get; set; }
-    public decimal TotalAmount { get; set; }
-    public decimal PendingAmount { get; set; }
-    public string Status { get; set; } = string.Empty;
-    public string StatusColor { get; set; } = "#999";
-    public double PaymentProgress => TotalAmount > 0 ? (double)((TotalAmount - PendingAmount) / TotalAmount) : 0;
+    public string Key { get; }
+    public int Count { get; }
+
+    public SaleGroup(string key, int count, List<SaleListItem> items) : base(items)
+    {
+        Key = key;
+        Count = count;
+    }
 }

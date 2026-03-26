@@ -13,6 +13,14 @@ public class PaymentRepository : BaseOracleRepository, IPaymentRepository
     {
     }
 
+    /// <summary>
+    /// Normaliza el status de pago de Oracle a lowercase consistente.
+    /// Oracle usa: PENDING, APPROVED, REJECTED
+    /// API devuelve: pending, approved, rejected
+    /// </summary>
+    private static string NormalizePaymentStatus(string? status)
+        => status?.ToLower() ?? "unknown";
+
     public async Task<int> RegisterPaymentAsync(Payment payment)
     {
         var connection = await GetOpenConnectionAsync();
@@ -62,71 +70,102 @@ public class PaymentRepository : BaseOracleRepository, IPaymentRepository
     public async Task<List<PaymentDto>> GetPaymentsAsync(int? saleId, int? customerId, int? collectorId, 
         DateTime? startDate, DateTime? endDate, string? status)
     {
-        var query = _context.Payments
-            .Include(p => p.Sale)
-                .ThenInclude(s => s.Customer)
-            .Include(p => p.Collector)
-            .AsQueryable();
+        try
+        {
+            Console.WriteLine($"[PaymentRepository] GetPaymentsAsync - Params: saleId={saleId}, customerId={customerId}, collectorId={collectorId}, startDate={startDate}, endDate={endDate}, status={status}");
+            
+            var query = _context.Payments
+                .Include(p => p.Sale)
+                    .ThenInclude(s => s.Customer)
+                .Include(p => p.Collector)
+                .AsQueryable();
 
-        if (saleId.HasValue)
-            query = query.Where(p => p.SaleId == saleId.Value);
+            if (saleId.HasValue)
+                query = query.Where(p => p.SaleId == saleId.Value);
 
-        if (customerId.HasValue)
-            query = query.Where(p => p.Sale.CustomerId == customerId.Value);
+            if (customerId.HasValue)
+                query = query.Where(p => p.Sale.CustomerId == customerId.Value);
 
-        if (collectorId.HasValue)
-            query = query.Where(p => p.CollectorId == collectorId.Value);
+            if (collectorId.HasValue)
+                query = query.Where(p => p.CollectorId == collectorId.Value);
 
-        if (startDate.HasValue)
-            query = query.Where(p => p.PaymentDate >= startDate.Value);
+            if (startDate.HasValue)
+                query = query.Where(p => p.PaymentDate >= startDate.Value);
 
-        if (endDate.HasValue)
-            query = query.Where(p => p.PaymentDate <= endDate.Value);
+            if (endDate.HasValue)
+                query = query.Where(p => p.PaymentDate <= endDate.Value);
 
-        if (!string.IsNullOrEmpty(status))
-            query = query.Where(p => p.Status.ToLower() == status.ToLower());
+            if (!string.IsNullOrEmpty(status))
+                query = query.Where(p => p.Status.ToLower() == status.ToLower());
 
-        var payments = await query
-            .OrderByDescending(p => p.PaymentDate)
-            .Select(p => new PaymentDto
-            {
-                PaymentId = p.PaymentId,
-                SaleId = p.SaleId,
-                CustomerName = p.Sale.Customer.CustomerName,
-                Amount = p.Amount,
-                PaymentDate = p.PaymentDate,
-                CollectorName = p.Collector.Username,
-                Status = p.Status,
-                Notes = p.Notes,
-                GpsLatitude = p.GpsLatitude,
-                GpsLongitude = p.GpsLongitude
-            })
-            .ToListAsync();
+            var payments = await query
+                .OrderByDescending(p => p.PaymentDate)
+                .Select(p => new PaymentDto
+                {
+                    PaymentId = p.PaymentId,
+                    SaleId = p.SaleId,
+                    CustomerName = p.Sale.Customer.CustomerName,
+                    Amount = p.Amount,
+                    PaymentDate = p.PaymentDate,
+                    CollectorName = p.Collector.Username,
+                    Status = p.Status, // Se normaliza después de materializar
+                    Notes = p.Notes,
+                    GpsLatitude = p.GpsLatitude,
+                    GpsLongitude = p.GpsLongitude
+                })
+                .ToListAsync();
 
-        return payments;
+            // Normalizar status después de materializar la query
+            foreach (var payment in payments)
+                payment.Status = NormalizePaymentStatus(payment.Status);
+
+            Console.WriteLine($"[PaymentRepository] Devolviendo {payments.Count} pagos");
+            return payments;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[PaymentRepository] ERROR: {ex.Message}");
+            throw;
+        }
     }
 
     public async Task<PaymentDto?> GetPaymentByIdAsync(int paymentId)
     {
-        return await _context.Payments
-            .Include(p => p.Sale)
-                .ThenInclude(s => s.Customer)
-            .Include(p => p.Collector)
-            .Where(p => p.PaymentId == paymentId)
-            .Select(p => new PaymentDto
-            {
-                PaymentId = p.PaymentId,
-                SaleId = p.SaleId,
-                CustomerName = p.Sale.Customer.CustomerName,
-                Amount = p.Amount,
-                PaymentDate = p.PaymentDate,
-                CollectorName = p.Collector.Username,
-                Status = p.Status,
-                Notes = p.Notes,
-                GpsLatitude = p.GpsLatitude,
-                GpsLongitude = p.GpsLongitude
-            })
-            .FirstOrDefaultAsync();
+        try
+        {
+            Console.WriteLine($"[PaymentRepository] GetPaymentByIdAsync - paymentId={paymentId}");
+            
+            var payment = await _context.Payments
+                .Include(p => p.Sale)
+                    .ThenInclude(s => s.Customer)
+                .Include(p => p.Collector)
+                .Where(p => p.PaymentId == paymentId)
+                .Select(p => new PaymentDto
+                {
+                    PaymentId = p.PaymentId,
+                    SaleId = p.SaleId,
+                    CustomerName = p.Sale.Customer.CustomerName,
+                    Amount = p.Amount,
+                    PaymentDate = p.PaymentDate,
+                    CollectorName = p.Collector.Username,
+                    Status = p.Status, // Se normaliza abajo
+                    Notes = p.Notes,
+                    GpsLatitude = p.GpsLatitude,
+                    GpsLongitude = p.GpsLongitude
+                })
+                .FirstOrDefaultAsync();
+
+            if (payment != null)
+                payment.Status = NormalizePaymentStatus(payment.Status);
+
+            Console.WriteLine($"[PaymentRepository] Pago encontrado: {payment != null}");
+            return payment;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[PaymentRepository] ERROR en GetPaymentByIdAsync: {ex.Message}");
+            throw;
+        }
     }
 
     public async Task<IEnumerable<Payment>> GetPaymentsBySaleIdAsync(int saleId)

@@ -227,4 +227,9 @@ public partial class HomePage : ContentPage
         System.Diagnostics.Debug.WriteLine("=== OnCustomersClicked EVENT ===");
         await OnGoToCustomers();
     }
+
+    // ═══ Bottom Tab Navigation ═══
+    private async void OnTabVentas(object? s, EventArgs e) => await Shell.Current.GoToAsync("//SalesPage");
+    private async void OnTabCobranza(object? s, EventArgs e) => await Shell.Current.GoToAsync("//PaymentPage");
+    private async void OnTabClientes(object? s, EventArgs e) => await Shell.Current.GoToAsync("//CustomersPage");
 }

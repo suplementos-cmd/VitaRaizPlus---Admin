@@ -1,0 +1,333 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="VitaRaiz.Mobile.Pages.CreateSalePage"
+             Shell.NavBarIsVisible="False"
+             Shell.TabBarIsVisible="False"
+             BackgroundColor="#F8F4FC">
+
+    <ContentPage.Resources>
+        <Style x:Key="LblField" TargetType="Label">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="TextColor" Value="#7B1FA2" />
+            <Setter Property="FontAttributes" Value="Bold" />
+            <Setter Property="Margin" Value="0,0,0,2" />
+        </Style>
+        <Style x:Key="FieldBorder" TargetType="Border">
+            <Setter Property="BackgroundColor" Value="White" />
+            <Setter Property="StrokeThickness" Value="1" />
+            <Setter Property="Stroke" Value="#E0D4F5" />
+            <Setter Property="Padding" Value="10,4" />
+            <Setter Property="StrokeShape">
+                <Setter.Value><RoundRectangle CornerRadius="8" /></Setter.Value>
+            </Setter>
+        </Style>
+    </ContentPage.Resources>
+
+    <Grid RowDefinitions="Auto,*,Auto">
+
+        <!-- ═══ HEADER ═══ -->
+        <Border Grid.Row="0" StrokeThickness="0" BackgroundColor="#7B1FA2"
+                Shadow="{Shadow Brush='#44000000', Offset='0,3', Radius=6}">
+            <Grid Padding="14,14" ColumnDefinitions="Auto,*,Auto">
+                <Label Grid.Column="0" Text="✕" FontSize="20" TextColor="White" VerticalOptions="Center" Padding="4,0">
+                    <Label.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnBackTapped" />
+                    </Label.GestureRecognizers>
+                </Label>
+                <Label Grid.Column="1" Text="  ✏️ Alta Venta" FontSize="17" FontAttributes="Bold"
+                       TextColor="White" VerticalOptions="Center" />
+                <Label Grid.Column="2" Text="📍" FontSize="18" TextColor="#CE93D8" VerticalOptions="Center">
+                    <Label.FormattedText>
+                        <FormattedString>
+                            <Span Text="📍 " FontSize="14" />
+                            <Span x:Name="LblGpsShort" Text="..." FontSize="11" TextColor="#CE93D8" />
+                        </FormattedString>
+                    </Label.FormattedText>
+                </Label>
+            </Grid>
+        </Border>
+
+        <!-- ═══ FORM ═══ -->
+        <ScrollView Grid.Row="1" Padding="14,10">
+            <VerticalStackLayout Spacing="10">
+
+                <!-- ROW 1: FECHA VENTA | FECHA PRIMER COBRO -->
+                <Grid ColumnDefinitions="*,8,*">
+                    <VerticalStackLayout Grid.Column="0" Spacing="2">
+                        <Label Text="📅 FECHA VENTA" Style="{StaticResource LblField}" />
+                        <Border Style="{StaticResource FieldBorder}" Padding="6,2">
+                            <DatePicker x:Name="DpFechaVenta" Format="dd/MM/yyyy" TextColor="#333" FontSize="13" />
+                        </Border>
+                    </VerticalStackLayout>
+                    <VerticalStackLayout Grid.Column="2" Spacing="2">
+                        <Label Text="📅 PRIMER COBRO" Style="{StaticResource LblField}" />
+                        <Border Style="{StaticResource FieldBorder}" Padding="6,2">
+                            <DatePicker x:Name="DpPrimerCobro" Format="dd/MM/yyyy" TextColor="#333" FontSize="13" />
+                        </Border>
+                    </VerticalStackLayout>
+                </Grid>
+
+                <!-- NOMBRE CLIENTE -->
+                <VerticalStackLayout Spacing="3">
+                    <Label Text="👤 NOMBRE CLIENTE *" Style="{StaticResource LblField}" />
+                    <Border Style="{StaticResource FieldBorder}">
+                        <Entry x:Name="EntryNombre" Placeholder="Nombre completo" FontSize="14" TextColor="#333" />
+                    </Border>
+                </VerticalStackLayout>
+
+                <!-- CELULAR -->
+                <VerticalStackLayout Spacing="3">
+                    <Label Text="📱 CELULAR *" Style="{StaticResource LblField}" />
+                    <Border Style="{StaticResource FieldBorder}">
+                        <Entry x:Name="EntryCelular" Placeholder="10 dígitos" Keyboard="Telephone" FontSize="14" TextColor="#333" MaxLength="10" />
+                    </Border>
+                </VerticalStackLayout>
+
+                <!-- CALLE -->
+                <VerticalStackLayout Spacing="3">
+                    <Label Text="🏠 CALLE" Style="{StaticResource LblField}" />
+                    <Border Style="{StaticResource FieldBorder}">
+                        <Entry x:Name="EntryCalle" Placeholder="Calle y número" FontSize="14" TextColor="#333" />
+                    </Border>
+                </VerticalStackLayout>
+
+                <!-- REFERENCIA -->
+                <VerticalStackLayout Spacing="3">
+                    <Label Text="📌 REFERENCIA" Style="{StaticResource LblField}" />
+                    <Border Style="{StaticResource FieldBorder}">
+                        <Entry x:Name="EntryReferencia" Placeholder="Referencia" FontSize="14" TextColor="#333" />
+                    </Border>
+                </VerticalStackLayout>
+
+                <!-- ENTRE CALLES -->
+                <VerticalStackLayout Spacing="3">
+                    <Label Text="↔️ ENTRE CALLE" Style="{StaticResource LblField}" />
+                    <Grid ColumnDefinitions="*,Auto,*" ColumnSpacing="6">
+                        <Border Grid.Column="0" Style="{StaticResource FieldBorder}">
+                            <Entry x:Name="EntryEntreCalle1" Placeholder="Calle 1" FontSize="13" TextColor="#333" />
+                        </Border>
+                        <Label Grid.Column="1" Text="y" FontSize="13" TextColor="#999" VerticalOptions="Center" />
+                        <Border Grid.Column="2" Style="{StaticResource FieldBorder}">
+                            <Entry x:Name="EntryEntreCalle2" Placeholder="Calle 2" FontSize="13" TextColor="#333" />
+                        </Border>
+                    </Grid>
+                </VerticalStackLayout>
+
+                <!-- ROW: ZONA | FORMA DE PAGO -->
+                <Grid ColumnDefinitions="*,8,*">
+                    <VerticalStackLayout Grid.Column="0" Spacing="3">
+                        <Label Text="📍 ZONA / COLONIA *" Style="{StaticResource LblField}" />
+                        <Border Style="{StaticResource FieldBorder}">
+                            <Picker x:Name="PickerZone"
+                                    FontSize="13" TextColor="#333"
+                                    ItemDisplayBinding="{Binding ZoneName}" />
+                        </Border>
+                    </VerticalStackLayout>
+                    <VerticalStackLayout Grid.Column="2" Spacing="3">
+                        <Label Text="💳 FORMA DE PAGO *" Style="{StaticResource LblField}" />
+                        <Border Style="{StaticResource FieldBorder}">
+                            <Picker x:Name="PickerFormaPago" FontSize="13" TextColor="#333">
+                                <Picker.ItemsSource>
+                                    <x:Array Type="{x:Type x:String}">
+                                        <x:String>SEMANAL</x:String>
+                                        <x:String>QUINCENAL</x:String>
+                                        <x:String>MENSUAL</x:String>
+                                        <x:String>CONTADO</x:String>
+                                    </x:Array>
+                                </Picker.ItemsSource>
+                            </Picker>
+                        </Border>
+                    </VerticalStackLayout>
+                </Grid>
+
+                <!-- PRODUCTO -->
+                <VerticalStackLayout Spacing="3">
+                    <Label Text="📦 PRODUCTO *" Style="{StaticResource LblField}" />
+                    <Border Style="{StaticResource FieldBorder}">
+                        <Picker x:Name="PickerProduct"
+                                FontSize="13" TextColor="#333"
+                                ItemDisplayBinding="{Binding ProductName}"
+                                SelectedIndexChanged="OnProductSelected" />
+                    </Border>
+                    <Label x:Name="LblPrice" Text="" FontSize="12" TextColor="#7B1FA2" FontAttributes="Bold" Margin="4,0,0,0" />
+                </VerticalStackLayout>
+
+                <!-- ENGANCHE -->
+                <VerticalStackLayout Spacing="3">
+                    <Label Text="💵 ENGANCHE DE VENTA $" Style="{StaticResource LblField}" />
+                    <Border Style="{StaticResource FieldBorder}">
+                        <Entry x:Name="EntryEnganche" Placeholder="0.00" Keyboard="Numeric" FontSize="14" TextColor="#333" />
+                    </Border>
+                </VerticalStackLayout>
+
+                <!-- ROW: DÍA DE COBRO | ESTATUS -->
+                <Grid ColumnDefinitions="*,8,*">
+                    <VerticalStackLayout Grid.Column="0" Spacing="3">
+                        <Label Text="📆 DÍA COBRO *" Style="{StaticResource LblField}" />
+                        <Border Style="{StaticResource FieldBorder}">
+                            <Picker x:Name="PickerDiaCobro" FontSize="13" TextColor="#333">
+                                <Picker.ItemsSource>
+                                    <x:Array Type="{x:Type x:String}">
+                                        <x:String>LUN</x:String>
+                                        <x:String>MAR</x:String>
+                                        <x:String>MIE</x:String>
+                                        <x:String>JUE</x:String>
+                                        <x:String>VIE</x:String>
+                                        <x:String>SAB</x:String>
+                                        <x:String>DOM</x:String>
+                                    </x:Array>
+                                </Picker.ItemsSource>
+                            </Picker>
+                        </Border>
+                    </VerticalStackLayout>
+                    <VerticalStackLayout Grid.Column="2" Spacing="3">
+                        <Label Text="🔖 ESTATUS" Style="{StaticResource LblField}" />
+                        <Border Style="{StaticResource FieldBorder}">
+                            <Picker x:Name="PickerEstatus" FontSize="13" TextColor="#333">
+                                <Picker.ItemsSource>
+                                    <x:Array Type="{x:Type x:String}">
+                                        <x:String>POR INICIAR</x:String>
+                                        <x:String>LIQUIDADO</x:String>
+                                        <x:String>CANCELADO</x:String>
+                                    </x:Array>
+                                </Picker.ItemsSource>
+                            </Picker>
+                        </Border>
+                    </VerticalStackLayout>
+                </Grid>
+
+                <!-- COORDENADAS -->
+                <VerticalStackLayout Spacing="3">
+                    <Label Text="🛰️ COORDENADAS (GPS)" Style="{StaticResource LblField}" />
+                    <Border Style="{StaticResource FieldBorder}" BackgroundColor="#F3E5F5">
+                        <Entry x:Name="EntryCoords" IsReadOnly="True" Placeholder="Obteniendo GPS..."
+                               FontSize="12" TextColor="#7B1FA2" />
+                    </Border>
+                </VerticalStackLayout>
+
+                <!-- ═══ FOTOS 2x2 GRID ═══ -->
+                <Label Text="📸 FOTOS" FontSize="12" TextColor="#7B1FA2" FontAttributes="Bold" Margin="0,6,0,0" />
+                <Grid ColumnDefinitions="*,10,*" RowDefinitions="Auto,Auto" RowSpacing="10">
+                    <!-- FACHADA -->
+                    <Border Grid.Row="0" Grid.Column="0" Style="{StaticResource FieldBorder}" Padding="8">
+                        <VerticalStackLayout Spacing="4">
+                            <Label Text="🏠 Fachada *" FontSize="10" TextColor="#7B1FA2" FontAttributes="Bold" />
+                            <Image x:Name="ImgFachada" HeightRequest="70" Aspect="AspectFill" IsVisible="False" />
+                            <Label x:Name="LblFotoFachada" Text="Sin foto" FontSize="10" TextColor="#BBB"
+                                   HorizontalOptions="Center" IsVisible="True" />
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="4">
+                                <Button Grid.Column="0" Text="📷" FontSize="14" BackgroundColor="#F3E5F5" TextColor="#7B1FA2"
+                                        CornerRadius="6" HeightRequest="32" Padding="0" Clicked="OnCameraFachada" />
+                                <Button Grid.Column="1" Text="📁" FontSize="14" BackgroundColor="#F3E5F5" TextColor="#7B1FA2"
+                                        CornerRadius="6" HeightRequest="32" Padding="0" Clicked="OnUploadFachada" />
+                            </Grid>
+                        </VerticalStackLayout>
+                    </Border>
+                    <!-- CLIENTE -->
+                    <Border Grid.Row="0" Grid.Column="2" Style="{StaticResource FieldBorder}" Padding="8">
+                        <VerticalStackLayout Spacing="4">
+                            <Label Text="👤 Cliente" FontSize="10" TextColor="#7B1FA2" FontAttributes="Bold" />
+                            <Image x:Name="ImgCliente" HeightRequest="70" Aspect="AspectFill" IsVisible="False" />
+                            <Label x:Name="LblFotoCliente" Text="Sin foto" FontSize="10" TextColor="#BBB"
+                                   HorizontalOptions="Center" IsVisible="True" />
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="4">
+                                <Button Grid.Column="0" Text="📷" FontSize="14" BackgroundColor="#F3E5F5" TextColor="#7B1FA2"
+                                        CornerRadius="6" HeightRequest="32" Padding="0" Clicked="OnCameraCliente" />
+                                <Button Grid.Column="1" Text="📁" FontSize="14" BackgroundColor="#F3E5F5" TextColor="#7B1FA2"
+                                        CornerRadius="6" HeightRequest="32" Padding="0" Clicked="OnUploadCliente" />
+                            </Grid>
+                        </VerticalStackLayout>
+                    </Border>
+                    <!-- CONTRATO -->
+                    <Border Grid.Row="1" Grid.Column="0" Style="{StaticResource FieldBorder}" Padding="8">
+                        <VerticalStackLayout Spacing="4">
+                            <Label Text="📄 Contrato" FontSize="10" TextColor="#7B1FA2" FontAttributes="Bold" />
+                            <Image x:Name="ImgContrato" HeightRequest="70" Aspect="AspectFill" IsVisible="False" />
+                            <Label x:Name="LblFotoContrato" Text="Sin foto" FontSize="10" TextColor="#BBB"
+                                   HorizontalOptions="Center" IsVisible="True" />
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="4">
+                                <Button Grid.Column="0" Text="📷" FontSize="14" BackgroundColor="#F3E5F5" TextColor="#7B1FA2"
+                                        CornerRadius="6" HeightRequest="32" Padding="0" Clicked="OnCameraContrato" />
+                                <Button Grid.Column="1" Text="📁" FontSize="14" BackgroundColor="#F3E5F5" TextColor="#7B1FA2"
+                                        CornerRadius="6" HeightRequest="32" Padding="0" Clicked="OnUploadContrato" />
+                            </Grid>
+                        </VerticalStackLayout>
+                    </Border>
+                    <!-- ADICIONAL -->
+                    <Border Grid.Row="1" Grid.Column="2" Style="{StaticResource FieldBorder}" Padding="8">
+                        <VerticalStackLayout Spacing="4">
+                            <Label Text="🖼️ Adicional" FontSize="10" TextColor="#7B1FA2" FontAttributes="Bold" />
+                            <Image x:Name="ImgAdicional" HeightRequest="70" Aspect="AspectFill" IsVisible="False" />
+                            <Label x:Name="LblFotoAdicional" Text="Sin foto" FontSize="10" TextColor="#BBB"
+                                   HorizontalOptions="Center" IsVisible="True" />
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="4">
+                                <Button Grid.Column="0" Text="📷" FontSize="14" BackgroundColor="#F3E5F5" TextColor="#7B1FA2"
+                                        CornerRadius="6" HeightRequest="32" Padding="0" Clicked="OnCameraAdicional" />
+                                <Button Grid.Column="1" Text="📁" FontSize="14" BackgroundColor="#F3E5F5" TextColor="#7B1FA2"
+                                        CornerRadius="6" HeightRequest="32" Padding="0" Clicked="OnUploadAdicional" />
+                            </Grid>
+                        </VerticalStackLayout>
+                    </Border>
+                </Grid>
+
+                <!-- NOTAS -->
+                <VerticalStackLayout Spacing="3">
+                    <Label Text="📝 OBSERVACIONES" Style="{StaticResource LblField}" />
+                    <Border Style="{StaticResource FieldBorder}">
+                        <Editor x:Name="EditorNotas" Placeholder="Notas adicionales..." HeightRequest="60"
+                                FontSize="13" TextColor="#333" />
+                    </Border>
+                </VerticalStackLayout>
+
+                <!-- ═══ CAMPOS SUPERVISORA ═══ -->
+                <VerticalStackLayout x:Name="SectionSupervisor" IsVisible="False" Spacing="8">
+                    <Label Text="👑 COMISIONES (Supervisora)" FontSize="12" TextColor="#7B1FA2"
+                           FontAttributes="Bold" Margin="0,6,0,0" />
+                    <Grid ColumnDefinitions="*,8,*" RowDefinitions="Auto,Auto" RowSpacing="8">
+                        <VerticalStackLayout Grid.Row="0" Grid.Column="0" Spacing="2">
+                            <Label Text="Vendedora %" FontSize="10" TextColor="#7B1FA2" FontAttributes="Bold" />
+                            <Border Style="{StaticResource FieldBorder}">
+                                <Entry x:Name="EntryComisionVendedora" Placeholder="0" Keyboard="Numeric" FontSize="13" TextColor="#333" />
+                            </Border>
+                        </VerticalStackLayout>
+                        <VerticalStackLayout Grid.Row="0" Grid.Column="2" Spacing="2">
+                            <Label Text="Supervisora %" FontSize="10" TextColor="#7B1FA2" FontAttributes="Bold" />
+                            <Border Style="{StaticResource FieldBorder}">
+                                <Entry x:Name="EntryComisionSupervisora" Placeholder="0" Keyboard="Numeric" FontSize="13" TextColor="#333" />
+                            </Border>
+                        </VerticalStackLayout>
+                        <VerticalStackLayout Grid.Row="1" Grid.Column="0" Spacing="2">
+                            <Label Text="Gerente %" FontSize="10" TextColor="#7B1FA2" FontAttributes="Bold" />
+                            <Border Style="{StaticResource FieldBorder}">
+                                <Entry x:Name="EntryComisionGerente" Placeholder="0" Keyboard="Numeric" FontSize="13" TextColor="#333" />
+                            </Border>
+                        </VerticalStackLayout>
+                        <VerticalStackLayout Grid.Row="1" Grid.Column="2" Spacing="2">
+                            <Label Text="Total Neto $" FontSize="10" TextColor="#7B1FA2" FontAttributes="Bold" />
+                            <Border Style="{StaticResource FieldBorder}">
+                                <Entry x:Name="EntryTotalNeto" Placeholder="0.00" Keyboard="Numeric" FontSize="13" TextColor="#333" />
+                            </Border>
+                        </VerticalStackLayout>
+                    </Grid>
+                </VerticalStackLayout>
+
+                <BoxView HeightRequest="16" Color="Transparent" />
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <!-- ═══ FOOTER ═══ -->
+        <Border Grid.Row="2" StrokeThickness="0" BackgroundColor="White"
+                Shadow="{Shadow Brush='#22000000', Offset='0,-2', Radius=6}">
+            <Grid ColumnDefinitions="*,*" Padding="14,10" ColumnSpacing="12">
+                <Button Grid.Column="0" Text="✕  CANCELAR" Clicked="OnCancelTapped"
+                        BackgroundColor="#F3E5F5" TextColor="#7B1FA2" FontSize="14" FontAttributes="Bold"
+                        CornerRadius="10" HeightRequest="46" />
+                <Button Grid.Column="1" Text="✔  GUARDAR" Clicked="OnSaveTapped"
+                        BackgroundColor="#7B1FA2" TextColor="White" FontSize="14" FontAttributes="Bold"
+                        CornerRadius="10" HeightRequest="46"
+                        Shadow="{Shadow Brush='#447B1FA2', Offset='0,3', Radius=6}" />
+            </Grid>
+        </Border>
+    </Grid>
+</ContentPage>

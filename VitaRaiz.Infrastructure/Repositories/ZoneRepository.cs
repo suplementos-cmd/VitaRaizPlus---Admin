@@ -53,29 +53,53 @@ public class ZoneRepository : BaseOracleRepository, IZoneRepository
 
     public async Task<List<ZoneDto>> GetZonesAsync()
     {
-        var zones = await _context.Zones
-            .OrderBy(z => z.ZoneName)
-            .Select(z => new ZoneDto
-            {
-                ZoneId = z.ZoneId,
-                ZoneName = z.ZoneName,
-                Description = z.Description
-            })
-            .ToListAsync();
+        try
+        {
+            Console.WriteLine("[ZoneRepository] GetZonesAsync");
+            
+            var zones = await _context.Zones
+                .OrderBy(z => z.ZoneName)
+                .Select(z => new ZoneDto
+                {
+                    ZoneId = z.ZoneId,
+                    ZoneName = z.ZoneName,
+                    Description = z.Description
+                })
+                .ToListAsync();
 
-        return zones;
+            Console.WriteLine($"[ZoneRepository] Devolviendo {zones.Count} zonas");
+            return zones;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ZoneRepository] ERROR: {ex.Message}");
+            throw;
+        }
     }
 
     public async Task<ZoneDto?> GetZoneByIdAsync(int zoneId)
     {
-        return await _context.Zones
-            .Where(z => z.ZoneId == zoneId)
-            .Select(z => new ZoneDto
-            {
-                ZoneId = z.ZoneId,
-                ZoneName = z.ZoneName,
-                Description = z.Description
-            })
-            .FirstOrDefaultAsync();
+        try
+        {
+            Console.WriteLine($"[ZoneRepository] GetZoneByIdAsync - zoneId={zoneId}");
+            
+            var zone = await _context.Zones
+                .Where(z => z.ZoneId == zoneId)
+                .Select(z => new ZoneDto
+                {
+                    ZoneId = z.ZoneId,
+                    ZoneName = z.ZoneName,
+                    Description = z.Description
+                })
+                .FirstOrDefaultAsync();
+
+            Console.WriteLine($"[ZoneRepository] Zona encontrada: {zone != null}");
+            return zone;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ZoneRepository] ERROR en GetZoneByIdAsync: {ex.Message}");
+            throw;
+        }
     }
 }

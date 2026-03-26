@@ -12,10 +12,12 @@ namespace VitaRaiz.API.Controllers;
 public class CustomersController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly ILogger<CustomersController> _logger;
 
-    public CustomersController(IMediator mediator)
+    public CustomersController(IMediator mediator, ILogger<CustomersController> logger)
     {
         _mediator = mediator;
+        _logger = logger;
     }
 
     /// <summary>
@@ -28,16 +30,31 @@ public class CustomersController : ControllerBase
         [FromQuery] bool? isGoldCustomer = null,
         [FromQuery] bool? isBlacklisted = null)
     {
-        var query = new GetCustomersQuery
+        try
         {
-            SearchTerm = searchTerm,
-            ZoneId = zoneId,
-            IsGoldCustomer = isGoldCustomer,
-            IsBlacklisted = isBlacklisted
-        };
+            var authHeader = Request.Headers["Authorization"].ToString();
+            var username = User.Identity?.Name ?? "Anonymous";
+            _logger.LogInformation("[CustomersController] GetCustomers called by {Username}, Auth: {Auth}, Params: searchTerm={SearchTerm}, zoneId={ZoneId}", 
+                username, authHeader.Substring(0, Math.Min(20, authHeader.Length)), searchTerm, zoneId);
 
-        var customers = await _mediator.Send(query);
-        return Ok(customers);
+            var query = new GetCustomersQuery
+            {
+                SearchTerm = searchTerm,
+                ZoneId = zoneId,
+                IsGoldCustomer = isGoldCustomer,
+                IsBlacklisted = isBlacklisted
+            };
+
+            var customers = await _mediator.Send(query);
+            
+            _logger.LogInformation("[CustomersController] Returning {Count} customers", customers?.Count ?? 0);
+            return Ok(customers);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[CustomersController] Error in GetCustomers");
+            return StatusCode(500, new { error = ex.Message, stackTrace = ex.StackTrace });
+        }
     }
 
     /// <summary>
@@ -59,18 +76,29 @@ public class CustomersController : ControllerBase
     /// Crear un nuevo cliente
     /// </summary>
     [HttpPost]
-    [Authorize(Roles = "Admin,Supervisor,Vendedor")]
+    [Authorize(Roles = "AdminFull,Admin,Supervisor,Vendedor")]
     public async Task<IActionResult> CreateCustomer([FromBody] CreateCustomerCommand command)
     {
-        var customerId = await _mediator.Send(command);
-        return CreatedAtAction(nameof(GetCustomerById), new { id = customerId }, new { customerId });
+        try
+        {
+            _logger.LogInformation("[CustomersController] CreateCustomer: {Name}, Phone: {Phone}, Zone: {Zone}", 
+                command.CustomerName, command.PhoneNumber, command.ZoneId);
+            var customerId = await _mediator.Send(command);
+            _logger.LogInformation("[CustomersController] Customer created with ID: {Id}", customerId);
+            return CreatedAtAction(nameof(GetCustomerById), new { id = customerId }, new { customerId });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[CustomersController] Error creating customer");
+            return StatusCode(500, new { error = ex.Message, stackTrace = ex.StackTrace });
+        }
     }
 
     /// <summary>
     /// Actualizar un cliente existente
     /// </summary>
     [HttpPut("{id}")]
-    [Authorize(Roles = "Admin,Supervisor")]
+    [Authorize(Roles = "AdminFull,Admin,Supervisor")]
     public async Task<IActionResult> UpdateCustomer(int id, [FromBody] UpdateCustomerCommand command)
     {
         if (id != command.CustomerId)
@@ -88,7 +116,7 @@ public class CustomersController : ControllerBase
     /// Eliminar un cliente
     /// </summary>
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "AdminFull,Admin")]
     public async Task<IActionResult> DeleteCustomer(int id)
     {
         var command = new DeleteCustomerCommand { CustomerId = id };

@@ -1,0 +1,381 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="VitaRaiz.Mobile.Pages.SaleDetailPage"
+             Shell.NavBarIsVisible="False"
+             Shell.TabBarIsVisible="False"
+             BackgroundColor="#F8F4FC">
+
+    <Grid RowDefinitions="*">
+
+        <ScrollView>
+            <VerticalStackLayout>
+
+                <!-- Loading -->
+                <ActivityIndicator IsRunning="{Binding IsLoading}" IsVisible="{Binding IsLoading}"
+                                   HorizontalOptions="Center" Color="#7B1FA2" Margin="0,40" />
+
+                <!-- ═══ BANNER IMAGE + overlay header ═══ -->
+                <Grid HeightRequest="200">
+                    <!-- Placeholder image -->
+                    <Border BackgroundColor="#E1BEE7" StrokeThickness="0">
+                        <Label Text="🏠" FontSize="60" HorizontalOptions="Center" VerticalOptions="Center" TextColor="#CE93D8" />
+                    </Border>
+                    <!-- Gradient overlay -->
+                    <BoxView BackgroundColor="#44000000" />
+                    <!-- Back button + title overlay -->
+                    <Grid RowDefinitions="Auto,*,Auto" Padding="14">
+                        <HorizontalStackLayout Grid.Row="0" Spacing="12">
+                            <Border StrokeThickness="0" BackgroundColor="#55FFFFFF" WidthRequest="36" HeightRequest="36" Padding="0">
+                                <Border.StrokeShape><RoundRectangle CornerRadius="18" /></Border.StrokeShape>
+                                <Label Text="←" FontSize="18" TextColor="White" HorizontalOptions="Center" VerticalOptions="Center">
+                                    <Label.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="OnBackTapped" />
+                                    </Label.GestureRecognizers>
+                                </Label>
+                            </Border>
+                            <!-- Cobrador quick actions -->
+                            <HorizontalStackLayout x:Name="HeaderActions" IsVisible="False" Spacing="10" HorizontalOptions="EndAndExpand">
+                                <Border StrokeThickness="0" BackgroundColor="#55FFFFFF" WidthRequest="36" HeightRequest="36">
+                                    <Border.StrokeShape><RoundRectangle CornerRadius="18" /></Border.StrokeShape>
+                                    <Label Text="📍" FontSize="16" HorizontalOptions="Center" VerticalOptions="Center">
+                                        <Label.GestureRecognizers><TapGestureRecognizer Tapped="OnOpenGps" /></Label.GestureRecognizers>
+                                    </Label>
+                                </Border>
+                                <Border StrokeThickness="0" BackgroundColor="#55FFFFFF" WidthRequest="36" HeightRequest="36">
+                                    <Border.StrokeShape><RoundRectangle CornerRadius="18" /></Border.StrokeShape>
+                                    <Label Text="📞" FontSize="16" HorizontalOptions="Center" VerticalOptions="Center">
+                                        <Label.GestureRecognizers><TapGestureRecognizer Command="{Binding CallClientCommand}" /></Label.GestureRecognizers>
+                                    </Label>
+                                </Border>
+                                <Border StrokeThickness="0" BackgroundColor="#55FFFFFF" WidthRequest="36" HeightRequest="36">
+                                    <Border.StrokeShape><RoundRectangle CornerRadius="18" /></Border.StrokeShape>
+                                    <Label Text="💬" FontSize="16" HorizontalOptions="Center" VerticalOptions="Center">
+                                        <Label.GestureRecognizers><TapGestureRecognizer Command="{Binding WhatsAppCommand}" /></Label.GestureRecognizers>
+                                    </Label>
+                                </Border>
+                            </HorizontalStackLayout>
+                        </HorizontalStackLayout>
+                        <!-- Bottom: Sale # badge -->
+                        <HorizontalStackLayout Grid.Row="2" Spacing="8" VerticalOptions="End">
+                            <Border StrokeThickness="0" BackgroundColor="#7B1FA2" Padding="10,4">
+                                <Border.StrokeShape><RoundRectangle CornerRadius="6" /></Border.StrokeShape>
+                                <Label Text="{Binding Sale.SaleId, StringFormat='Venta #{0}'}" FontSize="14" FontAttributes="Bold" TextColor="White" />
+                            </Border>
+                            <Border StrokeThickness="0" BackgroundColor="#28A745" Padding="8,4">
+                                <Border.StrokeShape><RoundRectangle CornerRadius="6" /></Border.StrokeShape>
+                                <Label Text="{Binding Sale.StatusLabel}" FontSize="11" FontAttributes="Bold" TextColor="White" />
+                            </Border>
+                        </HorizontalStackLayout>
+                    </Grid>
+                </Grid>
+
+                <!-- ═══ INFO CARD ═══ -->
+                <Border Margin="12,-20,12,0" StrokeThickness="0" BackgroundColor="White" Padding="16,14"
+                        Shadow="{Shadow Brush='#22000000', Offset='0,2', Radius=8}">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="14" /></Border.StrokeShape>
+                    <VerticalStackLayout Spacing="8">
+                        <!-- Cliente + phone -->
+                        <Grid ColumnDefinitions="*,Auto">
+                            <VerticalStackLayout Grid.Column="0" Spacing="2">
+                                <Label Text="{Binding Sale.CustomerName}" FontSize="17" FontAttributes="Bold" TextColor="#333" />
+                                <Label Text="{Binding Sale.CustomerAddress}" FontSize="12" TextColor="#888" LineBreakMode="TailTruncation" />
+                            </VerticalStackLayout>
+                            <HorizontalStackLayout Grid.Column="1" Spacing="8" VerticalOptions="Center">
+                                <Label Text="📞" FontSize="20" TextColor="#2196F3">
+                                    <Label.GestureRecognizers><TapGestureRecognizer Command="{Binding CallClientCommand}" /></Label.GestureRecognizers>
+                                </Label>
+                                <Label Text="💬" FontSize="20" TextColor="#28A745">
+                                    <Label.GestureRecognizers><TapGestureRecognizer Command="{Binding WhatsAppCommand}" /></Label.GestureRecognizers>
+                                </Label>
+                            </HorizontalStackLayout>
+                        </Grid>
+
+                        <BoxView HeightRequest="1" Color="#F0E6FA" />
+
+                        <!-- Montos -->
+                        <Grid ColumnDefinitions="*,*,*">
+                            <VerticalStackLayout Grid.Column="0" Spacing="2" HorizontalOptions="Center">
+                                <Label Text="TOTAL" FontSize="9" TextColor="#999" HorizontalOptions="Center" FontAttributes="Bold" />
+                                <Label Text="{Binding Sale.TotalAmount, StringFormat='${0:N2}'}" FontSize="16" FontAttributes="Bold" TextColor="#7B1FA2" HorizontalOptions="Center" />
+                            </VerticalStackLayout>
+                            <VerticalStackLayout Grid.Column="1" Spacing="2" HorizontalOptions="Center">
+                                <Label Text="PAGADO" FontSize="9" TextColor="#999" HorizontalOptions="Center" FontAttributes="Bold" />
+                                <Label Text="{Binding Sale.PaidAmount, StringFormat='${0:N2}'}" FontSize="16" FontAttributes="Bold" TextColor="#28A745" HorizontalOptions="Center" />
+                            </VerticalStackLayout>
+                            <VerticalStackLayout Grid.Column="2" Spacing="2" HorizontalOptions="Center">
+                                <Label Text="PENDIENTE" FontSize="9" TextColor="#999" HorizontalOptions="Center" FontAttributes="Bold" />
+                                <Label Text="{Binding Sale.Balance, StringFormat='${0:N2}'}" FontSize="16" FontAttributes="Bold" TextColor="#DC3545" HorizontalOptions="Center" />
+                            </VerticalStackLayout>
+                        </Grid>
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- ═══ DETAILS TABLE ═══ -->
+                <VerticalStackLayout x:Name="SaleInfoSection" Padding="12,14,12,0" Spacing="0">
+
+                    <!-- Row: Fecha venta | Forma pago -->
+                    <Grid ColumnDefinitions="*,*" Padding="0,8" ColumnSpacing="10">
+                        <VerticalStackLayout Grid.Column="0" Spacing="2">
+                            <Label Text="📅 FECHA VENTA" FontSize="10" TextColor="#999" FontAttributes="Bold" />
+                            <Label Text="{Binding Sale.SaleDate, StringFormat='{0:dd/MM/yyyy}'}" FontSize="14" FontAttributes="Bold" TextColor="#7B1FA2" />
+                        </VerticalStackLayout>
+                        <VerticalStackLayout Grid.Column="1" Spacing="2">
+                            <Label Text="💳 FORMA DE PAGO" FontSize="10" TextColor="#999" FontAttributes="Bold" />
+                            <Label Text="{Binding Sale.PaymentTerms}" FontSize="14" TextColor="#333" />
+                        </VerticalStackLayout>
+                    </Grid>
+                    <BoxView HeightRequest="1" Color="#F0E6FA" />
+
+                    <!-- Row: Día cobro | Zona -->
+                    <Grid ColumnDefinitions="*,*" Padding="0,8" ColumnSpacing="10">
+                        <VerticalStackLayout Grid.Column="0" Spacing="2">
+                            <Label Text="📆 DÍA DE COBRO" FontSize="10" TextColor="#999" FontAttributes="Bold" />
+                            <Label Text="{Binding CollectionDay}" FontSize="14" FontAttributes="Bold" TextColor="#7B1FA2" />
+                        </VerticalStackLayout>
+                        <VerticalStackLayout Grid.Column="1" Spacing="2">
+                            <Label Text="📍 ZONA" FontSize="10" TextColor="#999" FontAttributes="Bold" />
+                            <Label Text="{Binding ZoneName}" FontSize="14" FontAttributes="Bold" TextColor="#7B1FA2" />
+                        </VerticalStackLayout>
+                    </Grid>
+                    <BoxView HeightRequest="1" Color="#F0E6FA" />
+
+                    <!-- Producto -->
+                    <VerticalStackLayout Padding="0,8" Spacing="4">
+                        <Label Text="📦 PRODUCTOS" FontSize="10" TextColor="#999" FontAttributes="Bold" />
+                        <CollectionView ItemsSource="{Binding Items}">
+                            <CollectionView.ItemTemplate>
+                                <DataTemplate>
+                                    <HorizontalStackLayout Spacing="6" Padding="0,2">
+                                        <Label Text="•" TextColor="#7B1FA2" FontSize="13" />
+                                        <Label Text="{Binding ProductName}" FontSize="13" TextColor="#333" />
+                                        <Label Text="{Binding Subtotal, StringFormat='${0:N2}'}" FontSize="13" TextColor="#7B1FA2" FontAttributes="Bold" />
+                                    </HorizontalStackLayout>
+                                </DataTemplate>
+                            </CollectionView.ItemTemplate>
+                        </CollectionView>
+                    </VerticalStackLayout>
+                    <BoxView HeightRequest="1" Color="#F0E6FA" />
+
+                    <!-- Row: Vendedor | Cobrador -->
+                    <Grid ColumnDefinitions="*,*" Padding="0,8" ColumnSpacing="10">
+                        <VerticalStackLayout Grid.Column="0" Spacing="2">
+                            <Label Text="👤 VENDEDOR" FontSize="10" TextColor="#999" FontAttributes="Bold" />
+                            <Label Text="{Binding Sale.SellerName}" FontSize="13" FontAttributes="Bold" TextColor="#333" />
+                        </VerticalStackLayout>
+                        <VerticalStackLayout Grid.Column="1" Spacing="2">
+                            <Label Text="💼 COBRADOR" FontSize="10" TextColor="#999" FontAttributes="Bold" />
+                            <Label Text="{Binding Sale.CollectorName}" FontSize="13" TextColor="#333" />
+                        </VerticalStackLayout>
+                    </Grid>
+                    <BoxView HeightRequest="1" Color="#F0E6FA" />
+
+                    <!-- Observaciones -->
+                    <VerticalStackLayout Padding="0,8" Spacing="2">
+                        <Label Text="📝 OBSERVACIONES" FontSize="10" TextColor="#999" FontAttributes="Bold" />
+                        <Label Text="{Binding Sale.Notes}" FontSize="12" TextColor="#555" LineBreakMode="WordWrap" />
+                    </VerticalStackLayout>
+                    <BoxView HeightRequest="1" Color="#F0E6FA" />
+
+                    <!-- Photos grid -->
+                    <VerticalStackLayout Padding="0,8" Spacing="4">
+                        <Label Text="📸 FOTOS" FontSize="10" TextColor="#999" FontAttributes="Bold" />
+                        <HorizontalStackLayout Spacing="8">
+                            <Border BackgroundColor="#F3E5F5" StrokeThickness="0" WidthRequest="70" HeightRequest="70">
+                                <Border.StrokeShape><RoundRectangle CornerRadius="8" /></Border.StrokeShape>
+                                <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="2">
+                                    <Label Text="🏠" FontSize="22" HorizontalOptions="Center" TextColor="#CE93D8" />
+                                    <Label Text="Fachada" FontSize="8" TextColor="#999" HorizontalOptions="Center" />
+                                </VerticalStackLayout>
+                            </Border>
+                            <Border BackgroundColor="#F3E5F5" StrokeThickness="0" WidthRequest="70" HeightRequest="70">
+                                <Border.StrokeShape><RoundRectangle CornerRadius="8" /></Border.StrokeShape>
+                                <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="2">
+                                    <Label Text="👤" FontSize="22" HorizontalOptions="Center" TextColor="#CE93D8" />
+                                    <Label Text="Cliente" FontSize="8" TextColor="#999" HorizontalOptions="Center" />
+                                </VerticalStackLayout>
+                            </Border>
+                            <Border BackgroundColor="#F3E5F5" StrokeThickness="0" WidthRequest="70" HeightRequest="70">
+                                <Border.StrokeShape><RoundRectangle CornerRadius="8" /></Border.StrokeShape>
+                                <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="2">
+                                    <Label Text="📄" FontSize="22" HorizontalOptions="Center" TextColor="#CE93D8" />
+                                    <Label Text="Contrato" FontSize="8" TextColor="#999" HorizontalOptions="Center" />
+                                </VerticalStackLayout>
+                            </Border>
+                            <Border BackgroundColor="#F3E5F5" StrokeThickness="0" WidthRequest="70" HeightRequest="70">
+                                <Border.StrokeShape><RoundRectangle CornerRadius="8" /></Border.StrokeShape>
+                                <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="2">
+                                    <Label Text="🖼️" FontSize="22" HorizontalOptions="Center" TextColor="#CE93D8" />
+                                    <Label Text="Adicional" FontSize="8" TextColor="#999" HorizontalOptions="Center" />
+                                </VerticalStackLayout>
+                            </Border>
+                        </HorizontalStackLayout>
+                    </VerticalStackLayout>
+                </VerticalStackLayout>
+
+                <!-- ═══ COBRADOR ACTION BAR ═══ -->
+                <VerticalStackLayout x:Name="CobradorActionSection" IsVisible="False" Spacing="10" Padding="14,10">
+                    <Label Text="⚡ ACCIONES COBRO" FontSize="12" TextColor="#7B1FA2" FontAttributes="Bold" />
+                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
+                        <Button Grid.Column="0" Text="⏭ Después" FontSize="11" BackgroundColor="#FFF3E0"
+                                TextColor="#E65100" CornerRadius="8" HeightRequest="40" Padding="4"
+                                Clicked="OnPasarDespues" />
+                        <Button Grid.Column="1" Text="⏰ Más tarde" FontSize="11" BackgroundColor="#E3F2FD"
+                                TextColor="#1565C0" CornerRadius="8" HeightRequest="40" Padding="4"
+                                Clicked="OnPasarMasTarde" />
+                        <Button Grid.Column="2" Text="📅 Prox sem" FontSize="11" BackgroundColor="#E8F5E9"
+                                TextColor="#2E7D32" CornerRadius="8" HeightRequest="40" Padding="4"
+                                Clicked="OnProximaSemana" />
+                    </Grid>
+
+                    <!-- Foto Contrato + Adicional -->
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8" Margin="0,4,0,0">
+                        <Border Grid.Column="0" StrokeThickness="1" Stroke="#E0D4F5" Padding="8" BackgroundColor="White">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="8" /></Border.StrokeShape>
+                            <VerticalStackLayout Spacing="4">
+                                <Label Text="📄 Contrato" FontSize="10" TextColor="#7B1FA2" FontAttributes="Bold" />
+                                <Label x:Name="LblFotoContrato" Text="Sin foto" FontSize="10" TextColor="#BBB" HorizontalOptions="Center" />
+                                <Grid ColumnDefinitions="*,*" ColumnSpacing="4">
+                                    <Button Grid.Column="0" Text="📷" FontSize="14" BackgroundColor="#F3E5F5" TextColor="#7B1FA2"
+                                            CornerRadius="6" HeightRequest="30" Padding="0" Clicked="OnCameraContrato" />
+                                    <Button Grid.Column="1" Text="📁" FontSize="14" BackgroundColor="#F3E5F5" TextColor="#7B1FA2"
+                                            CornerRadius="6" HeightRequest="30" Padding="0" Clicked="OnUploadContrato" />
+                                </Grid>
+                            </VerticalStackLayout>
+                        </Border>
+                        <Border Grid.Column="1" StrokeThickness="1" Stroke="#E0D4F5" Padding="8" BackgroundColor="White">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="8" /></Border.StrokeShape>
+                            <VerticalStackLayout Spacing="4">
+                                <Label Text="🖼️ Adicional" FontSize="10" TextColor="#7B1FA2" FontAttributes="Bold" />
+                                <Label x:Name="LblFotoAdicional" Text="Sin foto" FontSize="10" TextColor="#BBB" HorizontalOptions="Center" />
+                                <Grid ColumnDefinitions="*,*" ColumnSpacing="4">
+                                    <Button Grid.Column="0" Text="📷" FontSize="14" BackgroundColor="#F3E5F5" TextColor="#7B1FA2"
+                                            CornerRadius="6" HeightRequest="30" Padding="0" Clicked="OnCameraAdicionalD" />
+                                    <Button Grid.Column="1" Text="📁" FontSize="14" BackgroundColor="#F3E5F5" TextColor="#7B1FA2"
+                                            CornerRadius="6" HeightRequest="30" Padding="0" Clicked="OnUploadAdicionalD" />
+                                </Grid>
+                            </VerticalStackLayout>
+                        </Border>
+                    </Grid>
+
+                    <!-- Cobrador notes -->
+                    <Border StrokeThickness="1" Stroke="#E0D4F5" Padding="10" BackgroundColor="White">
+                        <Border.StrokeShape><RoundRectangle CornerRadius="8" /></Border.StrokeShape>
+                        <VerticalStackLayout Spacing="4">
+                            <Label Text="📝 NOTA COBRADOR" FontSize="10" TextColor="#7B1FA2" FontAttributes="Bold" />
+                            <Editor x:Name="EditorNotaCobrador" Placeholder="Agregar nota..." HeightRequest="55"
+                                    FontSize="12" TextColor="#333" />
+                        </VerticalStackLayout>
+                    </Border>
+                </VerticalStackLayout>
+
+                <!-- ═══ ABONOS TABLE (Cobrador) ═══ -->
+                <VerticalStackLayout x:Name="AbonosSection" IsVisible="False" Padding="14,0,14,10" Spacing="8">
+                    <Label Text="💰 ABONOS" FontSize="12" TextColor="#7B1FA2" FontAttributes="Bold" Margin="0,6,0,0" />
+
+                    <!-- Abono header -->
+                    <Grid ColumnDefinitions="70,70,100,*" Padding="4,6" BackgroundColor="#F3E5F5" ColumnSpacing="4">
+                        <Label Grid.Column="0" Text="ABONO" FontSize="9" TextColor="#7B1FA2" FontAttributes="Bold" />
+                        <Label Grid.Column="1" Text="PEND." FontSize="9" TextColor="#7B1FA2" FontAttributes="Bold" />
+                        <Label Grid.Column="2" Text="FECHA REG." FontSize="9" TextColor="#7B1FA2" FontAttributes="Bold" />
+                        <Label Grid.Column="3" Text="ESTATUS" FontSize="9" TextColor="#7B1FA2" FontAttributes="Bold" />
+                    </Grid>
+
+                    <CollectionView ItemsSource="{Binding Payments}">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <VerticalStackLayout>
+                                    <Grid ColumnDefinitions="70,70,100,*" Padding="4,6" ColumnSpacing="4">
+                                        <Label Grid.Column="0" Text="{Binding Amount, StringFormat='${0:N2}'}"
+                                               FontSize="11" FontAttributes="Bold" TextColor="#28A745" VerticalOptions="Center" />
+                                        <Label Grid.Column="1" Text="{Binding PendingAmount, StringFormat='${0:N2}'}"
+                                               FontSize="11" TextColor="#DC3545" VerticalOptions="Center" />
+                                        <VerticalStackLayout Grid.Column="2" Spacing="0" VerticalOptions="Center">
+                                            <Label Text="{Binding PaymentDate, StringFormat='{0:dd/MM/yy}'}" FontSize="10" TextColor="#333" />
+                                            <Label Text="{Binding PaymentDate, StringFormat='{0:HH:mm}'}" FontSize="9" TextColor="#999" />
+                                        </VerticalStackLayout>
+                                        <Label Grid.Column="3" Text="{Binding StatusLabel}" FontSize="10"
+                                               TextColor="{Binding StatusColor}" VerticalOptions="Center" />
+                                    </Grid>
+                                    <BoxView HeightRequest="1" Color="#F5F0FA" />
+                                </VerticalStackLayout>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+
+                    <!-- New abono form -->
+                    <Border StrokeThickness="1" Stroke="#E0D4F5" Padding="12" BackgroundColor="White">
+                        <Border.StrokeShape><RoundRectangle CornerRadius="10" /></Border.StrokeShape>
+                        <VerticalStackLayout Spacing="8">
+                            <Label Text="✚ REGISTRAR ABONO" FontSize="12" TextColor="#7B1FA2" FontAttributes="Bold" />
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                                <Border Grid.Column="0" StrokeThickness="1" Stroke="#E0D4F5" Padding="8,4" BackgroundColor="White">
+                                    <Border.StrokeShape><RoundRectangle CornerRadius="8" /></Border.StrokeShape>
+                                    <Entry x:Name="EntryAbono" Placeholder="$ Importe" Keyboard="Numeric"
+                                           FontSize="13" TextColor="#333" />
+                                </Border>
+                                <Border Grid.Column="1" StrokeThickness="1" Stroke="#E0D4F5" Padding="8,4" BackgroundColor="White">
+                                    <Border.StrokeShape><RoundRectangle CornerRadius="8" /></Border.StrokeShape>
+                                    <Picker x:Name="PickerEstatusAbono" FontSize="12" TextColor="#333">
+                                        <Picker.ItemsSource>
+                                            <x:Array Type="{x:Type x:String}">
+                                                <x:String>COBRADO</x:String>
+                                                <x:String>NO ESTABA</x:String>
+                                                <x:String>PRÓXIMA SEMANA</x:String>
+                                            </x:Array>
+                                        </Picker.ItemsSource>
+                                    </Picker>
+                                </Border>
+                            </Grid>
+                            <Button Text="REGISTRAR ABONO" BackgroundColor="#7B1FA2" TextColor="White"
+                                    FontSize="13" FontAttributes="Bold" CornerRadius="8" HeightRequest="40"
+                                    Clicked="OnRegistrarAbono"
+                                    Shadow="{Shadow Brush='#447B1FA2', Offset='0,2', Radius=4}" />
+                        </VerticalStackLayout>
+                    </Border>
+                </VerticalStackLayout>
+
+                <!-- ═══ VENTAS ABONOS TABLE (Vendedora/Supervisora view) ═══ -->
+                <VerticalStackLayout x:Name="VendedoraAbonosSection" IsVisible="False" Padding="14,0,14,10" Spacing="8">
+                    <Label Text="💰 HISTORIAL DE ABONOS" FontSize="12" TextColor="#7B1FA2" FontAttributes="Bold" Margin="0,6,0,0" />
+                    <CollectionView ItemsSource="{Binding Payments}">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <Grid ColumnDefinitions="Auto,*,Auto" Padding="0,6" ColumnSpacing="8">
+                                    <BoxView Grid.Column="0" Color="{Binding StatusColor}" WidthRequest="8" HeightRequest="8"
+                                             CornerRadius="4" VerticalOptions="Center" />
+                                    <Label Grid.Column="1" FontSize="12" TextColor="#333" VerticalOptions="Center">
+                                        <Label.FormattedText>
+                                            <FormattedString>
+                                                <Span Text="{Binding PaymentDate, StringFormat='{0:dd/MMM/yy}'}" FontAttributes="Bold" />
+                                                <Span Text="{Binding CollectorName, StringFormat=' - {0}'}" />
+                                            </FormattedString>
+                                        </Label.FormattedText>
+                                    </Label>
+                                    <Label Grid.Column="2" Text="{Binding Amount, StringFormat='${0:N2}'}"
+                                           FontSize="13" FontAttributes="Bold" TextColor="#28A745" />
+                                </Grid>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+
+                <BoxView HeightRequest="80" Color="Transparent" />
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <!-- ═══ FAB: Edit button ═══ -->
+        <Button Text="✏️"
+                FontSize="22"
+                BackgroundColor="#7B1FA2"
+                TextColor="White"
+                CornerRadius="28"
+                HeightRequest="56" WidthRequest="56"
+                HorizontalOptions="End"
+                VerticalOptions="End"
+                Margin="0,0,20,20"
+                Shadow="{Shadow Brush='#447B1FA2', Offset='0,4', Radius=8}"
+                ZIndex="20"
+                Clicked="OnEditTapped" />
+    </Grid>
+</ContentPage>

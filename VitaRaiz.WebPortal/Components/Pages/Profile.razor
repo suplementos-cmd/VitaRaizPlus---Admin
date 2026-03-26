@@ -5,7 +5,7 @@
 @attribute [Authorize]
 @inject ProtectedSessionStorage SessionStorage
 @inject AuthenticationStateProvider AuthStateProvider
-@rendermode InteractiveServer
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 
 <PageTitle>Mi Perfil - VitaRaiz</PageTitle>
 

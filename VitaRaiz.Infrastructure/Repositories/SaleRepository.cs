@@ -14,6 +14,23 @@ public class SaleRepository : BaseOracleRepository, ISaleRepository
     {
     }
 
+    /// <summary>
+    /// Normaliza el status de Oracle a un valor consistente en inglés para los clientes.
+    /// Oracle usa: EN_PROCESO, POR_INICIAR, LIQUIDADO, CANCELADO
+    /// API devuelve: active, pending, completed, cancelled
+    /// </summary>
+    private static string NormalizeStatus(string? oracleStatus)
+    {
+        return (oracleStatus?.ToUpper()) switch
+        {
+            "EN_PROCESO" or "ACTIVE" => "active",
+            "POR_INICIAR" or "PENDING" => "pending",
+            "LIQUIDADO" or "COMPLETED" => "completed",
+            "CANCELADO" or "CANCELLED" => "cancelled",
+            _ => oracleStatus?.ToLower() ?? "unknown"
+        };
+    }
+
     public async Task<int> CreateSaleAsync(int customerId, int sellerId, int paymentTermDays, 
         string? notes, List<SaleDetailDto> details)
     {
@@ -70,35 +87,20 @@ public class SaleRepository : BaseOracleRepository, ISaleRepository
             var query = _context.Sales
                 .Include(s => s.Customer)
                 .Include(s => s.Seller)
+                .Include(s => s.Payments) // Necesario para calcular PaidAmount
                 .AsQueryable();
 
-            // Contar total antes de filtros
-            var totalCount = await query.CountAsync();
-            Console.WriteLine($"[SaleRepository] Total registros en SALES: {totalCount}");
-
             if (customerId.HasValue)
-            {
                 query = query.Where(s => s.CustomerId == customerId.Value);
-                Console.WriteLine($"[SaleRepository] Después de filtro customerId: {await query.CountAsync()}");
-            }
 
             if (sellerId.HasValue)
-            {
                 query = query.Where(s => s.SellerId == sellerId.Value);
-                Console.WriteLine($"[SaleRepository] Después de filtro sellerId: {await query.CountAsync()}");
-            }
 
             if (startDate.HasValue)
-            {
                 query = query.Where(s => s.SaleDate >= startDate.Value);
-                Console.WriteLine($"[SaleRepository] Después de filtro startDate: {await query.CountAsync()}");
-            }
 
             if (endDate.HasValue)
-            {
                 query = query.Where(s => s.SaleDate <= endDate.Value);
-                Console.WriteLine($"[SaleRepository] Después de filtro endDate: {await query.CountAsync()}");
-            }
 
             if (!string.IsNullOrEmpty(status))
             {
@@ -113,7 +115,7 @@ public class SaleRepository : BaseOracleRepository, ISaleRepository
                 };
                 
                 query = query.Where(s => s.Status.ToUpper() == oracleStatus);
-                Console.WriteLine($"[SaleRepository] Filtro status: '{status}' -> '{oracleStatus}', Count: {await query.CountAsync()}");
+                Console.WriteLine($"[SaleRepository] Filtro status: '{status}' -> '{oracleStatus}'");
             }
 
             var sales = await query
@@ -123,73 +125,112 @@ public class SaleRepository : BaseOracleRepository, ISaleRepository
                     SaleId = s.SaleId,
                     CustomerName = s.Customer != null ? s.Customer.CustomerName : "Sin cliente",
                     TotalAmount = s.TotalAmount,
-                    PaidAmount = s.PaidAmount,
-                    Balance = s.TotalAmount - s.PaidAmount,
+                    PaidAmount = s.Payments.Where(p => p.Status.ToUpper() == "APPROVED").Sum(p => p.Amount),
+                    Balance = s.TotalAmount - s.Payments.Where(p => p.Status.ToUpper() == "APPROVED").Sum(p => p.Amount),
                     SaleDate = s.SaleDate,
-                    Status = s.Status,
+                    Status = s.Status, // Se normaliza después de materializar
                     PaymentTerms = $"{s.PaymentTermDays} días"
                 })
                 .ToListAsync();
 
-            Console.WriteLine($"[SaleRepository] GetSalesAsync - Devolviendo {sales.Count} ventas");
+            // Normalizar status de Oracle a inglés después de materializar la query
+            foreach (var sale in sales)
+                sale.Status = NormalizeStatus(sale.Status);
+
+            Console.WriteLine($"[SaleRepository] Devolviendo {sales.Count} ventas");
             return sales;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[SaleRepository] ERROR en GetSalesAsync: {ex.Message}");
-            Console.WriteLine($"[SaleRepository] StackTrace: {ex.StackTrace}");
+            Console.WriteLine($"[SaleRepository] ERROR: {ex.Message}");
             throw;
         }
     }
 
     public async Task<List<SaleDto>> GetActiveSalesAsync(int? collectorId)
     {
-        var query = _context.Sales
-            .Include(s => s.Customer)
-            .Where(s => s.Status == "active" && s.TotalAmount > s.PaidAmount);
-
-        if (collectorId.HasValue)
+        try
         {
-            // Filtrar por zona del cobrador si es necesario
-            query = query.Where(s => s.Customer.ZoneId != null);
-        }
+            Console.WriteLine($"[SaleRepository] GetActiveSalesAsync - collectorId={collectorId}");
+            
+            // Ventas activas: buscar EN_PROCESO (Oracle status) o active (legacy)
+            // No podemos filtrar por PaidAmount en el Where porque no existe la columna - filtraremos después
+            var query = _context.Sales
+                .Include(s => s.Customer)
+                .ThenInclude(c => c!.Zone)
+            .Include(s => s.Payments)
+            .Where(s => s.Status != null && (s.Status.ToUpper() == "EN_PROCESO" || s.Status.ToUpper() == "ACTIVE" || s.Status.ToUpper() == "POR_INICIAR"));
 
-        var sales = await query
-            .OrderBy(s => s.SaleDate)
-            .Select(s => new SaleDto
+            if (collectorId.HasValue)
             {
-                SaleId = s.SaleId,
-                CustomerName = s.Customer.CustomerName,
-                TotalAmount = s.TotalAmount,
-                PaidAmount = s.PaidAmount,
-                Balance = s.TotalAmount - s.PaidAmount,
-                SaleDate = s.SaleDate,
-                Status = s.Status,
-                PaymentTerms = $"{s.PaymentTermDays} días"
-            })
-            .ToListAsync();
+                query = query.Where(s => s.Customer != null && s.Customer.ZoneId != null);
+            }
 
-        return sales;
+            var salesData = await query
+                .OrderBy(s => s.SaleDate)
+                .ToListAsync();
+            
+            Console.WriteLine($"[SaleRepository] Query ejecutado, procesando {salesData.Count} ventas");
+            
+            // Calcular PaidAmount y filtrar las que tienen saldo pendiente
+            var sales = salesData
+                .Select(s => 
+                {
+                    var paidAmount = (s.Payments ?? new List<Payment>())
+                        .Where(p => p.Status != null && p.Status.ToUpper() == "APPROVED")
+                        .Sum(p => p.Amount);
+                    return new SaleDto
+                    {
+                        SaleId = s.SaleId,
+                        CustomerName = s.Customer?.CustomerName ?? "Sin cliente",
+                        TotalAmount = s.TotalAmount,
+                        PaidAmount = paidAmount,
+                        Balance = s.TotalAmount - paidAmount,
+                        SaleDate = s.SaleDate,
+                        Status = NormalizeStatus(s.Status),
+                        PaymentTerms = $"{s.PaymentTermDays} días"
+                    };
+                })
+                .Where(s => s.Balance > 0) // Solo ventas con saldo pendiente
+                .ToList();
+
+            Console.WriteLine($"[SaleRepository] Devolviendo {sales.Count} ventas activas");
+            return sales;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[SaleRepository] ERROR: {ex.Message}");
+            Console.WriteLine($"[SaleRepository] StackTrace: {ex.StackTrace}");
+            throw;
+        }
     }
 
     public async Task<SaleDto?> GetSaleByIdAsync(int saleId)
     {
-        return await _context.Sales
+        var sale = await _context.Sales
             .Include(s => s.Customer)
             .Include(s => s.Seller)
+            .Include(s => s.Payments)
             .Where(s => s.SaleId == saleId)
-            .Select(s => new SaleDto
-            {
-                SaleId = s.SaleId,
-                CustomerName = s.Customer.CustomerName,
-                TotalAmount = s.TotalAmount,
-                PaidAmount = s.PaidAmount,
-                Balance = s.TotalAmount - s.PaidAmount,
-                SaleDate = s.SaleDate,
-                Status = s.Status,
-                PaymentTerms = $"{s.PaymentTermDays} días"
-            })
             .FirstOrDefaultAsync();
+        
+        if (sale == null)
+            return null;
+        
+        var paidAmount = (sale.Payments ?? new List<Payment>())
+            .Where(p => p.Status != null && p.Status.ToUpper() == "APPROVED").Sum(p => p.Amount);
+        
+        return new SaleDto
+        {
+            SaleId = sale.SaleId,
+            CustomerName = sale.Customer?.CustomerName ?? "Sin cliente",
+            TotalAmount = sale.TotalAmount,
+            PaidAmount = paidAmount,
+            Balance = sale.TotalAmount - paidAmount,
+            SaleDate = sale.SaleDate,
+            Status = NormalizeStatus(sale.Status),
+            PaymentTerms = $"{sale.PaymentTermDays} días"
+        };
     }
 
     public async Task<Sale?> GetByIdAsync(int saleId)
@@ -234,5 +275,104 @@ public class SaleRepository : BaseOracleRepository, ISaleRepository
             return "DESCONOCIDO";
             
         return resultValue.ToString() ?? "DESCONOCIDO";
+    }
+
+    public async Task<SaleFullDto?> GetSaleFullAsync(int saleId)
+    {
+        try
+        {
+            var sale = await _context.Sales
+                .Include(s => s.Customer).ThenInclude(c => c!.Zone)
+                .Include(s => s.Seller)
+                .Include(s => s.AssignedCollector)
+                .Include(s => s.SaleDetails).ThenInclude(d => d.Product)
+                .Include(s => s.Payments).ThenInclude(p => p.Collector)
+                .Where(s => s.SaleId == saleId)
+                .FirstOrDefaultAsync();
+
+            if (sale == null) return null;
+
+            var approvedPaid = (sale.Payments ?? new List<Payment>())
+                .Where(p => p.Status != null && p.Status.Equals("approved", StringComparison.OrdinalIgnoreCase))
+                .Sum(p => p.Amount);
+            var balance = sale.TotalAmount - approvedPaid;
+
+            // get risk + metrics from Oracle functions (best-effort)
+            string riskStatus = "VERDE";
+            decimal paymentPct = 0;
+            int daysSince = 0;
+            try
+            {
+                riskStatus = await GetSaleRiskStatusAsync(saleId);
+                paymentPct = sale.TotalAmount > 0 ? Math.Round(approvedPaid / sale.TotalAmount * 100, 2) : 0;
+                var lastPaymentDate = (sale.Payments ?? new List<Payment>())
+                    .Where(p => p.Status != null && p.Status.Equals("approved", StringComparison.OrdinalIgnoreCase))
+                    .OrderByDescending(p => p.PaymentDate)
+                    .Select(p => (DateTime?)p.PaymentDate)
+                    .FirstOrDefault();
+                daysSince = lastPaymentDate.HasValue ? (int)(DateTime.Now - lastPaymentDate.Value).TotalDays : 0;
+            }
+            catch { /* metrics are informational, don't fail the whole call */ }
+
+            return new SaleFullDto
+            {
+                SaleId = sale.SaleId,
+                TotalAmount = sale.TotalAmount,
+                PaidAmount = approvedPaid,
+                Balance = balance,
+                SaleDate = sale.SaleDate,
+                Status = NormalizeStatus(sale.Status),
+                PaymentTerms = sale.PaymentTerms,
+                Notes = sale.Notes,
+
+                CustomerId = sale.CustomerId,
+                CustomerName = sale.Customer?.CustomerName ?? "N/A",
+                CustomerPhone = sale.Customer?.Phone,
+                CustomerAddress = sale.Customer?.Address,
+                CustomerGpsLatitude = sale.Customer?.GpsLatitude,
+                CustomerGpsLongitude = sale.Customer?.GpsLongitude,
+                CustomerIsGold = sale.Customer?.IsGoldCustomer ?? false,
+                CustomerIsBlacklisted = sale.Customer?.IsBlacklisted ?? false,
+
+                SellerId = sale.SellerId,
+                SellerName = sale.Seller?.Username,
+                AssignedCollectorId = sale.AssignedCollectorId,
+                CollectorName = sale.AssignedCollector?.Username,
+
+                RiskStatus = riskStatus,
+                PaymentPercentage = paymentPct,
+                DaysSinceLastPayment = daysSince,
+
+                Items = (sale.SaleDetails ?? new List<SaleDetail>()).Select(d => new SaleDetailDto
+                {
+                    SaleDetailId = d.DetailId,
+                    SaleId = d.SaleId,
+                    ProductId = d.ProductId,
+                    ProductName = d.Product?.ProductName ?? "N/A",
+                    Quantity = d.Quantity,
+                    UnitPrice = d.UnitPrice,
+                    Subtotal = d.Subtotal
+                }).ToList(),
+
+                Payments = (sale.Payments ?? new List<Payment>()).Select(p => new PaymentDto
+                {
+                    PaymentId = p.PaymentId,
+                    SaleId = p.SaleId,
+                    CollectorId = p.CollectorId,
+                    CollectorName = p.Collector?.Username,
+                    Amount = p.Amount,
+                    PaymentDate = p.PaymentDate,
+                    GpsLatitude = p.GpsLatitude,
+                    GpsLongitude = p.GpsLongitude,
+                    Status = p.Status?.ToLower() ?? "unknown",
+                    Notes = p.Notes
+                }).OrderByDescending(p => p.PaymentDate).ToList()
+            };
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[SaleRepository] ERROR in GetSaleFullAsync: {ex.Message}");
+            throw;
+        }
     }
 }

@@ -54,3 +54,18 @@ public class GetSaleByIdQueryHandler : IRequestHandler<GetSaleByIdQuery, SaleDto
         return await _saleRepository.GetSaleByIdAsync(request.SaleId);
     }
 }
+
+public class GetSaleFullQueryHandler : IRequestHandler<GetSaleFullQuery, SaleFullDto?>
+{
+    private readonly ISaleRepository _saleRepository;
+
+    public GetSaleFullQueryHandler(ISaleRepository saleRepository)
+    {
+        _saleRepository = saleRepository;
+    }
+
+    public async Task<SaleFullDto?> Handle(GetSaleFullQuery request, CancellationToken cancellationToken)
+    {
+        return await _saleRepository.GetSaleFullAsync(request.SaleId);
+    }
+}

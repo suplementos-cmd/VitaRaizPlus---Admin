@@ -72,69 +72,93 @@ public class CustomerRepository : BaseOracleRepository, ICustomerRepository
     public async Task<List<CustomerDto>> GetCustomersAsync(string? searchTerm, int? zoneId, 
         bool? isGoldCustomer, bool? isBlacklisted)
     {
-        var query = _context.Customers
-            .Include(c => c.Zone)
-            .AsQueryable();
-
-        if (!string.IsNullOrEmpty(searchTerm))
+        try
         {
-            query = query.Where(c => 
-                c.CustomerName.Contains(searchTerm) || 
-                (c.PhoneNumber != null && c.PhoneNumber.Contains(searchTerm)) ||
-                (c.Email != null && c.Email.Contains(searchTerm)));
-        }
+            Console.WriteLine($"[CustomerRepository] GetCustomersAsync - Params: searchTerm={searchTerm}, zoneId={zoneId}");
+            
+            var query = _context.Customers
+                .Include(c => c.Zone)
+                .AsQueryable();
 
-        if (zoneId.HasValue)
-            query = query.Where(c => c.ZoneId == zoneId.Value);
-
-        if (isGoldCustomer.HasValue)
-            query = query.Where(c => c.IsGoldCustomer == isGoldCustomer.Value);
-
-        if (isBlacklisted.HasValue)
-            query = query.Where(c => c.IsBlacklisted == isBlacklisted.Value);
-
-        var customers = await query
-            .OrderBy(c => c.CustomerName)
-            .Select(c => new CustomerDto
+            if (!string.IsNullOrEmpty(searchTerm))
             {
-                CustomerId = c.CustomerId,
-                CustomerName = c.CustomerName,
-                PhoneNumber = c.PhoneNumber,
-                Email = c.Email,
-                Address = c.Address,
-                ZoneId = c.ZoneId,
-                ZoneName = c.Zone != null ? c.Zone.ZoneName : null,
-                GpsLatitude = c.GpsLatitude,
-                GpsLongitude = c.GpsLongitude,
-                IsGoldCustomer = c.IsGoldCustomer,
-                IsBlacklisted = c.IsBlacklisted,
-                CreatedAt = c.CreatedAt
-            })
-            .ToListAsync();
+                query = query.Where(c => 
+                    c.CustomerName.Contains(searchTerm) || 
+                    (c.Phone != null && c.Phone.Contains(searchTerm)) ||
+                    (c.Email != null && c.Email.Contains(searchTerm)));
+            }
 
-        return customers;
+            if (zoneId.HasValue)
+                query = query.Where(c => c.ZoneId == zoneId.Value);
+
+            if (isGoldCustomer.HasValue)
+                query = query.Where(c => c.IsGoldCustomer == isGoldCustomer.Value);
+
+            if (isBlacklisted.HasValue)
+                query = query.Where(c => c.IsBlacklisted == isBlacklisted.Value);
+
+            var customers = await query
+                .OrderBy(c => c.CustomerName)
+                .Select(c => new CustomerDto
+                {
+                    CustomerId = c.CustomerId,
+                    CustomerName = c.CustomerName,
+                    PhoneNumber = c.Phone,
+                    Email = c.Email,
+                    Address = c.Address,
+                    ZoneId = c.ZoneId,
+                    ZoneName = c.Zone != null ? c.Zone.ZoneName : null,
+                    GpsLatitude = c.GpsLatitude,
+                    GpsLongitude = c.GpsLongitude,
+                    IsGoldCustomer = c.IsGoldCustomer,
+                    IsBlacklisted = c.IsBlacklisted,
+                    CreatedAt = c.RegisteredAt
+                })
+                .ToListAsync();
+
+            Console.WriteLine($"[CustomerRepository] Devolviendo {customers.Count} clientes");
+            return customers;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[CustomerRepository] ERROR: {ex.Message}");
+            throw;
+        }
     }
 
     public async Task<CustomerDto?> GetCustomerByIdAsync(int customerId)
     {
-        return await _context.Customers
-            .Include(c => c.Zone)
-            .Where(c => c.CustomerId == customerId)
-            .Select(c => new CustomerDto
-            {
-                CustomerId = c.CustomerId,
-                CustomerName = c.CustomerName,
-                PhoneNumber = c.PhoneNumber,
-                Email = c.Email,
-                Address = c.Address,
-                ZoneId = c.ZoneId,
-                ZoneName = c.Zone != null ? c.Zone.ZoneName : null,
-                GpsLatitude = c.GpsLatitude,
-                GpsLongitude = c.GpsLongitude,
-                IsGoldCustomer = c.IsGoldCustomer,
-                IsBlacklisted = c.IsBlacklisted,
-                CreatedAt = c.CreatedAt
-            })
-            .FirstOrDefaultAsync();
+        try
+        {
+            Console.WriteLine($"[CustomerRepository] GetCustomerByIdAsync - customerId={customerId}");
+            
+            var customer = await _context.Customers
+                .Include(c => c.Zone)
+                .Where(c => c.CustomerId == customerId)
+                .Select(c => new CustomerDto
+                {
+                    CustomerId = c.CustomerId,
+                    CustomerName = c.CustomerName,
+                    PhoneNumber = c.Phone,
+                    Email = c.Email,
+                    Address = c.Address,
+                    ZoneId = c.ZoneId,
+                    ZoneName = c.Zone != null ? c.Zone.ZoneName : null,
+                    GpsLatitude = c.GpsLatitude,
+                    GpsLongitude = c.GpsLongitude,
+                    IsGoldCustomer = c.IsGoldCustomer,
+                    IsBlacklisted = c.IsBlacklisted,
+                    CreatedAt = c.RegisteredAt
+                })
+                .FirstOrDefaultAsync();
+
+            Console.WriteLine($"[CustomerRepository] Cliente encontrado: {customer != null}");
+            return customer;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[CustomerRepository] ERROR en GetCustomerByIdAsync: {ex.Message}");
+            throw;
+        }
     }
 }

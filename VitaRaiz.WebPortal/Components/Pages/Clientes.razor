@@ -1,11 +1,11 @@
 @page "/clientes"
-@using VitaRaiz.Application.DTOs
 @using VitaRaiz.WebPortal.Services
 @using VitaRaiz.WebPortal.Components.Modals
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
 @inject ApiService ApiService
-@rendermode InteractiveServer
+@inject IJSRuntime JS
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 
 <PageTitle>Clientes - VitaRaiz</PageTitle>
 
@@ -21,6 +21,14 @@
         </button>
     </div>
 </div>
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @errorMessage
+        <button type="button" class="btn-close" @onclick="() => errorMessage = string.Empty"></button>
+    </div>
+}
 
 @if (clientes == null)
 {
@@ -112,6 +120,7 @@ else
 @code {
     private List<CustomerDto>? clientes;
     private string searchTerm = "";
+    private string errorMessage = "";
     private int paginaActual = 1;
     private int itemsPorPagina = 10;
     private bool showModal = false;
@@ -136,7 +145,7 @@ else
     }
 
     private int totalItems => clientesFiltrados.Count();
-    private int totalPaginas => (int)Math.Ceiling(totalItems / (double)itemsPorPagina);
+    private int totalPaginas => Math.Max(1, (int)Math.Ceiling(totalItems / (double)itemsPorPagina));
 
     protected override async Task OnInitializedAsync()
     {
@@ -145,6 +154,7 @@ else
 
     private async Task CargarClientes()
     {
+        errorMessage = "";
         try
         {
             var queryParams = new Dictionary<string, string?>();
@@ -154,11 +164,21 @@ else
                 queryParams.Add("searchTerm", searchTerm);
             }
 
-            clientes = await ApiService.GetAsync<List<CustomerDto>>("/api/customers", queryParams);
+            var result = await ApiService.GetAsync<List<CustomerDto>>("/api/customers", queryParams);
+            if (result != null)
+            {
+                clientes = result;
+            }
+            else
+            {
+                errorMessage = "No se pudieron cargar los clientes. Verifique que el API esté activo.";
+                clientes = new List<CustomerDto>();
+            }
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error loading customers: {ex.Message}");
+            errorMessage = $"Error al cargar clientes: {ex.Message}";
             clientes = new List<CustomerDto>();
         }
     }
@@ -179,7 +199,8 @@ else
 
     private void VerDetalle(int customerId)
     {
-        // TODO: Navegar a detalle de cliente
+        selectedCustomerId = customerId;
+        showModal = true;
     }
 
     private void Editar(int customerId)
@@ -190,13 +211,18 @@ else
 
     private async Task Eliminar(int customerId)
     {
-        if (confirm($"¿Está seguro de eliminar el cliente {customerId}?"))
+        var confirmed = await JS.InvokeAsync<bool>("confirm", $"¿Está seguro de eliminar el cliente {customerId}?");
+        if (confirmed)
         {
             var success = await ApiService.DeleteAsync($"/api/customers/{customerId}");
             if (success)
             {
                 await CargarClientes();
                 StateHasChanged();
+            }
+            else
+            {
+                errorMessage = "Error al eliminar el cliente. Verifique permisos.";
             }
         }
     }
@@ -211,11 +237,5 @@ else
     {
         await CargarClientes();
         StateHasChanged();
-    }
-
-    private bool confirm(string message)
-    {
-        // TODO: Implementar confirmación con JS Interop
-        return true;
     }
 }

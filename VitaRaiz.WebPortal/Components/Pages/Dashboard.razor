@@ -1,12 +1,11 @@
 @page "/dashboard"
-@using VitaRaiz.Application.DTOs
 @using VitaRaiz.WebPortal.Services
 @using Microsoft.JSInterop
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
 @inject ApiService ApiService
 @inject IJSRuntime JS
-@rendermode InteractiveServer
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 
 <PageTitle>Dashboard - VitaRaiz</PageTitle>
 

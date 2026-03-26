@@ -1,6 +1,26 @@
 # VitaRaiz Sales & Collection System
 
+**🔄 Actualizado**: 25 de Marzo, 2026  
+**Versión**: 2.0
+
 Sistema integral de gestión de ventas y cobranza para VitaRaiz, implementado con Clean Architecture, CQRS y .NET 8.0.
+
+---
+
+## 🎯 INICIO RÁPIDO
+
+### ¿Nuevo en el proyecto?
+
+1. 📖 Lee [RESUMEN_CORRECCIONES.md](RESUMEN_CORRECCIONES.md) - Cambios recientes y estado actual
+2. 🏗️ Revisa [ARQUITECTURA.md](ARQUITECTURA.md) - Estructura completa del sistema
+3. ⚙️ Sigue [CONFIGURACION.md](CONFIGURACION.md) - Guía paso a paso de configuración
+4. 🗺️ Consulta [API_ENDPOINTS_MAP.md](API_ENDPOINTS_MAP.md) - 46 endpoints documentados
+
+### ¿Problemas con el login?
+
+✅ **SOLUCIONADO** - WebPortal ya funciona correctamente. Ver [RESUMEN_CORRECCIONES.md](RESUMEN_CORRECCIONES.md)
+
+---
 
 ## 🏗️ Arquitectura
 
@@ -13,7 +33,7 @@ VitaRaizSalesApp/
 ├── VitaRaiz.Infrastructure/  # Acceso a datos (Oracle + EF Core)
 ├── VitaRaiz.API/             # REST API con JWT authentication
 ├── VitaRaiz.WebPortal/       # Portal administrativo (Blazor Server)
-└── VitaRaiz.Mobile/          # App móvil Android (.NET MAUI)
+└── VitaRaiz.Mobile/          # App móvil multiplataforma (.NET MAUI)
 ```
 
 ### Principios Aplicados
@@ -23,6 +43,10 @@ VitaRaizSalesApp/
 - ✅ **DDD** - Domain-Driven Design con entidades ricas
 - ✅ **Repository Pattern** - Abstracción de acceso a datos
 - ✅ **Dependency Injection** - IoC en todos los proyectos
+
+📖 **Documentación completa**: [ARQUITECTURA.md](ARQUITECTURA.md)
+
+---
 
 ## 🔧 Tecnologías
 
@@ -36,12 +60,14 @@ VitaRaizSalesApp/
 
 ### Frontend
 - **Blazor Server** - Web portal administrativo
-- **.NET MAUI** - Aplicación móvil Android
+- **.NET MAUI** - Aplicación móvil (Android, iOS, Windows)
 - **Bootstrap 5** - UI framework
 
 ### Seguridad
-- **JWT Bearer Authentication** - Autenticación basada en tokens
-- **Role-based Authorization** - Control de acceso por roles
+- **JWT Bearer Authentication** - Autenticación basada en tokens (8 horas de validez)
+- **Role-based Authorization** - Control de acceso por roles (Admin, Supervisor, Vendedor, Cobrador)
+
+---
 
 ## 📦 Configuración de Base de Datos
 
@@ -61,107 +87,297 @@ El sistema utiliza el paquete **EM_VITARAIZ_AD** que contiene:
 
 #### Componentes Principales:
 
+- `fn_authenticate_user` - Autenticación de usuarios
 - `sp_register_payment` - Registrar pagos
 - `fn_get_sale_balance` - Obtener saldo pendiente
 - `fn_get_risk_status` - Calcular nivel de riesgo
 - `sp_daily_collection_stats` - Estadísticas diarias de cobranza
 - `v_collector_customers_detail` - Vista de clientes por cobrador
 
+📖 **Guía completa de configuración**: [CONFIGURACION.md](CONFIGURACION.md)
+
+---
+
 ## 🚀 Instalación y Ejecución
 
-### 1. Clonar el Repositorio
+### Paso 1: Verificar Requisitos
 
-```bash
-git clone https://github.com/suplementos-cmd/VitaRaizPlus---Admin.git
-cd VitaRaizPlus---Admin
+```powershell
+# Verificar .NET SDK
+dotnet --version
+# Debe mostrar: 8.0.xxx
+
+# Verificar Oracle
+sqlplus salesapp/SalesApp2026@localhost:1521/XEPDB1
 ```
 
-### 2. Configurar Cadena de Conexión
+### Paso 2: Configurar Base de Datos
 
-**VitaRaiz.API/appsettings.json** y **VitaRaiz.WebPortal/appsettings.json**:
-
-```json
-{
-  "ConnectionStrings": {
-    "OracleConnection": "Data Source=(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=localhost)(PORT=1521))(CONNECT_DATA=(SERVICE_NAME=XEPDB1)));User Id=salesapp;Password=SalesApp2026;"
-  }
-}
+```powershell
+cd Database
+sqlplus salesapp/SalesApp2026@localhost:1521/XEPDB1 @01_Tablas.sql
+sqlplus salesapp/SalesApp2026@localhost:1521/XEPDB1 @EM_VITARAIZ_AD.pck
 ```
 
-### 3. Compilar Solución
+### Paso 3: Ejecutar la API
 
-```bash
-dotnet build
-```
-
-### 4. Ejecutar API
-
-```bash
+```powershell
 cd VitaRaiz.API
-dotnet run
+dotnet restore
+dotnet run --launch-profile http
 ```
 
-La API se ejecutará en: `https://localhost:5001` (o puerto asignado)
+**API disponible en**: `http://localhost:5299`  
+**Swagger UI**: `http://localhost:5299/swagger`
 
-### 5. Ejecutar Web Portal
+### Paso 4: Ejecutar WebPortal
 
-```bash
+```powershell
 cd VitaRaiz.WebPortal
-dotnet run
+dotnet restore
+dotnet run --launch-profile http
 ```
 
-El portal se ejecutará en: `https://localhost:5145` (o puerto asignado)
+**WebPortal disponible en**: `http://localhost:5145`
 
-### 6. Ejecutar Mobile (Requiere Android SDK)
+### Paso 5: Ejecutar Mobile App (Opcional)
 
-```bash
+**Windows**:
+```powershell
 cd VitaRaiz.Mobile
-dotnet build -f net9.0-android
+dotnet restore
+dotnet run -f net8.0-windows10.0.19041.0
 ```
+
+**Android**:
+```powershell
+cd VitaRaiz.Mobile
+dotnet restore
+dotnet run -f net8.0-android
+```
+
+📖 **Guía detallada**: [CONFIGURACION.md](CONFIGURACION.md)
+
+---
 
 ## 📱 Funcionalidades
 
-### API REST
+### API REST - 46 Endpoints Documentados
 
-#### Endpoints Principales:
+#### Controladores:
 
-**Autenticación:**
+**🔐 AuthController** (3 endpoints)
 - `POST /api/auth/login` - Inicio de sesión (genera JWT)
+- `GET /api/auth/validate` - Validar token ✨ NUEVO
+- `GET /api/auth/me` - Usuario actual ✨ NUEVO
 
-**Pagos:**
-- `POST /api/payments` - Registrar pago (requiere auth)
+**💰 SalesController** (7 endpoints)
+- `GET /api/sales` - Obtener ventas con filtros
+- `GET /api/sales/active` - Ventas activas
+- `GET /api/sales/{id}` - Venta por ID
+- `GET /api/sales/{id}/balance` - Balance pendiente
+- `POST /api/sales` - Crear venta
+- `PUT /api/sales/{id}/cancel` - Cancelar venta
 
-**Ventas:**
-- `GET /api/sales/{id}/balance` - Consultar balance de venta
+**💳 PaymentsController** (5 endpoints)
+- `GET /api/payments` - Obtener pagos
+- `GET /api/payments/{id}` - Pago por ID
+- `POST /api/payments` - Registrar pago
+- `PUT /api/payments/{id}/approve` - Aprobar pago
+- `PUT /api/payments/{id}/reject` - Rechazar pago
+
+**👥 CustomersController** (5 endpoints)
+- `GET /api/customers` - Listar clientes
+- `GET /api/customers/{id}` - Cliente por ID
+- `POST /api/customers` - Crear cliente
+- `PUT /api/customers/{id}` - Actualizar cliente
+- `DELETE /api/customers/{id}` - Eliminar cliente
+
+**📦 ProductsController, 🗺️ ZonesController, 📚 CatalogsController** y más...
+
+📖 **Documentación completa**: [API_ENDPOINTS_MAP.md](API_ENDPOINTS_MAP.md)
+
+---
 
 ### Web Portal
 
 **Páginas disponibles:**
 
-1. **Dashboard** (`/dashboard`)
+1. **🏠 Dashboard** (`/dashboard`)
    - Métricas clave del día
    - Ventas, cobros, clientes activos
+   - Gráficos y estadísticas
 
-2. **Gestión de Clientes** (`/clientes`)
+2. **👥 Gestión de Clientes** (`/clientes`)
    - Lista completa con búsqueda
    - Indicadores Gold ⭐ y Blacklist 🚫
    - Filtrado por zona
 
-3. **Gestión de Ventas** (`/ventas`)
+3. **💰 Gestión de Ventas** (`/ventas`)
    - Listado con filtros por estado
    - Consulta de balance en tiempo real
    - Asignación de cobradores
 
-4. **Gestión de Pagos** (`/pagos`)
+4. **💳 Gestión de Pagos** (`/pagos`)
    - Registro y seguimiento
    - Geolocalización GPS 📍
    - Validación y aprobación
 
-5. **Reportes** (`/reportes`)
+5. **📊 Reportes** (`/reportes`)
    - Cobranza diaria
    - Ventas por periodo
    - Rendimiento por cobrador
    - Análisis de morosidad
+
+---
+
+### Mobile App
+
+**Características**:
+- ✅ Login con credenciales
+- ✅ Gestión de clientes
+- ✅ Creación de ventas
+- ✅ Registro de pagos con geolocalización
+- ✅ Visualización de catálogos
+- ✅ Sincronización con API
+- 🔜 Modo offline (próximamente)
+- 🔜 Notificaciones push (próximamente)
+
+**Plataformas soportadas**:
+- ✅ Android
+- ✅ iOS
+- ✅ Windows
+
+---
+
+## 🔐 Autenticación y Autorización
+
+### JWT Token
+
+**Configuración**:
+- **Validez**: 8 horas (480 minutos)
+- **Algoritmo**: HS256
+- **Claims**: userId, username, role
+
+**Headers requeridos**:
+```
+Authorization: Bearer {token}
+```
+
+### Roles del Sistema
+
+| Rol | Permisos |
+|-----|----------|
+| **Admin** | Acceso total a todos los endpoints |
+| **Supervisor** | Crear/editar clientes, aprobar pagos, cancelar ventas |
+| **Vendedor** | Crear ventas, ver clientes, ver productos |
+| **Cobrador** | Registrar pagos, ver ventas activas, ver clientes |
+
+---
+
+## 📊 Estado del Proyecto
+
+### ✅ FUNCIONANDO CORRECTAMENTE
+
+- ✅ **API Backend**: 46 endpoints operativos
+- ✅ **WebPortal**: Login y todas las funcionalidades ✨ CORREGIDO
+- ✅ **Mobile App**: Login y operaciones principales
+- ✅ **Base de Datos**: Oracle XE con paquete PL/SQL
+- ✅ **Autenticación**: JWT tokens con validación
+- ✅ **CORS**: Configurado para todos los clientes
+
+### 🆕 Cambios Recientes (25/03/2026)
+
+1. ✅ Agregado endpoint `/api/auth/validate`
+2. ✅ Agregado endpoint `/api/auth/me`
+3. ✅ CORS mejorado para WebPortal
+4. ✅ URLs corregidas en configuraciones
+5. ✅ Documentación completa creada
+
+📖 **Detalles completos**: [RESUMEN_CORRECCIONES.md](RESUMEN_CORRECCIONES.md)
+
+---
+
+## 🔧 Solución de Problemas
+
+### ❌ WebPortal no puede hacer login
+✅ **SOLUCIONADO** - Verifica que:
+1. API esté corriendo en el puerto correcto
+2. URL en `appsettings.json` del WebPortal coincida con la API
+3. CORS esté habilitado en la API
+
+### ❌ Mobile no se conecta
+Verifica:
+1. URL en `ApiService.cs` sea correcta
+2. Para Android Emulator usa `http://10.0.2.2:5299`
+3. Para Android Device usa tu IP local
+
+### ❌ Error de Oracle
+Verifica:
+1. Oracle Database esté corriendo: `lsnrctl status`
+2. Connection String sea correcta
+3. Package `EM_VITARAIZ_AD` esté compilado
+
+📖 **Guía completa de solución de problemas**: [CONFIGURACION.md](CONFIGURACION.md#solución-de-problemas)
+
+---
+
+## 📚 Documentación
+
+| Documento | Descripción |
+|-----------|-------------|
+| [README.md](README.md) | Este archivo - Visión general del proyecto |
+| [ARQUITECTURA.md](ARQUITECTURA.md) | Arquitectura completa del sistema |
+| [API_ENDPOINTS_MAP.md](API_ENDPOINTS_MAP.md) | 46 endpoints documentados con ejemplos |
+| [CONFIGURACION.md](CONFIGURACION.md) | Guía de instalación y configuración |
+| [RESUMEN_CORRECCIONES.md](RESUMEN_CORRECCIONES.md) | Cambios recientes y correcciones |
+| [ANALISIS_PROYECTO.md](ANALISIS_PROYECTO.md) | Análisis técnico del proyecto |
+
+---
+
+## 🚀 Roadmap
+
+### Próximas Mejoras
+
+- [ ] Implementar Refresh Tokens
+- [ ] Health Checks endpoint
+- [ ] Logging centralizado (Serilog)
+- [ ] API Versioning (v1, v2)
+- [ ] Testing automatizado (Unit + Integration)
+- [ ] Offline support en Mobile
+- [ ] Notificaciones push
+- [ ] CI/CD Pipeline
+
+---
+
+## 👥 Contribución
+
+Para contribuir al proyecto:
+
+1. Fork el repositorio
+2. Crea una rama de feature (`git checkout -b feature/AmazingFeature`)
+3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
+4. Push a la rama (`git push origin feature/AmazingFeature`)
+5. Abre un Pull Request
+
+---
+
+## 📄 Licencia
+
+Este proyecto es propiedad de VitaRaiz. Todos los derechos reservados.
+
+---
+
+## 📞 Contacto y Soporte
+
+Para soporte técnico o preguntas:
+- Revisar documentación en `/docs/`
+- Consultar [CONFIGURACION.md](CONFIGURACION.md) - Sección de troubleshooting
+- Abrir un Issue en el repositorio
+
+---
+
+**© 2026 VitaRaiz Sales & Collection System - v2.0**
 
 ### Aplicación Móvil
 

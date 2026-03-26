@@ -66,8 +66,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <ProjectReference Include="..\VitaRaiz.Application\VitaRaiz.Application.csproj" />
-	  <ProjectReference Include="..\VitaRaiz.Infrastructure\VitaRaiz.Infrastructure.csproj" />
+	  <!-- Mobile no necesita referencias a capas internas: se comunica via HTTP con la API -->
 	</ItemGroup>
 
 </Project>

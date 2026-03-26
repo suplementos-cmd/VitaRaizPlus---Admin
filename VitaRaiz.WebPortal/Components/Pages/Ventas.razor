@@ -1,11 +1,10 @@
 @page "/ventas"
-@using VitaRaiz.Application.DTOs
 @using VitaRaiz.WebPortal.Services
 @using VitaRaiz.WebPortal.Components.Modals
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
 @inject ApiService ApiService
-@rendermode InteractiveServer
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 
 <PageTitle>Ventas - VitaRaiz</PageTitle>
 
@@ -25,6 +24,7 @@
 <div class="btn-group mb-3" role="group">
     <button class="btn @(filtroEstado == "todas" ? "btn-primary" : "btn-outline-primary")" @onclick='() => CambiarFiltro("todas")'>Todas</button>
     <button class="btn @(filtroEstado == "active" ? "btn-success" : "btn-outline-success")" @onclick='() => CambiarFiltro("active")'>Activas</button>
+    <button class="btn @(filtroEstado == "pending" ? "btn-warning" : "btn-outline-warning")" @onclick='() => CambiarFiltro("pending")'>Pendientes</button>
     <button class="btn @(filtroEstado == "completed" ? "btn-info" : "btn-outline-info")" @onclick='() => CambiarFiltro("completed")'>Completadas</button>
     <button class="btn @(filtroEstado == "cancelled" ? "btn-danger" : "btn-outline-danger")" @onclick='() => CambiarFiltro("cancelled")'>Canceladas</button>
 </div>
@@ -69,6 +69,9 @@ else
                                 case "active":
                                     <span class="badge bg-success">Activa</span>
                                     break;
+                                case "pending":
+                                    <span class="badge bg-warning">Pendiente</span>
+                                    break;
                                 case "completed":
                                     <span class="badge bg-info">Completada</span>
                                     break;
@@ -82,7 +85,7 @@ else
                         </td>
                         <td>
                             <button class="btn btn-sm btn-info" @onclick="() => VerDetalle(venta.SaleId)">Ver</button>
-                            @if (venta.Status == "active")
+                            @if (venta.Status == "active" || venta.Status == "pending")
                             {
                                 <button class="btn btn-sm btn-danger" @onclick="() => CancelarVenta(venta.SaleId)">Cancelar</button>
                             }
@@ -184,7 +187,7 @@ else
     {
         if (confirm($"¿Está seguro de cancelar la venta #{saleId}?"))
         {
-            var cancelData = new { reason = "Cancelada por usuario" };
+            var cancelData = new { saleId = saleId, reason = "Cancelada por usuario" };
             var success = await ApiService.PutAsync($"/api/sales/{saleId}/cancel", cancelData);
             
             if (success)

@@ -3,9 +3,12 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="VitaRaiz.Mobile.Pages.HomePage"
              Title="Inicio"
+             Shell.TabBarIsVisible="False"
              BackgroundColor="#F0F4F8">
+
+    <Grid RowDefinitions="*,Auto">
     
-    <ScrollView>
+    <ScrollView Grid.Row="0">
         <VerticalStackLayout Padding="20" Spacing="20">
             
             <!-- Header -->
@@ -176,4 +179,37 @@
             
         </VerticalStackLayout>
     </ScrollView>
+
+    <!-- ═══ BOTTOM NAV BAR ═══ -->
+    <Border Grid.Row="1" StrokeThickness="0" BackgroundColor="White"
+            Shadow="{Shadow Brush='#22000000', Offset='0,-2', Radius=4}">
+        <Grid ColumnDefinitions="*,*,*,*" HeightRequest="58" Padding="0,6,0,4">
+            <VerticalStackLayout Grid.Column="0" Spacing="2" HorizontalOptions="Center" VerticalOptions="Center">
+                <Label Text="🏠" FontSize="22" HorizontalOptions="Center" TextColor="#7B1FA2" />
+                <Label Text="Inicio" FontSize="10" HorizontalOptions="Center" TextColor="#7B1FA2" FontAttributes="Bold" />
+            </VerticalStackLayout>
+            <VerticalStackLayout Grid.Column="1" Spacing="2" HorizontalOptions="Center" VerticalOptions="Center">
+                <Label Text="📋" FontSize="22" HorizontalOptions="Center" TextColor="#AAAAAA" />
+                <Label Text="Ventas" FontSize="10" HorizontalOptions="Center" TextColor="#AAAAAA" />
+                <VerticalStackLayout.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnTabVentas" />
+                </VerticalStackLayout.GestureRecognizers>
+            </VerticalStackLayout>
+            <VerticalStackLayout Grid.Column="2" Spacing="2" HorizontalOptions="Center" VerticalOptions="Center">
+                <Label Text="💰" FontSize="22" HorizontalOptions="Center" TextColor="#AAAAAA" />
+                <Label Text="Cobranza" FontSize="10" HorizontalOptions="Center" TextColor="#AAAAAA" />
+                <VerticalStackLayout.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnTabCobranza" />
+                </VerticalStackLayout.GestureRecognizers>
+            </VerticalStackLayout>
+            <VerticalStackLayout Grid.Column="3" Spacing="2" HorizontalOptions="Center" VerticalOptions="Center">
+                <Label Text="👥" FontSize="22" HorizontalOptions="Center" TextColor="#AAAAAA" />
+                <Label Text="Clientes" FontSize="10" HorizontalOptions="Center" TextColor="#AAAAAA" />
+                <VerticalStackLayout.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnTabClientes" />
+                </VerticalStackLayout.GestureRecognizers>
+            </VerticalStackLayout>
+        </Grid>
+    </Border>
+    </Grid>
 </ContentPage>

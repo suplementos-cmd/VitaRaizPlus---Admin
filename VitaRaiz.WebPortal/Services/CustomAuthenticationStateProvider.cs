@@ -30,14 +30,6 @@ public class CustomAuthenticationStateProvider : AuthenticationStateProvider
 
             var user = userSession.Value;
 
-            // Validar que el token siga siendo válido
-            var isValid = await _authService.ValidateTokenAsync(user.Token);
-            if (!isValid)
-            {
-                await _sessionStorage.DeleteAsync("currentUser");
-                return new AuthenticationState(_anonymous);
-            }
-
             var claimsPrincipal = new ClaimsPrincipal(new ClaimsIdentity(new[]
             {
                 new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),

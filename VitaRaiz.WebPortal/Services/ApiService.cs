@@ -58,6 +58,8 @@ public class ApiService
                 return JsonSerializer.Deserialize<T>(content, _jsonOptions);
             }
             
+            var errorBody = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"Error en GET {endpoint}: Status={response.StatusCode}, Body={errorBody}");
             return default;
         }
         catch (Exception ex)

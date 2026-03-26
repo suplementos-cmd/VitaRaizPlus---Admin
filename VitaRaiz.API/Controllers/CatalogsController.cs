@@ -20,6 +20,7 @@ public class CatalogsController : ControllerBase
     /// Obtiene todos los catálogos en una sola llamada
     /// Útil para la inicialización de la app móvil
     /// </summary>
+    [AllowAnonymous]
     [HttpGet("all")]
     public async Task<IActionResult> GetAllCatalogs()
     {

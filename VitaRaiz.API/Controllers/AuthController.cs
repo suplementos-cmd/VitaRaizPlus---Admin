@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using VitaRaiz.Infrastructure.Data;
 using VitaRaiz.API.Services;
@@ -6,6 +7,8 @@ using VitaRaiz.Infrastructure.Configuration;
 using Oracle.ManagedDataAccess.Client;
 using Oracle.ManagedDataAccess.Types;
 using System.Data;
+using System.Security.Claims;
+using System.IdentityModel.Tokens.Jwt;
 
 namespace VitaRaiz.API.Controllers;
 
@@ -113,6 +116,65 @@ public class AuthController : ControllerBase
         catch (Exception ex)
         {
             return StatusCode(500, new { error = "Error al autenticar usuario", details = ex.Message });
+        }
+    }
+
+    [HttpGet("validate")]
+    [Authorize]
+    public ActionResult ValidateToken()
+    {
+        try
+        {
+            // Si llegamos aquí, el token es válido (ya lo validó el middleware JWT)
+            var userId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
+                      ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var username = User.FindFirst(JwtRegisteredClaimNames.Name)?.Value
+                        ?? User.FindFirst(ClaimTypes.Name)?.Value;
+            var role = User.FindFirst(ClaimTypes.Role)?.Value
+                    ?? User.FindFirst("role")?.Value;
+
+            return Ok(new
+            {
+                valid = true,
+                userId = userId,
+                username = username,
+                role = role
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = "Error al validar token", details = ex.Message });
+        }
+    }
+
+    [HttpGet("me")]
+    [Authorize]
+    public ActionResult GetCurrentUser()
+    {
+        try
+        {
+            var userId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
+                      ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var username = User.FindFirst(JwtRegisteredClaimNames.Name)?.Value
+                        ?? User.FindFirst(ClaimTypes.Name)?.Value;
+            var role = User.FindFirst(ClaimTypes.Role)?.Value
+                    ?? User.FindFirst("role")?.Value;
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized(new { error = "Token inválido o expirado" });
+            }
+
+            return Ok(new
+            {
+                userId = int.Parse(userId),
+                username = username,
+                role = role
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = "Error al obtener información del usuario", details = ex.Message });
         }
     }
 }

@@ -5,12 +5,12 @@
       {
         "Path": "VitaRaiz.API\\VitaRaiz.API.csproj",
         "Action": "StartWithoutDebugging",
-        "DebugTarget": "IIS Express"
+        "DebugTarget": "http"
       },
       {
         "Path": "VitaRaiz.WebPortal\\VitaRaiz.WebPortal.csproj",
         "Action": "Start",
-        "DebugTarget": "IIS Express"
+        "DebugTarget": "http"
       }
     ]
   }

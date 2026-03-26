@@ -12,7 +12,7 @@ public partial class PaymentPage : ContentPage
     private string _gpsCoordinates = string.Empty;
     private double _latitude;
     private double _longitude;
-    private SaleDto? _selectedSale;
+    private PaymentSaleItem? _selectedSale;
     private string _paymentAmount = string.Empty;
     private string _notes = string.Empty;
     private string _errorMessage = string.Empty;
@@ -21,7 +21,7 @@ public partial class PaymentPage : ContentPage
     private bool _hasError;
     private bool _hasSuccess;
 
-    public ObservableCollection<SaleDto> Sales { get; set; } = new();
+    public ObservableCollection<PaymentSaleItem> Sales { get; set; } = new();
     public ObservableCollection<PaymentPhoto> Photos { get; set; } = new();
 
     public PaymentPage()
@@ -77,7 +77,7 @@ public partial class PaymentPage : ContentPage
         }
     }
 
-    public SaleDto? SelectedSale
+    public PaymentSaleItem? SelectedSale
     {
         get => _selectedSale;
         set
@@ -222,7 +222,7 @@ public partial class PaymentPage : ContentPage
                 Sales.Clear();
                 foreach (var sale in salesData)
                 {
-                    Sales.Add(new SaleDto
+                    Sales.Add(new PaymentSaleItem
                     {
                         SaleId = sale.SaleId,
                         CustomerName = sale.CustomerName,
@@ -427,10 +427,15 @@ public partial class PaymentPage : ContentPage
         ErrorMessage = string.Empty;
         SuccessMessage = string.Empty;
     }
+
+    // ═══ Bottom Tab Navigation ═══
+    private async void OnTabInicio(object? s, EventArgs e) => await Shell.Current.GoToAsync("//HomePage");
+    private async void OnTabVentas(object? s, EventArgs e) => await Shell.Current.GoToAsync("//SalesPage");
+    private async void OnTabClientes(object? s, EventArgs e) => await Shell.Current.GoToAsync("//CustomersPage");
 }
 
 // DTOs
-public class SaleDto
+public class PaymentSaleItem
 {
     public int SaleId { get; set; }
     public string CustomerName { get; set; } = string.Empty;

@@ -1,11 +1,10 @@
 @page "/pagos"
-@using VitaRaiz.Application.DTOs
 @using VitaRaiz.WebPortal.Services
 @using VitaRaiz.WebPortal.Components.Modals
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
 @inject ApiService ApiService
-@rendermode InteractiveServer
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 
 <PageTitle>Pagos - VitaRaiz</PageTitle>
 
@@ -209,7 +208,7 @@ else
     {
         try
         {
-            var approveData = new { approvedBy = 1 }; // TODO: Obtener el userId actual
+            var approveData = new { paymentId = paymentId, approvedBy = 1 }; // TODO: Obtener el userId actual
             var success = await ApiService.PutAsync($"/api/payments/{paymentId}/approve", approveData);
             
             if (success)
@@ -239,7 +238,7 @@ else
         try
         {
             var reason = "Rechazado por supervisor"; // TODO: Pedir razón al usuario
-            var rejectData = new { rejectedBy = 1, reason }; // TODO: Obtener el userId actual
+            var rejectData = new { paymentId = paymentId, rejectedBy = 1, reason }; // TODO: Obtener el userId actual
             var success = await ApiService.PutAsync($"/api/payments/{paymentId}/reject", rejectData);
             
             if (success)
@@ -264,13 +263,3 @@ else
         }
     }
 }
-
-        await Task.Delay(3000);
-        mensaje = "";
-    }
-}
-
-<!-- Modal de Pago -->
-<PaymentModal IsVisible="@showModal" 
-              OnClose="@CerrarModal" 
-              OnSave="@GuardarPago" />

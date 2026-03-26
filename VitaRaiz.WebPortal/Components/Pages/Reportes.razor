@@ -1,9 +1,8 @@
 @page "/reportes"
-@using VitaRaiz.Infrastructure.Data
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
-@inject VitaRaizDbContext Context
-@rendermode InteractiveServer
+@inject ApiService ApiService
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 
 <PageTitle>Reportes - VitaRaiz</PageTitle>
 
@@ -95,91 +94,126 @@
     {
         resultadoReporte = $"Generando reporte de cobranza para {fechaReporte:dd/MM/yyyy}...\n";
         
-        var pagosDelDia = await Task.Run(() =>
-            Context.Payments
-                .Where(p => p.PaymentDate.Date == fechaReporte.Date)
-                .Include(p => p.Sale)
-                    .ThenInclude(s => s.Customer)
-                .Include(p => p.Collector)
-                .ToList()
-        );
+        var queryParams = new Dictionary<string, string?>
+        {
+            { "startDate", fechaReporte.ToString("yyyy-MM-dd") },
+            { "endDate", fechaReporte.ToString("yyyy-MM-dd") }
+        };
+        var pagos = await ApiService.GetAsync<List<PaymentDto>>("/api/payments", queryParams);
 
-        resultadoReporte += $"\nTotal de pagos: {pagosDelDia.Count}\n";
-        resultadoReporte += $"Monto total: ${pagosDelDia.Sum(p => p.Amount):N2}\n";
-        resultadoReporte += $"Pagos aprobados: {pagosDelDia.Count(p => p.Status == "approved")}\n";
-        resultadoReporte += $"Pagos pendientes: {pagosDelDia.Count(p => p.Status == "pending")}\n";
+        if (pagos != null && pagos.Count > 0)
+        {
+            resultadoReporte += $"\nTotal de pagos: {pagos.Count}\n";
+            resultadoReporte += $"Monto total: ${pagos.Sum(p => p.Amount):N2}\n";
+            resultadoReporte += $"Pagos aprobados: {pagos.Count(p => p.Status == "approved")}\n";
+            resultadoReporte += $"Pagos pendientes: {pagos.Count(p => p.Status == "pending")}\n";
+        }
+        else
+        {
+            resultadoReporte += "\nNo se encontraron pagos para la fecha seleccionada.\n";
+        }
     }
 
     private async Task GenerarReportePeriodo()
     {
         resultadoReporte = $"Generando reporte de ventas del {fechaDesde:dd/MM/yyyy} al {fechaHasta:dd/MM/yyyy}...\n";
 
-        var ventasPeriodo = await Task.Run(() =>
-            Context.Sales
-                .Where(s => s.SaleDate >= fechaDesde && s.SaleDate <= fechaHasta)
-                .Include(s => s.Customer)
-                .Include(s => s.Seller)
-                .ToList()
-        );
+        var queryParams = new Dictionary<string, string?>
+        {
+            { "startDate", fechaDesde.ToString("yyyy-MM-dd") },
+            { "endDate", fechaHasta.ToString("yyyy-MM-dd") }
+        };
+        var ventas = await ApiService.GetAsync<List<SaleDto>>("/api/sales", queryParams);
 
-        resultadoReporte += $"\nTotal de ventas: {ventasPeriodo.Count}\n";
-        resultadoReporte += $"Monto total: ${ventasPeriodo.Sum(v => v.TotalAmount):N2}\n";
-        resultadoReporte += $"Ventas activas: {ventasPeriodo.Count(v => v.Status == "active")}\n";
-        resultadoReporte += $"Ventas completadas: {ventasPeriodo.Count(v => v.Status == "completed")}\n";
+        if (ventas != null && ventas.Count > 0)
+        {
+            resultadoReporte += $"\nTotal de ventas: {ventas.Count}\n";
+            resultadoReporte += $"Monto total: ${ventas.Sum(v => v.TotalAmount):N2}\n";
+            resultadoReporte += $"Ventas activas: {ventas.Count(v => v.Status == "active")}\n";
+            resultadoReporte += $"Ventas completadas: {ventas.Count(v => v.Status == "completed")}\n";
+        }
+        else
+        {
+            resultadoReporte += "\nNo se encontraron ventas para el periodo seleccionado.\n";
+        }
     }
 
     private async Task ReporteCobradores()
     {
         resultadoReporte = "Generando reporte de rendimiento de cobradores...\n";
-        // TODO: Implementar llamada al procedimiento sp_daily_collection_stats del paquete Oracle
+        // TODO: Implementar endpoint de API para stats de cobradores
+        resultadoReporte += "Funcionalidad pendiente de implementar en la API.\n";
         await Task.CompletedTask;
     }
 
     private async Task ReporteClientesOro()
     {
-        var clientesOro = await Task.Run(() =>
-            Context.Customers
-                .Where(c => c.IsGoldCustomer)
-                .ToList()
-        );
+        var queryParams = new Dictionary<string, string?> { { "isGoldCustomer", "true" } };
+        var clientesOro = await ApiService.GetAsync<List<CustomerDto>>("/api/customers", queryParams);
 
-        resultadoReporte = $"Clientes Gold: {clientesOro.Count}\n";
-        resultadoReporte += string.Join("\n", clientesOro.Select(c => $"- {c.CustomerName} ({c.Phone})"));
+        if (clientesOro != null && clientesOro.Count > 0)
+        {
+            resultadoReporte = $"Clientes Gold: {clientesOro.Count}\n";
+            resultadoReporte += string.Join("\n", clientesOro.Select(c => $"- {c.CustomerName} ({c.PhoneNumber})"));
+        }
+        else
+        {
+            resultadoReporte = "No se encontraron clientes Gold.\n";
+        }
     }
 
     private async Task ReporteBlacklist()
     {
-        var clientesBlacklist = await Task.Run(() =>
-            Context.Customers
-                .Where(c => c.IsBlacklisted)
-                .ToList()
-        );
+        var queryParams = new Dictionary<string, string?> { { "isBlacklisted", "true" } };
+        var clientesBlacklist = await ApiService.GetAsync<List<CustomerDto>>("/api/customers", queryParams);
 
-        resultadoReporte = $"Clientes en Blacklist: {clientesBlacklist.Count}\n";
-        resultadoReporte += string.Join("\n", clientesBlacklist.Select(c => $"- {c.CustomerName} ({c.Phone})"));
+        if (clientesBlacklist != null && clientesBlacklist.Count > 0)
+        {
+            resultadoReporte = $"Clientes en Blacklist: {clientesBlacklist.Count}\n";
+            resultadoReporte += string.Join("\n", clientesBlacklist.Select(c => $"- {c.CustomerName} ({c.PhoneNumber})"));
+        }
+        else
+        {
+            resultadoReporte = "No se encontraron clientes en Blacklist.\n";
+        }
     }
 
     private async Task ReporteMorosidad()
     {
         resultadoReporte = "Generando análisis de morosidad...\n";
-        // TODO: Implementar análisis usando fn_get_risk_status del paquete Oracle
-        await Task.CompletedTask;
+        
+        var ventas = await ApiService.GetAsync<List<SaleDto>>("/api/sales/active");
+        
+        if (ventas != null && ventas.Count > 0)
+        {
+            var ventasMorosas = ventas.Where(v => v.Balance > 0).OrderByDescending(v => v.Balance).ToList();
+            resultadoReporte += $"\nVentas con saldo pendiente: {ventasMorosas.Count}\n";
+            resultadoReporte += $"Saldo total pendiente: ${ventasMorosas.Sum(v => v.Balance):N2}\n\n";
+            resultadoReporte += string.Join("\n", ventasMorosas.Take(20).Select(v => 
+                $"- Venta #{v.SaleId} | {v.CustomerName} | Saldo: ${v.Balance:N2}"));
+        }
+        else
+        {
+            resultadoReporte += "No se encontraron ventas activas.\n";
+        }
     }
 
     private async Task ReporteZonas()
     {
-        var ventasPorZona = await Task.Run(() =>
-            Context.Sales
-                .Include(s => s.Customer)
-                    .ThenInclude(c => c.Zone)
-                .GroupBy(s => s.Customer.Zone.ZoneName)
-                .Select(g => new { Zona = g.Key, Total = g.Sum(s => s.TotalAmount), Cantidad = g.Count() })
-                .ToList()
-        );
-
-        resultadoReporte = "Ventas por Zona:\n\n";
-        resultadoReporte += string.Join("\n", ventasPorZona.Select(z =>
-            $"{z.Zona}: {z.Cantidad} ventas - ${z.Total:N2}"
-        ));
+        resultadoReporte = "Generando reporte de ventas por zona...\n";
+        // TODO: Implementar endpoint de API para ventas agrupadas por zona
+        
+        var ventas = await ApiService.GetAsync<List<SaleDto>>("/api/sales");
+        
+        if (ventas != null && ventas.Count > 0)
+        {
+            resultadoReporte += $"\nTotal de ventas: {ventas.Count}\n";
+            resultadoReporte += $"Monto total: ${ventas.Sum(v => v.TotalAmount):N2}\n";
+            resultadoReporte += "\nNota: Para un desglose por zona, se requiere un endpoint de API específico.\n";
+        }
+        else
+        {
+            resultadoReporte += "No se encontraron ventas.\n";
+        }
     }
 }

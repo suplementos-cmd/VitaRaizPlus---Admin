@@ -3,7 +3,7 @@
 @inject AuthService AuthService
 @inject CustomAuthenticationStateProvider AuthStateProvider
 @inject NavigationManager NavigationManager
-@rendermode InteractiveServer
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 
 <PageTitle>Login - VitaRaiz</PageTitle>
 
@@ -231,7 +231,7 @@
                 };
 
                 await AuthStateProvider.MarkUserAsAuthenticatedAsync(currentUser);
-                NavigationManager.NavigateTo("/dashboard", forceLoad: true);
+                NavigationManager.NavigateTo("/dashboard");
             }
             else
             {

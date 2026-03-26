@@ -4,74 +4,27 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:pages="clr-namespace:VitaRaiz.Mobile.Pages"
-    Title="VitaRaiz Admin"
-    FlyoutBehavior="Flyout">
+    Title="VitaRaiz"
+    FlyoutBehavior="Disabled"
+    Shell.TabBarBackgroundColor="White"
+    Shell.TabBarTitleColor="#E91E8C"
+    Shell.TabBarUnselectedColor="#AAAAAA"
+    Shell.NavBarIsVisible="False">
 
-    <!-- Header del menú -->
-    <Shell.FlyoutHeader>
-        <Grid BackgroundColor="#28A745" Padding="20" HeightRequest="150">
-            <VerticalStackLayout VerticalOptions="Center">
-                <Label Text="🌿 VitaRaiz"
-                       FontSize="24"
-                       FontAttributes="Bold"
-                       TextColor="White"
-                       HorizontalOptions="Center" />
-                <Label x:Name="UsernameLabel"
-                       Text=""
-                       FontSize="14"
-                       TextColor="White"
-                       HorizontalOptions="Center"
-                       Margin="0,5,0,0" />
-                <Label x:Name="RoleLabel"
-                       Text=""
-                       FontSize="12"
-                       TextColor="WhiteSmoke"
-                       HorizontalOptions="Center" />
-            </VerticalStackLayout>
-        </Grid>
-    </Shell.FlyoutHeader>
-
-    <!-- Definir páginas -->
-    <FlyoutItem Title="Inicio" Icon="home.png">
-        <ShellContent
-            Title="Inicio"
-            ContentTemplate="{DataTemplate pages:HomePage}"
-            Route="HomePage" />
-    </FlyoutItem>
-
-    <FlyoutItem Title="Ventas" Icon="sales.png">
-        <ShellContent
-            Title="Ventas"
-            ContentTemplate="{DataTemplate pages:SalesPage}"
-            Route="SalesPage" />
-    </FlyoutItem>
-
-    <FlyoutItem Title="Cobranza" Icon="payment.png">
-        <ShellContent
-            Title="Cobranza"
-            ContentTemplate="{DataTemplate pages:PaymentPage}"
-            Route="PaymentPage" />
-    </FlyoutItem>
-
-    <FlyoutItem Title="Clientes" Icon="customers.png">
-        <ShellContent
-            Title="Clientes"
-            ContentTemplate="{DataTemplate pages:CustomersPage}"
-            Route="CustomersPage" />
-    </FlyoutItem>
-
-    <!-- Footer con botón de cerrar sesión -->
-    <Shell.FlyoutFooter>
-        <Grid BackgroundColor="#F0F0F0" Padding="10" HeightRequest="60">
-            <Button Text="Cerrar Sesión"
-                    Clicked="OnLogoutClicked"
-                    BackgroundColor="#DC3545"
-                    TextColor="White"
-                    FontAttributes="Bold"
-                    CornerRadius="8"
-                    HorizontalOptions="Fill"
-                    VerticalOptions="Center" />
-        </Grid>
-    </Shell.FlyoutFooter>
+    <!-- ═══ Bottom TabBar único ═══ -->
+    <TabBar>
+        <ShellContent Title="Inicio" Icon="home.png"
+                      ContentTemplate="{DataTemplate pages:HomePage}"
+                      Route="HomePage" />
+        <ShellContent Title="Ventas" Icon="sales.png"
+                      ContentTemplate="{DataTemplate pages:SalesPage}"
+                      Route="SalesPage" />
+        <ShellContent Title="Cobranza" Icon="payment.png"
+                      ContentTemplate="{DataTemplate pages:PaymentPage}"
+                      Route="PaymentPage" />
+        <ShellContent Title="Clientes" Icon="customers.png"
+                      ContentTemplate="{DataTemplate pages:CustomersPage}"
+                      Route="CustomersPage" />
+    </TabBar>
 
 </Shell>

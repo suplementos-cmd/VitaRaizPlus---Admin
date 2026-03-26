@@ -396,6 +396,59 @@
   PROCEDURE sp_send_whatsapp_reminder(p_sale_id       IN NUMBER,
                                       p_template_name IN VARCHAR2 DEFAULT 'PAYMENT_REMINDER');
 
+  -- ========================================================================
+  -- PROCEDIMIENTOS DE CATALOGOS 
+  -- ========================================================================
+
+  /**
+  * Obtiene todos los estados de venta activos 
+  */
+  PROCEDURE sp_get_sale_statuses(p_cursor OUT SYS_REFCURSOR);
+
+  /**
+  * Obtiene todos los estados de pago activos 
+  */
+  PROCEDURE sp_get_payment_statuses(p_cursor OUT SYS_REFCURSOR);
+
+  /**
+  * Obtiene todos los estados de riesgo activos 
+  */
+  PROCEDURE sp_get_risk_statuses(p_cursor OUT SYS_REFCURSOR);
+
+  /**
+  * Obtiene el tema activo de la aplicación 
+  */
+  PROCEDURE sp_get_active_theme(p_cursor OUT SYS_REFCURSOR);
+
+  /**
+  * Obtiene plantillas de notificaciones activas 
+  */
+  PROCEDURE sp_get_notification_templates(p_template_type IN VARCHAR2 DEFAULT NULL,
+                                          p_cursor        OUT SYS_REFCURSOR);
+
+  /**
+  * Obtiene configuraciones de la aplicación 
+  */
+  PROCEDURE sp_get_app_settings(p_category  IN VARCHAR2 DEFAULT NULL,
+                                p_is_public IN NUMBER DEFAULT 1,
+                                p_cursor    OUT SYS_REFCURSOR);
+
+  /**
+  * Obtiene acciones de visita disponibles 
+  */
+  PROCEDURE sp_get_visit_actions(p_cursor OUT SYS_REFCURSOR);
+
+  /**
+  * Obtiene un setting específico por key 
+  */
+  FUNCTION fn_get_setting_value(p_setting_key IN VARCHAR2) RETURN VARCHAR2;
+
+  /**
+  * Obtiene el estado de riesgo dinámico basado en días de atraso 
+  */
+  FUNCTION fn_get_risk_status_by_days(p_days_overdue IN NUMBER)
+    RETURN VARCHAR2;
+  --
 END EM_VITARAIZ_AD;
 /
 CREATE OR REPLACE PACKAGE BODY EM_VITARAIZ_AD AS
@@ -1701,6 +1754,176 @@ CREATE OR REPLACE PACKAGE BODY EM_VITARAIZ_AD AS
       ROLLBACK;
       RAISE;
   END sp_send_whatsapp_reminder;
+  --
+  PROCEDURE sp_get_sale_statuses(p_cursor OUT SYS_REFCURSOR) IS
+  BEGIN
+    OPEN p_cursor FOR
+      SELECT STATUS_CODE   AS "statusCode",
+             STATUS_NAME   AS "statusName",
+             DESCRIPTION   AS "description",
+             DISPLAY_ORDER AS "displayOrder",
+             COLOR_HEX     AS "colorHex",
+             ICON          AS "icon"
+        FROM CATALOG_SALE_STATUSES
+       WHERE IS_ACTIVE = 1
+       ORDER BY DISPLAY_ORDER, STATUS_NAME;
+  END sp_get_sale_statuses;
+  --
+  PROCEDURE sp_get_payment_statuses(p_cursor OUT SYS_REFCURSOR) IS
+  BEGIN
+    OPEN p_cursor FOR
+      SELECT STATUS_CODE   AS "statusCode",
+             STATUS_NAME   AS "statusName",
+             DESCRIPTION   AS "description",
+             DISPLAY_ORDER AS "displayOrder",
+             COLOR_HEX     AS "colorHex",
+             ICON          AS "icon"
+        FROM CATALOG_PAYMENT_STATUSES
+       WHERE IS_ACTIVE = 1
+       ORDER BY DISPLAY_ORDER, STATUS_NAME;
+  END sp_get_payment_statuses;
+  --
+  PROCEDURE sp_get_risk_statuses(p_cursor OUT SYS_REFCURSOR) IS
+  BEGIN
+    OPEN p_cursor FOR
+      SELECT STATUS_CODE   AS "statusCode",
+             STATUS_NAME   AS "statusName",
+             DESCRIPTION   AS "description",
+             MIN_DAYS      AS "minDays",
+             MAX_DAYS      AS "maxDays",
+             COLOR_HEX     AS "colorHex",
+             ICON          AS "icon",
+             DISPLAY_ORDER AS "displayOrder"
+        FROM CATALOG_RISK_STATUSES
+       WHERE IS_ACTIVE = 1
+       ORDER BY DISPLAY_ORDER, MIN_DAYS;
+  END sp_get_risk_statuses;
+  --
+  PROCEDURE sp_get_active_theme(p_cursor OUT SYS_REFCURSOR) IS
+  BEGIN
+    OPEN p_cursor FOR
+      SELECT THEME_CODE       AS "themeCode",
+             THEME_NAME       AS "themeName",
+             PRIMARY_COLOR    AS "primaryColor",
+             SECONDARY_COLOR  AS "secondaryColor",
+             ACCENT_COLOR     AS "accentColor",
+             BACKGROUND_COLOR AS "backgroundColor",
+             TEXT_COLOR       AS "textColor"
+        FROM CATALOG_APP_THEMES
+       WHERE IS_DEFAULT = 1
+         AND IS_ACTIVE = 1
+       FETCH FIRST 1 ROWS ONLY;
+  END sp_get_active_theme;
+
+  PROCEDURE sp_get_notification_templates(p_template_type IN VARCHAR2 DEFAULT NULL,
+                                          p_cursor        OUT SYS_REFCURSOR) IS
+  BEGIN
+    IF p_template_type IS NULL THEN
+      OPEN p_cursor FOR
+        SELECT TEMPLATE_CODE AS "templateCode",
+               TEMPLATE_NAME AS "templateName",
+               TEMPLATE_TYPE AS "templateType",
+               SUBJECT       AS "subject",
+               MESSAGE_BODY  AS "messageBody",
+               VARIABLES     AS "variables"
+          FROM CATALOG_NOTIFICATION_TEMPLATES
+         WHERE IS_ACTIVE = 1
+         ORDER BY TEMPLATE_NAME;
+    ELSE
+      OPEN p_cursor FOR
+        SELECT TEMPLATE_CODE AS "templateCode",
+               TEMPLATE_NAME AS "templateName",
+               TEMPLATE_TYPE AS "templateType",
+               SUBJECT       AS "subject",
+               MESSAGE_BODY  AS "messageBody",
+               VARIABLES     AS "variables"
+          FROM CATALOG_NOTIFICATION_TEMPLATES
+         WHERE IS_ACTIVE = 1
+           AND UPPER(TEMPLATE_TYPE) = UPPER(p_template_type)
+         ORDER BY TEMPLATE_NAME;
+    END IF;
+  END sp_get_notification_templates;
+
+  PROCEDURE sp_get_app_settings(p_category  IN VARCHAR2 DEFAULT NULL,
+                                p_is_public IN NUMBER DEFAULT 1,
+                                p_cursor    OUT SYS_REFCURSOR) IS
+  BEGIN
+    IF p_category IS NULL THEN
+      OPEN p_cursor FOR
+        SELECT SETTING_KEY   AS "settingKey",
+               SETTING_VALUE AS "settingValue",
+               SETTING_TYPE  AS "settingType",
+               DESCRIPTION   AS "description",
+               CATEGORY      AS "category"
+          FROM CATALOG_APP_SETTINGS
+         WHERE (p_is_public = 0 OR IS_PUBLIC = 1)
+         ORDER BY CATEGORY, SETTING_KEY;
+    ELSE
+      OPEN p_cursor FOR
+        SELECT SETTING_KEY   AS "settingKey",
+               SETTING_VALUE AS "settingValue",
+               SETTING_TYPE  AS "settingType",
+               DESCRIPTION   AS "description",
+               CATEGORY      AS "category"
+          FROM CATALOG_APP_SETTINGS
+         WHERE UPPER(CATEGORY) = UPPER(p_category)
+           AND (p_is_public = 0 OR IS_PUBLIC = 1)
+         ORDER BY SETTING_KEY;
+    END IF;
+  END sp_get_app_settings;
+
+  PROCEDURE sp_get_visit_actions(p_cursor OUT SYS_REFCURSOR) IS
+  BEGIN
+    OPEN p_cursor FOR
+      SELECT ACTION_CODE    AS "actionCode",
+             ACTION_NAME    AS "actionName",
+             DESCRIPTION    AS "description",
+             ICON           AS "icon",
+             COLOR_HEX      AS "colorHex",
+             REQUIRES_NOTE  AS "requiresNote",
+             REQUIRES_PHOTO AS "requiresPhoto",
+             DISPLAY_ORDER  AS "displayOrder"
+        FROM CATALOG_VISIT_ACTIONS
+       WHERE IS_ACTIVE = 1
+       ORDER BY DISPLAY_ORDER, ACTION_NAME;
+  END sp_get_visit_actions;
+
+  FUNCTION fn_get_setting_value(p_setting_key IN VARCHAR2) RETURN VARCHAR2 IS
+    v_value VARCHAR2(4000);
+  BEGIN
+    SELECT SETTING_VALUE
+      INTO v_value
+      FROM CATALOG_APP_SETTINGS
+     WHERE SETTING_KEY = p_setting_key;
+  
+    RETURN v_value;
+  EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+      RETURN NULL;
+    WHEN OTHERS THEN
+      RETURN NULL;
+  END fn_get_setting_value;
+
+  FUNCTION fn_get_risk_status_by_days(p_days_overdue IN NUMBER)
+    RETURN VARCHAR2 IS
+    v_status VARCHAR2(50);
+  BEGIN
+    SELECT STATUS_CODE
+      INTO v_status
+      FROM CATALOG_RISK_STATUSES
+     WHERE IS_ACTIVE = 1
+       AND p_days_overdue >= MIN_DAYS
+       AND p_days_overdue <= MAX_DAYS
+     FETCH FIRST 1 ROWS ONLY;
+  
+    RETURN v_status;
+  EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+      -- Si no hay coincidencia, devolver el estado crítico
+      RETURN 'CRITICO';
+    WHEN OTHERS THEN
+      RETURN 'CRITICO';
+  END fn_get_risk_status_by_days;
   --
 END EM_VITARAIZ_AD;
 /

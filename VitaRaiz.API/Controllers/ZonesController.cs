@@ -24,9 +24,21 @@ public class ZonesController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetZones()
     {
-        var query = new GetZonesQuery();
-        var zones = await _mediator.Send(query);
-        return Ok(zones);
+        try
+        {
+            var username = User.Identity?.Name ?? "Anonymous";
+            Console.WriteLine($"[ZonesController] GetZones called by {username}");
+
+            var query = new GetZonesQuery();
+            var zones = await _mediator.Send(query);
+            Console.WriteLine($"[ZonesController] Returning {zones?.Count ?? 0} zones");
+            return Ok(zones);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ZonesController] ERROR: {ex.Message}");
+            return StatusCode(500, new { error = ex.Message, stackTrace = ex.StackTrace });
+        }
     }
 
     /// <summary>
@@ -48,7 +60,7 @@ public class ZonesController : ControllerBase
     /// Crear una nueva zona
     /// </summary>
     [HttpPost]
-    [Authorize(Roles = "Admin,Supervisor")]
+    [Authorize(Roles = "AdminFull,Admin,Supervisor")]
     public async Task<IActionResult> CreateZone([FromBody] CreateZoneCommand command)
     {
         var zoneId = await _mediator.Send(command);
@@ -59,7 +71,7 @@ public class ZonesController : ControllerBase
     /// Actualizar una zona existente
     /// </summary>
     [HttpPut("{id}")]
-    [Authorize(Roles = "Admin,Supervisor")]
+    [Authorize(Roles = "AdminFull,Admin,Supervisor")]
     public async Task<IActionResult> UpdateZone(int id, [FromBody] UpdateZoneCommand command)
     {
         if (id != command.ZoneId)
@@ -77,7 +89,7 @@ public class ZonesController : ControllerBase
     /// Eliminar una zona
     /// </summary>
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "AdminFull,Admin")]
     public async Task<IActionResult> DeleteZone(int id)
     {
         var command = new DeleteZoneCommand { ZoneId = id };

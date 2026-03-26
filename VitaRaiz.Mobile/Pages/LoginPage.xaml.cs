@@ -7,12 +7,12 @@ namespace VitaRaiz.Mobile.Pages;
 public partial class LoginPage : ContentPage
 {
     private readonly HttpClient _httpClient;
-    // URL para IIS Express - usa HTTP en lugar de HTTPS para evitar problemas de certificado en desarrollo
+    // URL de la API - En desarrollo usa dotnet run (http) profile
     // Para Windows Machine usa localhost, para Android usa 10.0.2.2
 #if WINDOWS
-    private const string API_BASE_URL = "http://localhost:58649"; // IIS Express HTTP
+    private const string API_BASE_URL = "http://localhost:5299"; // dotnet run --launch-profile http
 #else
-    private const string API_BASE_URL = "http://10.0.2.2:58649"; // Android emulator
+    private const string API_BASE_URL = "http://10.0.2.2:5299"; // Android emulator -> host machine
 #endif
 
     private string _username = string.Empty;

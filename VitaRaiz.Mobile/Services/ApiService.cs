@@ -9,11 +9,11 @@ public class ApiService
     private readonly HttpClient _httpClient;
     private readonly JsonSerializerOptions _jsonOptions;
     
-    // URL para IIS Express - usa HTTP en lugar de HTTPS para evitar problemas de certificado en desarrollo
+    // URL de la API - En desarrollo usa dotnet run (http) profile
 #if WINDOWS
-    private const string API_BASE_URL = "http://localhost:58649"; // IIS Express HTTP
+    private const string API_BASE_URL = "http://localhost:5299"; // dotnet run --launch-profile http
 #else
-    private const string API_BASE_URL = "http://10.0.2.2:58649"; // Android emulator
+    private const string API_BASE_URL = "http://10.0.2.2:5299"; // Android emulator -> host machine
 #endif
 
     public ApiService()
@@ -42,14 +42,22 @@ public class ApiService
         try
         {
             var token = await SecureStorage.GetAsync("jwt_token");
+            System.Diagnostics.Debug.WriteLine($"[ApiService] Token from storage: {(string.IsNullOrEmpty(token) ? "NULL/EMPTY" : token.Substring(0, Math.Min(50, token.Length)))}...");
+            
             if (!string.IsNullOrEmpty(token))
             {
                 _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+                System.Diagnostics.Debug.WriteLine($"[ApiService] Authorization header set successfully");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"[ApiService] WARNING: No token found in SecureStorage!");
             }
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error setting auth header: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[ApiService] ERROR in SetAuthorizationHeaderAsync: {ex}");
         }
     }
 
@@ -58,20 +66,30 @@ public class ApiService
         try
         {
             await SetAuthorizationHeaderAsync();
+            System.Diagnostics.Debug.WriteLine($"[ApiService] GET {endpoint}");
             var response = await _httpClient.GetAsync(endpoint);
+            
+            System.Diagnostics.Debug.WriteLine($"[ApiService] Response Status: {response.StatusCode}");
             
             if (response.IsSuccessStatusCode)
             {
                 var content = await response.Content.ReadAsStringAsync();
-                return JsonSerializer.Deserialize<T>(content, _jsonOptions);
+                System.Diagnostics.Debug.WriteLine($"[ApiService] Response Content Length: {content?.Length ?? 0}");
+                System.Diagnostics.Debug.WriteLine($"[ApiService] Response Content: {content?.Substring(0, Math.Min(200, content?.Length ?? 0))}");
+                
+                var result = JsonSerializer.Deserialize<T>(content, _jsonOptions);
+                System.Diagnostics.Debug.WriteLine($"[ApiService] Deserialized result is null: {result == null}");
+                return result;
             }
             
-            Console.WriteLine($"GET {endpoint} failed with status: {response.StatusCode}");
+            var errorContent = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"GET {endpoint} failed with status: {response.StatusCode}, Body: {errorContent}");
             return default;
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error en GET {endpoint}: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[ApiService] Exception: {ex.ToString()}");
             return default;
         }
     }
@@ -89,22 +107,26 @@ public class ApiService
         {
             await SetAuthorizationHeaderAsync();
             var jsonContent = JsonSerializer.Serialize(data, _jsonOptions);
+            Console.WriteLine($"[ApiService] POST {endpoint} - Body: {jsonContent}");
             var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
             
             var response = await _httpClient.PostAsync(endpoint, content);
+            var responseContent = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"[ApiService] POST {endpoint} - Status: {response.StatusCode}");
+            Console.WriteLine($"[ApiService] POST {endpoint} - Response: {responseContent}");
             
             if (response.IsSuccessStatusCode)
             {
-                var responseContent = await response.Content.ReadAsStringAsync();
                 return JsonSerializer.Deserialize<TResponse>(responseContent, _jsonOptions);
             }
             
-            Console.WriteLine($"POST {endpoint} failed with status: {response.StatusCode}");
+            Console.WriteLine($"[ApiService] POST {endpoint} FAILED: {response.StatusCode} - {responseContent}");
             return default;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error en POST {endpoint}: {ex.Message}");
+            Console.WriteLine($"[ApiService] POST {endpoint} EXCEPTION: {ex.Message}");
+            Console.WriteLine($"[ApiService] StackTrace: {ex.StackTrace}");
             return default;
         }
     }

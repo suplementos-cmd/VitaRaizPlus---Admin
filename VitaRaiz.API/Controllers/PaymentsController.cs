@@ -31,18 +31,31 @@ public class PaymentsController : ControllerBase
         [FromQuery] DateTime? endDate = null,
         [FromQuery] string? status = null)
     {
-        var query = new GetPaymentsQuery
+        try
         {
-            SaleId = saleId,
-            CustomerId = customerId,
-            CollectorId = collectorId,
-            StartDate = startDate,
-            EndDate = endDate,
-            Status = status
-        };
+            var authHeader = Request.Headers["Authorization"].ToString();
+            var username = User.Identity?.Name ?? "Anonymous";
+            Console.WriteLine($"[PaymentsController] GetPayments called by {username}, Params: collectorId={collectorId}, startDate={startDate}, endDate={endDate}");
 
-        var payments = await _mediator.Send(query);
-        return Ok(payments);
+            var query = new GetPaymentsQuery
+            {
+                SaleId = saleId,
+                CustomerId = customerId,
+                CollectorId = collectorId,
+                StartDate = startDate,
+                EndDate = endDate,
+                Status = status
+            };
+
+            var payments = await _mediator.Send(query);
+            Console.WriteLine($"[PaymentsController] Returning {payments?.Count ?? 0} payments");
+            return Ok(payments);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[PaymentsController] ERROR: {ex.Message}");
+            return StatusCode(500, new { error = ex.Message, stackTrace = ex.StackTrace });
+        }
     }
 
     /// <summary>
@@ -64,7 +77,7 @@ public class PaymentsController : ControllerBase
     /// Registrar un nuevo pago para una venta
     /// </summary>
     [HttpPost]
-    [Authorize(Roles = "Cobrador,Supervisor,Admin")]
+    [Authorize(Roles = "Cobrador,Supervisor,AdminFull,Admin")]
     public async Task<ActionResult<PaymentDto>> RegisterPayment([FromBody] RegisterPaymentCommand command)
     {
         try
@@ -82,7 +95,7 @@ public class PaymentsController : ControllerBase
     /// Aprobar un pago
     /// </summary>
     [HttpPut("{id}/approve")]
-    [Authorize(Roles = "Supervisor,Admin")]
+    [Authorize(Roles = "Supervisor,AdminFull,Admin")]
     public async Task<IActionResult> ApprovePayment(int id, [FromBody] ApprovePaymentCommand command)
     {
         if (id != command.PaymentId)
@@ -107,7 +120,7 @@ public class PaymentsController : ControllerBase
     /// Rechazar un pago
     /// </summary>
     [HttpPut("{id}/reject")]
-    [Authorize(Roles = "Supervisor,Admin")]
+    [Authorize(Roles = "Supervisor,AdminFull,Admin")]
     public async Task<IActionResult> RejectPayment(int id, [FromBody] RejectPaymentCommand command)
     {
         if (id != command.PaymentId)

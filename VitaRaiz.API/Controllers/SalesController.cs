@@ -12,10 +12,12 @@ namespace VitaRaiz.API.Controllers;
 public class SalesController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly ILogger<SalesController> _logger;
 
-    public SalesController(IMediator mediator)
+    public SalesController(IMediator mediator, ILogger<SalesController> logger)
     {
         _mediator = mediator;
+        _logger = logger;
     }
 
     /// <summary>
@@ -31,6 +33,11 @@ public class SalesController : ControllerBase
     {
         try
         {
+            var authHeader = Request.Headers["Authorization"].ToString();
+            var username = User.Identity?.Name ?? "Anonymous";
+            _logger.LogInformation("[SalesController] GetSales called by {Username}, Auth: {Auth}, Params: customerId={CustomerId}, sellerId={SellerId}, status={Status}", 
+                username, authHeader.Substring(0, Math.Min(20, authHeader.Length)), customerId, sellerId, status);
+
             var query = new GetSalesQuery
             {
                 CustomerId = customerId,
@@ -41,10 +48,13 @@ public class SalesController : ControllerBase
             };
 
             var sales = await _mediator.Send(query);
+            
+            _logger.LogInformation("[SalesController] Returning {Count} sales", sales?.Count ?? 0);
             return Ok(sales);
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "[SalesController] Error in GetSales");
             return StatusCode(500, new { error = ex.Message, stackTrace = ex.StackTrace });
         }
     }
@@ -73,9 +83,22 @@ public class SalesController : ControllerBase
     [HttpGet("active")]
     public async Task<IActionResult> GetActiveSales([FromQuery] int? collectorId = null)
     {
-        var query = new GetActiveSalesQuery { CollectorId = collectorId };
-        var sales = await _mediator.Send(query);
-        return Ok(sales);
+        try
+        {
+            var username = User.Identity?.Name ?? "Anonymous";
+            _logger.LogInformation("[SalesController] GetActiveSales called by {Username}, collectorId={CollectorId}", username, collectorId);
+            
+            var query = new GetActiveSalesQuery { CollectorId = collectorId };
+            var sales = await _mediator.Send(query);
+            
+            _logger.LogInformation("[SalesController] GetActiveSales returning {Count} sales", sales?.Count ?? 0);
+            return Ok(sales);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[SalesController] Error in GetActiveSales");
+            return StatusCode(500, new { error = ex.Message, stackTrace = ex.StackTrace });
+        }
     }
 
     /// <summary>
@@ -91,6 +114,30 @@ public class SalesController : ControllerBase
             return NotFound(new { message = "Venta no encontrada" });
 
         return Ok(sale);
+    }
+
+    /// <summary>
+    /// Obtener venta completa con items, pagos, cliente y métricas de riesgo.
+    /// Endpoint pivote para la pantalla "Gestión de Cartera".
+    /// </summary>
+    [HttpGet("{id}/full")]
+    public async Task<IActionResult> GetSaleFull(int id)
+    {
+        try
+        {
+            var query = new GetSaleFullQuery { SaleId = id };
+            var sale = await _mediator.Send(query);
+
+            if (sale == null)
+                return NotFound(new { message = "Venta no encontrada" });
+
+            return Ok(sale);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[SalesController] Error in GetSaleFull for saleId={SaleId}", id);
+            return StatusCode(500, new { error = ex.Message });
+        }
     }
 
     /// <summary>
@@ -115,7 +162,7 @@ public class SalesController : ControllerBase
     /// Crear una nueva venta con detalles
     /// </summary>
     [HttpPost]
-    [Authorize(Roles = "Vendedor,Supervisor,Admin")]
+    [Authorize(Roles = "Vendedor,Supervisor,AdminFull,Admin")]
     public async Task<IActionResult> CreateSale([FromBody] CreateSaleCommand command)
     {
         try
@@ -133,7 +180,7 @@ public class SalesController : ControllerBase
     /// Cancelar una venta
     /// </summary>
     [HttpPut("{id}/cancel")]
-    [Authorize(Roles = "Supervisor,Admin")]
+    [Authorize(Roles = "Supervisor,AdminFull,Admin")]
     public async Task<IActionResult> CancelSale(int id, [FromBody] CancelSaleCommand command)
     {
         if (id != command.SaleId)

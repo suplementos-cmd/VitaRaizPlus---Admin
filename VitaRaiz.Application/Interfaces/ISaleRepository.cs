@@ -22,4 +22,6 @@ public interface ISaleRepository
     Task<decimal> GetSaleBalanceAsync(int saleId);
     
     Task<string> GetSaleRiskStatusAsync(int saleId);
+    
+    Task<SaleFullDto?> GetSaleFullAsync(int saleId);
 }
