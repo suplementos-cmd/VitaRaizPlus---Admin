@@ -18,16 +18,19 @@ public class AuthController : ControllerBase
 {
     private readonly VitaRaizDbContext _context;
     private readonly JwtTokenService _jwtService;
+    private readonly ILogger<AuthController> _logger;
 
-    public AuthController(VitaRaizDbContext context, JwtTokenService jwtService)
+    public AuthController(VitaRaizDbContext context, JwtTokenService jwtService, ILogger<AuthController> logger)
     {
         _context = context;
         _jwtService = jwtService;
+        _logger = logger;
     }
 
     [HttpPost("login")]
     public async Task<ActionResult> Login([FromBody] LoginRequest request)
     {
+        _logger.LogInformation("[AuthController] Login attempt for user: {Username}", request.Username);
         var connection = _context.Database.GetDbConnection();
         
         try
@@ -55,6 +58,7 @@ public class AuthController : ControllerBase
             // Si la función devuelve NULL, las credenciales son inválidas
             if (result == null || result == DBNull.Value)
             {
+                _logger.LogWarning("[AuthController] Failed login attempt for user: {Username}", request.Username);
                 return Unauthorized(new { error = "Usuario o contraseña inválidos" });
             }
 

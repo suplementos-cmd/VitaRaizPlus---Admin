@@ -62,16 +62,7 @@
   -- ========================================================================
   -- PROCEDIMIENTOS DE GESTION DE VENTAS
   -- ========================================================================
-  PROCEDURE sp_create_sale(p_customer_id   IN NUMBER,
-                           p_seller_id     IN NUMBER,
-                           p_total_amount  IN NUMBER,
-                           p_num_payments  IN NUMBER,
-                           p_payment_terms IN VARCHAR2,
-                           p_gps_lat       IN NUMBER,
-                           p_gps_lon       IN NUMBER,
-                           p_collector_id  IN NUMBER,
-                           p_sale_id_out   OUT NUMBER);
-
+  
   /**
   * Registra una nueva venta
   */
@@ -82,20 +73,35 @@
                              p_notes             IN VARCHAR2 DEFAULT NULL);
 
   /**
-  * Agrega un item a una venta 
-  */
-  PROCEDURE sp_add_sale_item(p_sale_id    IN NUMBER,
-                             p_product_id IN NUMBER,
-                             p_quantity   IN NUMBER,
-                             p_unit_price IN NUMBER);
-
-  /**
   * Agrega un detalle a una venta
   */
   PROCEDURE sp_add_sale_detail(p_sale_id    IN NUMBER,
                                p_product_id IN NUMBER,
                                p_quantity   IN NUMBER,
                                p_unit_price IN NUMBER);
+
+  /**
+  * Agrega una foto a una venta
+  */
+  PROCEDURE sp_add_sale_photo(p_photo_id     OUT NUMBER,
+                              p_sale_id      IN NUMBER,
+                              p_photo_type   IN VARCHAR2,
+                              p_file_path    IN VARCHAR2,
+                              p_gps_lat      IN NUMBER DEFAULT NULL,
+                              p_gps_lon      IN NUMBER DEFAULT NULL,
+                              p_file_size    IN NUMBER DEFAULT NULL,
+                              p_uploaded_by  IN NUMBER DEFAULT NULL);
+
+  /**
+  * Obtiene las fotos de una venta
+  */
+  PROCEDURE sp_get_sale_photos(p_sale_id IN NUMBER,
+                               p_cursor  OUT SYS_REFCURSOR);
+
+  /**
+  * Elimina una foto de venta
+  */
+  PROCEDURE sp_delete_sale_photo(p_photo_id IN NUMBER);
 
   /**
   * Anula una venta 
@@ -116,20 +122,7 @@
   -- ========================================================================
 
   /**
-  * Crea un nuevo cliente 
-  */
-  PROCEDURE sp_create_customer(p_name            IN VARCHAR2,
-                               p_phone           IN VARCHAR2,
-                               p_email           IN VARCHAR2,
-                               p_address         IN VARCHAR2,
-                               p_gps_lat         IN NUMBER,
-                               p_gps_lon         IN NUMBER,
-                               p_zone_id         IN NUMBER,
-                               p_created_by      IN NUMBER,
-                               p_customer_id_out OUT NUMBER);
-
-  /**
-  * Registra un nuevo cliente (alias de sp_create_customer)
+  * Registra un nuevo cliente
   */
   PROCEDURE sp_register_customer(p_customer_id    OUT NUMBER,
                                  p_name           IN VARCHAR2,
@@ -140,7 +133,8 @@
                                  p_gps_lat        IN VARCHAR2 DEFAULT NULL,
                                  p_gps_lon        IN VARCHAR2 DEFAULT NULL,
                                  p_is_gold        IN NUMBER DEFAULT 0,
-                                 p_is_blacklisted IN NUMBER DEFAULT 0);
+                                 p_is_blacklisted IN NUMBER DEFAULT 0,
+                                 p_created_by     IN NUMBER DEFAULT NULL);
 
   /**
   * Actualiza un cliente existente
@@ -680,69 +674,6 @@ CREATE OR REPLACE PACKAGE BODY EM_VITARAIZ_AD AS
   -- ========================================================================
   -- PROCEDIMIENTOS DE VENTAS
   -- ========================================================================
-  PROCEDURE sp_create_sale(p_customer_id   IN NUMBER,
-                           p_seller_id     IN NUMBER,
-                           p_total_amount  IN NUMBER,
-                           p_num_payments  IN NUMBER,
-                           p_payment_terms IN VARCHAR2,
-                           p_gps_lat       IN NUMBER,
-                           p_gps_lon       IN NUMBER,
-                           p_collector_id  IN NUMBER,
-                           p_sale_id_out   OUT NUMBER) IS
-    v_payment_amount     NUMBER;
-    v_first_payment_date DATE;
-  BEGIN
-    --
-    IF fn_validate_gps(p_gps_lat, p_gps_lon) = '0' THEN
-      RAISE_APPLICATION_ERROR(-20003, 'GPS inválido');
-    END IF;
-    --
-    v_payment_amount     := ROUND(p_total_amount / p_num_payments, 2);
-    v_first_payment_date := SYSDATE + 7;
-    --
-    INSERT INTO sales
-      (sale_id,
-       customer_id,
-       seller_id,
-       sale_date,
-       total_amount,
-       payment_terms,
-       number_of_payments,
-       payment_amount,
-       first_payment_date,
-       gps_latitude,
-       gps_longitude,
-       status,
-       assigned_collector_id)
-    VALUES
-      (seq_sales.NEXTVAL,
-       p_customer_id,
-       p_seller_id,
-       SYSDATE,
-       p_total_amount,
-       p_payment_terms,
-       p_num_payments,
-       v_payment_amount,
-       v_first_payment_date,
-       p_gps_lat,
-       p_gps_lon,
-       C_STATUS_POR_INICIAR,
-       p_collector_id)
-    RETURNING sale_id INTO p_sale_id_out;
-    --
-    log_audit('SALE',
-              p_sale_id_out,
-              'INSERT',
-              p_seller_id,
-              'Venta: $' || p_total_amount);
-    COMMIT;
-    --
-  EXCEPTION
-    WHEN OTHERS THEN
-      ROLLBACK;
-      RAISE;
-  END sp_create_sale;
-  --
   PROCEDURE sp_register_sale(p_sale_id           OUT NUMBER,
                              p_customer_id       IN NUMBER,
                              p_seller_id         IN NUMBER,
@@ -781,29 +712,6 @@ CREATE OR REPLACE PACKAGE BODY EM_VITARAIZ_AD AS
       RAISE;
   END sp_register_sale;
   --
-  PROCEDURE sp_add_sale_item(p_sale_id    IN NUMBER,
-                             p_product_id IN NUMBER,
-                             p_quantity   IN NUMBER,
-                             p_unit_price IN NUMBER) IS
-  BEGIN
-    --
-    INSERT INTO sale_items
-      (sale_item_id, sale_id, product_id, quantity, unit_price, subtotal)
-    VALUES
-      (seq_sale_items.NEXTVAL,
-       p_sale_id,
-       p_product_id,
-       p_quantity,
-       p_unit_price,
-       p_quantity * p_unit_price);
-    COMMIT;
-    --
-  EXCEPTION
-    WHEN OTHERS THEN
-      ROLLBACK;
-      RAISE;
-  END sp_add_sale_item;
-  --
   PROCEDURE sp_add_sale_detail(p_sale_id    IN NUMBER,
                                p_product_id IN NUMBER,
                                p_quantity   IN NUMBER,
@@ -835,6 +743,104 @@ CREATE OR REPLACE PACKAGE BODY EM_VITARAIZ_AD AS
       ROLLBACK;
       RAISE;
   END sp_add_sale_detail;
+  --
+  PROCEDURE sp_add_sale_photo(p_photo_id     OUT NUMBER,
+                              p_sale_id      IN NUMBER,
+                              p_photo_type   IN VARCHAR2,
+                              p_file_path    IN VARCHAR2,
+                              p_gps_lat      IN NUMBER DEFAULT NULL,
+                              p_gps_lon      IN NUMBER DEFAULT NULL,
+                              p_file_size    IN NUMBER DEFAULT NULL,
+                              p_uploaded_by  IN NUMBER DEFAULT NULL) IS
+  BEGIN
+    --
+    INSERT INTO sale_photos
+      (photo_id,
+       sale_id,
+       photo_type,
+       file_path,
+       gps_latitude,
+       gps_longitude,
+       file_size,
+       uploaded_at,
+       uploaded_by,
+       synced)
+    VALUES
+      (seq_sale_photos.NEXTVAL,
+       p_sale_id,
+       p_photo_type,
+       p_file_path,
+       p_gps_lat,
+       p_gps_lon,
+       p_file_size,
+       CURRENT_TIMESTAMP,
+       p_uploaded_by,
+       '1')
+    RETURNING photo_id INTO p_photo_id;
+    --
+    log_audit('SALE_PHOTO',
+              p_photo_id,
+              'INSERT',
+              p_uploaded_by,
+              'Foto tipo: ' || p_photo_type || ' para venta ' || p_sale_id);
+    COMMIT;
+    --
+  EXCEPTION
+    WHEN OTHERS THEN
+      ROLLBACK;
+      RAISE;
+  END sp_add_sale_photo;
+  --
+  PROCEDURE sp_get_sale_photos(p_sale_id IN NUMBER,
+                               p_cursor  OUT SYS_REFCURSOR) IS
+  BEGIN
+    --
+    OPEN p_cursor FOR
+      SELECT photo_id,
+             sale_id,
+             photo_type,
+             file_path,
+             thumbnail_path,
+             gps_latitude,
+             gps_longitude,
+             file_size,
+             uploaded_at,
+             uploaded_by,
+             synced
+        FROM sale_photos
+       WHERE sale_id = p_sale_id
+       ORDER BY 
+         CASE photo_type
+           WHEN 'FACHADA' THEN 1
+           WHEN 'CLIENTE' THEN 2
+           WHEN 'CONTRATO' THEN 3
+           WHEN 'ADICIONAL' THEN 4
+           ELSE 5
+         END,
+         uploaded_at;
+    --
+  END sp_get_sale_photos;
+  --
+  PROCEDURE sp_delete_sale_photo(p_photo_id IN NUMBER) IS
+    v_sale_id NUMBER;
+  BEGIN
+    --
+    SELECT sale_id INTO v_sale_id
+      FROM sale_photos
+     WHERE photo_id = p_photo_id;
+    --
+    DELETE FROM sale_photos WHERE photo_id = p_photo_id;
+    --
+    log_audit('SALE_PHOTO', p_photo_id, 'DELETE', NULL, 'Foto eliminada de venta ' || v_sale_id);
+    COMMIT;
+    --
+  EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+      RAISE_APPLICATION_ERROR(-20010, 'Foto no encontrada');
+    WHEN OTHERS THEN
+      ROLLBACK;
+      RAISE;
+  END sp_delete_sale_photo;
   --
   PROCEDURE sp_cancel_sale(p_sale_id IN NUMBER,
                            p_user_id IN NUMBER DEFAULT NULL,
@@ -875,54 +881,6 @@ CREATE OR REPLACE PACKAGE BODY EM_VITARAIZ_AD AS
   -- PROCEDIMIENTOS DE CLIENTES
   -- ========================================================================
 
-  PROCEDURE sp_create_customer(p_name            IN VARCHAR2,
-                               p_phone           IN VARCHAR2,
-                               p_email           IN VARCHAR2,
-                               p_address         IN VARCHAR2,
-                               p_gps_lat         IN NUMBER,
-                               p_gps_lon         IN NUMBER,
-                               p_zone_id         IN NUMBER,
-                               p_created_by      IN NUMBER,
-                               p_customer_id_out OUT NUMBER) IS
-  BEGIN
-    --
-    INSERT INTO customers
-      (customer_id,
-       customer_name,
-       phone,
-       email,
-       address,
-       gps_latitude,
-       gps_longitude,
-       zone_id,
-       created_by,
-       created_at)
-    VALUES
-      (seq_customers.NEXTVAL,
-       p_name,
-       p_phone,
-       p_email,
-       p_address,
-       p_gps_lat,
-       p_gps_lon,
-       p_zone_id,
-       p_created_by,
-       SYSTIMESTAMP)
-    RETURNING customer_id INTO p_customer_id_out;
-    --
-    log_audit('CUSTOMER',
-              p_customer_id_out,
-              'INSERT',
-              p_created_by,
-              'Cliente: ' || p_name);
-    COMMIT;
-    --
-  EXCEPTION
-    WHEN OTHERS THEN
-      ROLLBACK;
-      RAISE;
-  END sp_create_customer;
-  --
   PROCEDURE sp_register_customer(p_customer_id    OUT NUMBER,
                                  p_name           IN VARCHAR2,
                                  p_phone          IN VARCHAR2 DEFAULT NULL,
@@ -932,7 +890,8 @@ CREATE OR REPLACE PACKAGE BODY EM_VITARAIZ_AD AS
                                  p_gps_lat        IN VARCHAR2 DEFAULT NULL,
                                  p_gps_lon        IN VARCHAR2 DEFAULT NULL,
                                  p_is_gold        IN NUMBER DEFAULT 0,
-                                 p_is_blacklisted IN NUMBER DEFAULT 0) IS
+                                 p_is_blacklisted IN NUMBER DEFAULT 0,
+                                 p_created_by     IN NUMBER DEFAULT NULL) IS
   BEGIN
     --
     INSERT INTO customers
@@ -946,6 +905,7 @@ CREATE OR REPLACE PACKAGE BODY EM_VITARAIZ_AD AS
        gps_longitude,
        is_gold_customer,
        is_blacklisted,
+       created_by,
        created_at)
     VALUES
       (seq_customers.NEXTVAL,
@@ -958,6 +918,7 @@ CREATE OR REPLACE PACKAGE BODY EM_VITARAIZ_AD AS
        p_gps_lon,
        CASE WHEN p_is_gold = 1 THEN 1 ELSE 0 END,
        CASE WHEN p_is_blacklisted = 1 THEN 1 ELSE 0 END,
+       p_created_by,
        SYSTIMESTAMP)
     RETURNING customer_id INTO p_customer_id;
     --

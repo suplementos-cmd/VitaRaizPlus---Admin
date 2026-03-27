@@ -185,4 +185,37 @@ public class PaymentRepository : BaseOracleRepository, IPaymentRepository
             .Include(p => p.PaymentPhotos)
             .FirstOrDefaultAsync(p => p.PaymentId == paymentId);
     }
+
+    public async Task<bool> UpdatePaymentAsync(int paymentId, decimal amount, DateTime paymentDate, 
+        string status, string? notes)
+    {
+        try
+        {
+            Console.WriteLine($"[PaymentRepository] UpdatePaymentAsync - paymentId={paymentId}, amount={amount}, status={status}");
+            
+            var payment = await _context.Payments.FindAsync(paymentId);
+            
+            if (payment == null)
+            {
+                Console.WriteLine($"[PaymentRepository] Payment {paymentId} not found");
+                return false;
+            }
+
+            // Update properties
+            payment.Amount = amount;
+            payment.PaymentDate = paymentDate;
+            payment.Status = status.ToUpper(); // Oracle stores status in uppercase
+            payment.Notes = notes;
+
+            await _context.SaveChangesAsync();
+            
+            Console.WriteLine($"[PaymentRepository] Payment {paymentId} updated successfully");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[PaymentRepository] ERROR in UpdatePaymentAsync: {ex.Message}");
+            throw;
+        }
+    }
 }

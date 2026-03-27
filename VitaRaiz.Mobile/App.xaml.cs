@@ -11,7 +11,7 @@ public partial class App : MauiApp
 		
 		// TEMPORAL: Limpiar tokens anteriores para testing
 		// Comenta o elimina estas líneas después de la primera ejecución
-		SecureStorage.Remove("jwt_token");
+		SecureStorage.Remove("auth_token");
 		SecureStorage.Remove("user_id");
 		SecureStorage.Remove("username");
 		SecureStorage.Remove("role");
@@ -49,7 +49,7 @@ public partial class App : MauiApp
 		try
 		{
 			System.Diagnostics.Debug.WriteLine("=== CheckForSavedToken ===");
-			var token = await SecureStorage.GetAsync("jwt_token");
+			var token = await SecureStorage.GetAsync("auth_token");
 			System.Diagnostics.Debug.WriteLine($"Token encontrado: {!string.IsNullOrEmpty(token)}");
 			if (!string.IsNullOrEmpty(token))
 			{

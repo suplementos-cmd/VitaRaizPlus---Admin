@@ -13,10 +13,12 @@ namespace VitaRaiz.API.Controllers;
 public class PaymentsController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly ILogger<PaymentsController> _logger;
 
-    public PaymentsController(IMediator mediator)
+    public PaymentsController(IMediator mediator, ILogger<PaymentsController> logger)
     {
         _mediator = mediator;
+        _logger = logger;
     }
 
     /// <summary>
@@ -35,7 +37,8 @@ public class PaymentsController : ControllerBase
         {
             var authHeader = Request.Headers["Authorization"].ToString();
             var username = User.Identity?.Name ?? "Anonymous";
-            Console.WriteLine($"[PaymentsController] GetPayments called by {username}, Params: collectorId={collectorId}, startDate={startDate}, endDate={endDate}");
+            _logger.LogInformation("[PaymentsController] GetPayments called by {Username}, Params: collectorId={CollectorId}, startDate={StartDate}, endDate={EndDate}", 
+                username, collectorId, startDate, endDate);
 
             var query = new GetPaymentsQuery
             {
@@ -48,12 +51,12 @@ public class PaymentsController : ControllerBase
             };
 
             var payments = await _mediator.Send(query);
-            Console.WriteLine($"[PaymentsController] Returning {payments?.Count ?? 0} payments");
+            _logger.LogInformation("[PaymentsController] Returning {Count} payments", payments?.Count ?? 0);
             return Ok(payments);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[PaymentsController] ERROR: {ex.Message}");
+            _logger.LogError(ex, "[PaymentsController] Error getting payments");
             return StatusCode(500, new { error = ex.Message, stackTrace = ex.StackTrace });
         }
     }
@@ -134,6 +137,31 @@ public class PaymentsController : ControllerBase
                 return NotFound(new { message = "Pago no encontrado" });
 
             return Ok(new { message = "Pago rechazado" });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Actualizar un pago
+    /// </summary>
+    [HttpPut("{id}")]
+    [Authorize(Roles = "Supervisor,AdminFull,Admin")]
+    public async Task<IActionResult> UpdatePayment(int id, [FromBody] UpdatePaymentCommand command)
+    {
+        if (id != command.PaymentId)
+            return BadRequest(new { message = "El ID del pago no coincide" });
+
+        try
+        {
+            var result = await _mediator.Send(command);
+
+            if (!result)
+                return NotFound(new { message = "Pago no encontrado" });
+
+            return Ok(new { message = "Pago actualizado exitosamente" });
         }
         catch (Exception ex)
         {

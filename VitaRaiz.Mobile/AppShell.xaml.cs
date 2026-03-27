@@ -14,6 +14,7 @@ public partial class AppShell : Shell
 			// Register routes for Shell navigation
 			Routing.RegisterRoute("SaleDetailPage", typeof(SaleDetailPage));
 			Routing.RegisterRoute("CreateSalePage", typeof(CreateSalePage));
+			Routing.RegisterRoute("PaymentDetailPage", typeof(PaymentDetailPage));
 			
 			System.Diagnostics.Debug.WriteLine("=== AppShell inicializado correctamente ===");
 		}

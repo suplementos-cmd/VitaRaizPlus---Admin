@@ -10,10 +10,12 @@ namespace VitaRaiz.API.Controllers;
 public class CatalogsController : ControllerBase
 {
     private readonly ICatalogRepository _catalogRepository;
+    private readonly ILogger<CatalogsController> _logger;
 
-    public CatalogsController(ICatalogRepository catalogRepository)
+    public CatalogsController(ICatalogRepository catalogRepository, ILogger<CatalogsController> logger)
     {
         _catalogRepository = catalogRepository;
+        _logger = logger;
     }
 
     /// <summary>
@@ -26,6 +28,7 @@ public class CatalogsController : ControllerBase
     {
         try
         {
+            _logger.LogInformation("[CatalogsController] GetAllCatalogs called");
             var saleStatuses = await _catalogRepository.GetSaleStatusesAsync();
             var paymentStatuses = await _catalogRepository.GetPaymentStatusesAsync();
             var riskStatuses = await _catalogRepository.GetRiskStatusesAsync();

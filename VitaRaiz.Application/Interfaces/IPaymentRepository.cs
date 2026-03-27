@@ -1,3 +1,4 @@
+using OpenQA.Selenium;
 using VitaRaiz.Application.DTOs;
 using VitaRaiz.Domain.Entities;
 
@@ -10,6 +11,9 @@ public interface IPaymentRepository
     Task<bool> ApprovePaymentAsync(int paymentId, int approvedBy);
     
     Task<bool> RejectPaymentAsync(int paymentId, int rejectedBy, string? reason);
+    
+    Task<bool> UpdatePaymentAsync(int paymentId, decimal amount, DateTime paymentDate, 
+        string status, string? notes);
     
     Task<List<PaymentDto>> GetPaymentsAsync(int? saleId, int? customerId, int? collectorId, 
         DateTime? startDate, DateTime? endDate, string? status);

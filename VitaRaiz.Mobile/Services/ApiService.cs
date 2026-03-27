@@ -1,11 +1,13 @@
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using NLog;
 
 namespace VitaRaiz.Mobile.Services;
 
 public class ApiService
 {
+    private readonly Logger _logger = AppLogger.Get();
     private readonly HttpClient _httpClient;
     private readonly JsonSerializerOptions _jsonOptions;
     
@@ -34,6 +36,7 @@ public class ApiService
             PropertyNameCaseInsensitive = true
         };
         
+        _logger.Info("[ApiService] Initialized with API_BASE_URL: {BaseUrl}", API_BASE_URL);
         System.Diagnostics.Debug.WriteLine($"ApiService: API_BASE_URL = {API_BASE_URL}");
     }
 
@@ -41,54 +44,86 @@ public class ApiService
     {
         try
         {
-            var token = await SecureStorage.GetAsync("jwt_token");
+#if IOS || MACCATALYST || ANDROID || WINDOWS
+            // Llamada a SecureStorage solo compilada en plataformas que la soportan.
+            var token = await SecureStorage.GetAsync("auth_token");
+            _logger.Debug("[SetAuthorizationHeaderAsync] Token retrieved from storage: {HasToken}", !string.IsNullOrEmpty(token));
             System.Diagnostics.Debug.WriteLine($"[ApiService] Token from storage: {(string.IsNullOrEmpty(token) ? "NULL/EMPTY" : token.Substring(0, Math.Min(50, token.Length)))}...");
             
             if (!string.IsNullOrEmpty(token))
             {
                 _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+                _logger.Debug("[SetAuthorizationHeaderAsync] Authorization header set successfully");
                 System.Diagnostics.Debug.WriteLine($"[ApiService] Authorization header set successfully");
             }
             else
             {
+                _logger.Warn("[SetAuthorizationHeaderAsync] No token found in SecureStorage");
                 System.Diagnostics.Debug.WriteLine($"[ApiService] WARNING: No token found in SecureStorage!");
             }
+#else
+            // En plataformas que no soportan SecureStorage, omitir la lectura del token.
+            _logger.Warn("[SetAuthorizationHeaderAsync] SecureStorage no está soportado en esta plataforma. Se omite lectura del token.");
+            System.Diagnostics.Debug.WriteLine("[ApiService] WARNING: SecureStorage not supported on this platform. Skipping auth header.");
+            return;
+#endif
+        }
+        catch (PlatformNotSupportedException pnse)
+        {
+            // Protección adicional por si la API lanza PlatformNotSupported en tiempo de ejecución
+            _logger.Warn(pnse, "[SetAuthorizationHeaderAsync] SecureStorage no está soportado en esta plataforma (excepción).");
+            System.Diagnostics.Debug.WriteLine($"[ApiService] SecureStorage not supported: {pnse.Message}");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error setting auth header: {ex.Message}");
+            _logger.Error(ex, "[SetAuthorizationHeaderAsync] Error setting auth header");
             System.Diagnostics.Debug.WriteLine($"[ApiService] ERROR in SetAuthorizationHeaderAsync: {ex}");
         }
     }
 
     public async Task<T?> GetAsync<T>(string endpoint)
     {
+        _logger.Info("[GetAsync] Starting GET {Endpoint}", endpoint);
         try
         {
             await SetAuthorizationHeaderAsync();
             System.Diagnostics.Debug.WriteLine($"[ApiService] GET {endpoint}");
             var response = await _httpClient.GetAsync(endpoint);
             
+            _logger.Debug("[GetAsync] Response Status: {StatusCode}", response.StatusCode);
             System.Diagnostics.Debug.WriteLine($"[ApiService] Response Status: {response.StatusCode}");
             
             if (response.IsSuccessStatusCode)
             {
                 var content = await response.Content.ReadAsStringAsync();
+                _logger.Debug("[GetAsync] Response Content Length: {Length}", content?.Length ?? 0);
                 System.Diagnostics.Debug.WriteLine($"[ApiService] Response Content Length: {content?.Length ?? 0}");
                 System.Diagnostics.Debug.WriteLine($"[ApiService] Response Content: {content?.Substring(0, Math.Min(200, content?.Length ?? 0))}");
                 
+                System.Diagnostics.Debug.WriteLine($"[ApiService] Starting deserialization to {typeof(T).Name}...");
                 var result = JsonSerializer.Deserialize<T>(content, _jsonOptions);
                 System.Diagnostics.Debug.WriteLine($"[ApiService] Deserialized result is null: {result == null}");
+                
+                if (result != null && result is System.Collections.ICollection collection)
+                {
+                    _logger.Info("[GetAsync] Deserialized collection: Count={Count}", collection.Count);
+                    System.Diagnostics.Debug.WriteLine($"[ApiService] Deserialized collection has {collection.Count} items");
+                }
+                
+                _logger.Info("[GetAsync] Returning result from GET {Endpoint}", endpoint);
+                System.Diagnostics.Debug.WriteLine($"[ApiService] Returning result from GetAsync<{typeof(T).Name}>");
                 return result;
             }
             
             var errorContent = await response.Content.ReadAsStringAsync();
+            _logger.Error("[GetAsync] GET {Endpoint} failed: Status={StatusCode}, Body={ErrorBody}", 
+                endpoint, response.StatusCode, errorContent?.Substring(0, Math.Min(200, errorContent?.Length ?? 0)));
             Console.WriteLine($"GET {endpoint} failed with status: {response.StatusCode}, Body: {errorContent}");
             return default;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error en GET {endpoint}: {ex.Message}");
+            _logger.Error(ex, "[GetAsync] Exception in GET {Endpoint}", endpoint);
             System.Diagnostics.Debug.WriteLine($"[ApiService] Exception: {ex.ToString()}");
             return default;
         }

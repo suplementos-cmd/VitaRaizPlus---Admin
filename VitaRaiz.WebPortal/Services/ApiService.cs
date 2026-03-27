@@ -10,13 +10,16 @@ public class ApiService
     private readonly HttpClient _httpClient;
     private readonly ProtectedSessionStorage _sessionStorage;
     private readonly IConfiguration _configuration;
+    private readonly ILogger<ApiService> _logger;
     private readonly JsonSerializerOptions _jsonOptions;
 
-    public ApiService(IConfiguration configuration, ProtectedSessionStorage sessionStorage)
+    public ApiService(IConfiguration configuration, ProtectedSessionStorage sessionStorage, ILogger<ApiService> logger)
     {
         _configuration = configuration;
         _sessionStorage = sessionStorage;
+        _logger = logger;
         var apiBaseUrl = _configuration["ApiSettings:BaseUrl"] ?? "https://localhost:7001";
+        _logger.LogInformation("[ApiService] Initialized with API base URL: {ApiBaseUrl}", apiBaseUrl);
         
         _httpClient = new HttpClient
         {
@@ -47,10 +50,12 @@ public class ApiService
 
     public async Task<T?> GetAsync<T>(string endpoint)
     {
+        _logger.LogDebug("[GetAsync] Calling GET {Endpoint}", endpoint);
         try
         {
             await SetAuthorizationHeaderAsync();
             var response = await _httpClient.GetAsync(endpoint);
+            _logger.LogDebug("[GetAsync] Response status: {StatusCode}", response.StatusCode);
             
             if (response.IsSuccessStatusCode)
             {
@@ -59,12 +64,12 @@ public class ApiService
             }
             
             var errorBody = await response.Content.ReadAsStringAsync();
-            Console.WriteLine($"Error en GET {endpoint}: Status={response.StatusCode}, Body={errorBody}");
+            _logger.LogError("[GetAsync] Error in GET {Endpoint}: Status={StatusCode}, Body={ErrorBody}", endpoint, response.StatusCode, errorBody);
             return default;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error en GET {endpoint}: {ex.Message}");
+            _logger.LogError(ex, "[GetAsync] Exception in GET {Endpoint}", endpoint);
             return default;
         }
     }

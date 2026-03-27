@@ -5,12 +5,27 @@ using System.Text;
 using VitaRaiz.Application;
 using VitaRaiz.Infrastructure;
 using VitaRaiz.API.Services;
+using NLog;
+using NLog.Web;
 
-var builder = WebApplication.CreateBuilder(args);
+// Configure NLog FIRST before anything else
+var logger = LogManager.Setup().LoadConfigurationFromAppSettings().GetCurrentClassLogger();
+logger.Info("========================================");
+logger.Info($"VitaRaiz API Starting - {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+logger.Info("========================================");
 
-// Add services to the container
-builder.Services.AddApplication();
-builder.Services.AddInfrastructure(builder.Configuration);
+try
+{
+    var builder = WebApplication.CreateBuilder(args);
+
+    // Configure logging with NLog
+    builder.Logging.ClearProviders();
+    builder.Logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Trace);
+    builder.Host.UseNLog();
+
+    // Add services to the container
+    builder.Services.AddApplication();
+    builder.Services.AddInfrastructure(builder.Configuration);
 
 // Register JWT Token Service
 builder.Services.AddScoped<JwtTokenService>();
@@ -171,4 +186,16 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
+logger.Info("Application configured successfully. Starting web host...");
 app.Run();
+logger.Info("Application stopped gracefully.");
+}
+catch (Exception ex)
+{
+    logger.Fatal(ex, "Application terminated unexpectedly");
+    throw;
+}
+finally
+{
+    LogManager.Shutdown();
+}

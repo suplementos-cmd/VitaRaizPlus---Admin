@@ -32,3 +32,23 @@ public class RejectPaymentCommandHandler : IRequestHandler<RejectPaymentCommand,
         return await _paymentRepository.RejectPaymentAsync(request.PaymentId, request.RejectedBy, request.Reason);
     }
 }
+
+public class UpdatePaymentCommandHandler : IRequestHandler<UpdatePaymentCommand, bool>
+{
+    private readonly IPaymentRepository _paymentRepository;
+
+    public UpdatePaymentCommandHandler(IPaymentRepository paymentRepository)
+    {
+        _paymentRepository = paymentRepository;
+    }
+
+    public async Task<bool> Handle(UpdatePaymentCommand request, CancellationToken cancellationToken)
+    {
+        return await _paymentRepository.UpdatePaymentAsync(
+            request.PaymentId,
+            request.Amount,
+            request.PaymentDate,
+            request.Status,
+            request.Notes);
+    }
+}

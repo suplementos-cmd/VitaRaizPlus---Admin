@@ -9,12 +9,20 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.3" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.25" />
+    <PackageReference Include="NLog" Version="5.3.4" />
+    <PackageReference Include="NLog.Web.AspNetCore" Version="5.3.14" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\VitaRaiz.Application\VitaRaiz.Application.csproj" />
     <ProjectReference Include="..\VitaRaiz.Infrastructure\VitaRaiz.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="NLog.config">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

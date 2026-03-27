@@ -232,4 +232,44 @@ public partial class HomePage : ContentPage
     private async void OnTabVentas(object? s, EventArgs e) => await Shell.Current.GoToAsync("//SalesPage");
     private async void OnTabCobranza(object? s, EventArgs e) => await Shell.Current.GoToAsync("//PaymentPage");
     private async void OnTabClientes(object? s, EventArgs e) => await Shell.Current.GoToAsync("//CustomersPage");
+    
+    // ══════════════════════════════════════════════════════════════════
+    // CERRAR SESIÓN
+    // ══════════════════════════════════════════════════════════════════
+    private async void OnLogoutTapped(object? sender, EventArgs e)
+    {
+        try
+        {
+            var confirm = await DisplayAlert(
+                "Cerrar Sesión", 
+                "¿Está seguro que desea cerrar sesión?", 
+                "Sí", 
+                "No"
+            );
+            
+            if (!confirm) return;
+            
+            System.Diagnostics.Debug.WriteLine("=== Cerrando sesión ===");
+            
+            // Limpiar credenciales almacenadas
+            SecureStorage.Remove("auth_token");
+            SecureStorage.Remove("username");
+            SecureStorage.Remove("role");
+            SecureStorage.Remove("user_id");
+            SecureStorage.RemoveAll();
+            
+            System.Diagnostics.Debug.WriteLine("Credenciales eliminadas del SecureStorage");
+            
+            // Cambiar la MainPage a LoginPage
+            Application.Current!.MainPage = new LoginPage();
+            
+            System.Diagnostics.Debug.WriteLine("MainPage cambiada a LoginPage");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"ERROR en OnLogoutTapped: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"StackTrace: {ex.StackTrace}");
+            await DisplayAlert("Error", "No se pudo cerrar la sesión", "OK");
+        }
+    }
 }

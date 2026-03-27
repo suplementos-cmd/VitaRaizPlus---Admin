@@ -1,10 +1,17 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:converters="clr-namespace:VitaRaiz.Mobile.Converters"
              x:Class="VitaRaiz.Mobile.Pages.SaleDetailPage"
              Shell.NavBarIsVisible="False"
              Shell.TabBarIsVisible="False"
              BackgroundColor="#F8F4FC">
+
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <converters:InverseBoolConverter x:Key="InvertedBoolConverter" />
+        </ResourceDictionary>
+    </ContentPage.Resources>
 
     <Grid RowDefinitions="*">
 
@@ -17,40 +24,58 @@
 
                 <!-- ═══ BANNER IMAGE + overlay header ═══ -->
                 <Grid HeightRequest="200">
-                    <!-- Placeholder image -->
-                    <Border BackgroundColor="#E1BEE7" StrokeThickness="0">
+                    <!-- Placeholder background -->
+                    <Border BackgroundColor="#E1BEE7" StrokeThickness="0" IsVisible="{Binding HasBannerPhoto, Converter={StaticResource InvertedBoolConverter}}">
                         <Label Text="🏠" FontSize="60" HorizontalOptions="Center" VerticalOptions="Center" TextColor="#CE93D8" />
                     </Border>
+                    
+                    <!-- Sale photo -->
+                    <Image Source="{Binding BannerPhotoPath}" 
+                           Aspect="AspectFill"
+                           IsVisible="{Binding HasBannerPhoto}">
+                        <Image.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnImageTapped" />
+                        </Image.GestureRecognizers>
+                    </Image>
+                    
                     <!-- Gradient overlay -->
-                    <BoxView BackgroundColor="#44000000" />
+                    <BoxView>
+                        <BoxView.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                <GradientStop Color="#88000000" Offset="0.0" />
+                                <GradientStop Color="#00000000" Offset="0.5" />
+                                <GradientStop Color="#BB000000" Offset="1.0" />
+                            </LinearGradientBrush>
+                        </BoxView.Background>
+                    </BoxView>
                     <!-- Back button + title overlay -->
                     <Grid RowDefinitions="Auto,*,Auto" Padding="14">
                         <HorizontalStackLayout Grid.Row="0" Spacing="12">
-                            <Border StrokeThickness="0" BackgroundColor="#55FFFFFF" WidthRequest="36" HeightRequest="36" Padding="0">
-                                <Border.StrokeShape><RoundRectangle CornerRadius="18" /></Border.StrokeShape>
-                                <Label Text="←" FontSize="18" TextColor="White" HorizontalOptions="Center" VerticalOptions="Center">
+                            <Border StrokeThickness="0" BackgroundColor="#55FFFFFF" WidthRequest="40" HeightRequest="40" Padding="0">
+                                <Border.StrokeShape><RoundRectangle CornerRadius="20" /></Border.StrokeShape>
+                                <Label Text="←" FontSize="20" TextColor="White" HorizontalOptions="Center" VerticalOptions="Center" FontAttributes="Bold">
                                     <Label.GestureRecognizers>
                                         <TapGestureRecognizer Tapped="OnBackTapped" />
                                     </Label.GestureRecognizers>
                                 </Label>
                             </Border>
                             <!-- Cobrador quick actions -->
-                            <HorizontalStackLayout x:Name="HeaderActions" IsVisible="False" Spacing="10" HorizontalOptions="EndAndExpand">
-                                <Border StrokeThickness="0" BackgroundColor="#55FFFFFF" WidthRequest="36" HeightRequest="36">
-                                    <Border.StrokeShape><RoundRectangle CornerRadius="18" /></Border.StrokeShape>
-                                    <Label Text="📍" FontSize="16" HorizontalOptions="Center" VerticalOptions="Center">
+                            <HorizontalStackLayout x:Name="HeaderActions" IsVisible="False" Spacing="10" HorizontalOptions="End">
+                                <Border StrokeThickness="0" BackgroundColor="#55FFFFFF" WidthRequest="40" HeightRequest="40">
+                                    <Border.StrokeShape><RoundRectangle CornerRadius="20" /></Border.StrokeShape>
+                                    <Label Text="📍" FontSize="18" HorizontalOptions="Center" VerticalOptions="Center">
                                         <Label.GestureRecognizers><TapGestureRecognizer Tapped="OnOpenGps" /></Label.GestureRecognizers>
                                     </Label>
                                 </Border>
-                                <Border StrokeThickness="0" BackgroundColor="#55FFFFFF" WidthRequest="36" HeightRequest="36">
-                                    <Border.StrokeShape><RoundRectangle CornerRadius="18" /></Border.StrokeShape>
-                                    <Label Text="📞" FontSize="16" HorizontalOptions="Center" VerticalOptions="Center">
+                                <Border StrokeThickness="0" BackgroundColor="#55FFFFFF" WidthRequest="40" HeightRequest="40">
+                                    <Border.StrokeShape><RoundRectangle CornerRadius="20" /></Border.StrokeShape>
+                                    <Label Text="📞" FontSize="18" HorizontalOptions="Center" VerticalOptions="Center">
                                         <Label.GestureRecognizers><TapGestureRecognizer Command="{Binding CallClientCommand}" /></Label.GestureRecognizers>
                                     </Label>
                                 </Border>
-                                <Border StrokeThickness="0" BackgroundColor="#55FFFFFF" WidthRequest="36" HeightRequest="36">
-                                    <Border.StrokeShape><RoundRectangle CornerRadius="18" /></Border.StrokeShape>
-                                    <Label Text="💬" FontSize="16" HorizontalOptions="Center" VerticalOptions="Center">
+                                <Border StrokeThickness="0" BackgroundColor="#55FFFFFF" WidthRequest="40" HeightRequest="40">
+                                    <Border.StrokeShape><RoundRectangle CornerRadius="20" /></Border.StrokeShape>
+                                    <Label Text="💬" FontSize="18" HorizontalOptions="Center" VerticalOptions="Center">
                                         <Label.GestureRecognizers><TapGestureRecognizer Command="{Binding WhatsAppCommand}" /></Label.GestureRecognizers>
                                     </Label>
                                 </Border>
@@ -341,20 +366,53 @@
                     <CollectionView ItemsSource="{Binding Payments}">
                         <CollectionView.ItemTemplate>
                             <DataTemplate>
-                                <Grid ColumnDefinitions="Auto,*,Auto" Padding="0,6" ColumnSpacing="8">
-                                    <BoxView Grid.Column="0" Color="{Binding StatusColor}" WidthRequest="8" HeightRequest="8"
-                                             CornerRadius="4" VerticalOptions="Center" />
-                                    <Label Grid.Column="1" FontSize="12" TextColor="#333" VerticalOptions="Center">
-                                        <Label.FormattedText>
-                                            <FormattedString>
-                                                <Span Text="{Binding PaymentDate, StringFormat='{0:dd/MMM/yy}'}" FontAttributes="Bold" />
-                                                <Span Text="{Binding CollectorName, StringFormat=' - {0}'}" />
-                                            </FormattedString>
-                                        </Label.FormattedText>
-                                    </Label>
-                                    <Label Grid.Column="2" Text="{Binding Amount, StringFormat='${0:N2}'}"
-                                           FontSize="13" FontAttributes="Bold" TextColor="#28A745" />
-                                </Grid>
+                                <Border StrokeThickness="1" Stroke="#E0D4F5" Padding="10" Margin="0,4" BackgroundColor="White">
+                                    <Border.StrokeShape><RoundRectangle CornerRadius="8" /></Border.StrokeShape>
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer 
+                                            Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.OpenPaymentDetailCommand}"
+                                            CommandParameter="{Binding PaymentId}" />
+                                    </Border.GestureRecognizers>
+                                    <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="Auto,*,Auto" RowSpacing="4" ColumnSpacing="8">
+                                        <!-- Row 0: Status indicator + Fecha + Importe -->
+                                        <BoxView Grid.Row="0" Grid.Column="0" Color="{Binding StatusColor}" 
+                                                 WidthRequest="8" HeightRequest="8" CornerRadius="4" VerticalOptions="Center" />
+                                        <Label Grid.Row="0" Grid.Column="1" FontSize="12" TextColor="#333" FontAttributes="Bold" VerticalOptions="Center">
+                                            <Label.FormattedText>
+                                                <FormattedString>
+                                                    <Span Text="📅 " />
+                                                    <Span Text="{Binding PaymentDate, StringFormat='{0:dd/MMM/yyyy}'}" />
+                                                </FormattedString>
+                                            </Label.FormattedText>
+                                        </Label>
+                                        <Label Grid.Row="0" Grid.Column="2" Text="{Binding Amount, StringFormat='${0:N2}'}"
+                                               FontSize="14" FontAttributes="Bold" TextColor="#28A745" />
+
+                                        <!-- Row 1: Cobrador + Estatus -->
+                                        <Label Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" FontSize="11" TextColor="#666" VerticalOptions="Center">
+                                            <Label.FormattedText>
+                                                <FormattedString>
+                                                    <Span Text="👤 " />
+                                                    <Span Text="{Binding CollectorName}" FontAttributes="Bold" />
+                                                    <Span Text="  |  " />
+                                                    <Span Text="{Binding StatusLabel}" TextColor="{Binding StatusColor}" FontAttributes="Bold" />
+                                                </FormattedString>
+                                            </Label.FormattedText>
+                                        </Label>
+
+                                        <!-- Row 2: Observación + Importe restante -->
+                                        <Label Grid.Row="2" Grid.Column="1" Text="{Binding Notes}" 
+                                               FontSize="11" TextColor="#888" LineBreakMode="TailTruncation" MaxLines="2" />
+                                        <Label Grid.Row="2" Grid.Column="2" FontSize="11" TextColor="#7B1FA2" FontAttributes="Bold">
+                                            <Label.FormattedText>
+                                                <FormattedString>
+                                                    <Span Text="Restante: $" />
+                                                    <Span Text="{Binding PendingAmount, StringFormat='{0:N2}'}" />
+                                                </FormattedString>
+                                            </Label.FormattedText>
+                                        </Label>
+                                    </Grid>
+                                </Border>
                             </DataTemplate>
                         </CollectionView.ItemTemplate>
                     </CollectionView>
@@ -364,18 +422,54 @@
             </VerticalStackLayout>
         </ScrollView>
 
-        <!-- ═══ FAB: Edit button ═══ -->
-        <Button Text="✏️"
-                FontSize="22"
+        <!-- ═══ FAB: Edit button - Modern Design ═══ -->
+        <Button Text="✏"
+                FontSize="24"
                 BackgroundColor="#7B1FA2"
                 TextColor="White"
-                CornerRadius="28"
-                HeightRequest="56" WidthRequest="56"
+                CornerRadius="30"
+                HeightRequest="60" WidthRequest="60"
                 HorizontalOptions="End"
                 VerticalOptions="End"
                 Margin="0,0,20,20"
-                Shadow="{Shadow Brush='#447B1FA2', Offset='0,4', Radius=8}"
+                Shadow="{Shadow Brush='#667B1FA2', Offset='0,6', Radius=12}"
                 ZIndex="20"
                 Clicked="OnEditTapped" />
+
+        <!-- ═══ IMAGE VIEWER MODAL ═══ -->
+        <Grid Grid.Row="0" IsVisible="{Binding IsImageViewerVisible}" BackgroundColor="#E6000000" ZIndex="1000">
+            <Grid.GestureRecognizers>
+                <TapGestureRecognizer Tapped="OnCloseImageViewer" />
+            </Grid.GestureRecognizers>
+            
+            <Image Source="{Binding ExpandedImagePath}" 
+                   Aspect="AspectFit"
+                   Margin="20"
+                   HorizontalOptions="Fill"
+                   VerticalOptions="Fill" />
+            
+            <!-- Close button -->
+            <Border WidthRequest="50" HeightRequest="50" 
+                    BackgroundColor="#88FFFFFF"
+                    StrokeThickness="0"
+                    HorizontalOptions="End" 
+                    VerticalOptions="Start" 
+                    Margin="20">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="25" />
+                </Border.StrokeShape>
+                <Label Text="✕" 
+                       FontSize="24" 
+                       FontAttributes="Bold"
+                       TextColor="#333" 
+                       HorizontalOptions="Center" 
+                       VerticalOptions="Center">
+                    <Label.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnCloseImageViewer" />
+                    </Label.GestureRecognizers>
+                </Label>
+            </Border>
+        </Grid>
+
     </Grid>
 </ContentPage>

@@ -1,11 +1,17 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:converters="clr-namespace:VitaRaiz.Mobile.Converters"
              x:Class="VitaRaiz.Mobile.Pages.SalesPage"
              Title="Ventas"
              Shell.NavBarIsVisible="False"
              Shell.TabBarIsVisible="False"
              BackgroundColor="#FAFAFA">
+
+    <ContentPage.Resources>
+        <converters:InverseBoolConverter x:Key="InverseBoolConverter" />
+        <converters:FilePathToImageSourceConverter x:Key="FileToImageSource" />
+    </ContentPage.Resources>
 
     <Grid RowDefinitions="Auto,*,Auto">
 
@@ -47,79 +53,88 @@
 
             <RefreshView IsRefreshing="{Binding IsRefreshing}"
                          Command="{Binding RefreshCommand}">
-                <CollectionView ItemsSource="{Binding FilteredSales}"
-                                IsGrouped="True"
+                <CollectionView ItemsSource="{Binding FlatSalesList}"
                                 SelectionMode="None"
                                 Margin="0,0,0,70">
 
-<!-- ═══ GROUP HEADER: Fecha ═══ -->
-                    <CollectionView.GroupHeaderTemplate>
-                        <DataTemplate>
-                            <VerticalStackLayout Padding="14,10,14,2">
-                                <HorizontalStackLayout Spacing="6">
-                                    <Label Text="⭐" FontSize="14" TextColor="#7B1FA2" VerticalOptions="Center" />
-                                    <Label Text="{Binding Key}" FontSize="15" FontAttributes="Bold" TextColor="#7B1FA2" />
-                                    <Border StrokeThickness="0" BackgroundColor="#F3E5F5" Padding="6,1">
-                                        <Border.StrokeShape><RoundRectangle CornerRadius="8" /></Border.StrokeShape>
-                                        <Label Text="{Binding Count}" FontSize="11" TextColor="#7B1FA2" FontAttributes="Bold" />
-                                    </Border>
-                                </HorizontalStackLayout>
-                            </VerticalStackLayout>
-                        </DataTemplate>
-                    </CollectionView.GroupHeaderTemplate>
-
-                    <!-- ═══ ITEM TEMPLATE: Sale card ═══ -->
+                    <!-- ═══ ITEM TEMPLATE: Auto-select based on type ═══ -->
                     <CollectionView.ItemTemplate>
                         <DataTemplate>
-                            <Border Margin="10,4" StrokeThickness="0" BackgroundColor="White"
-                                    Shadow="{Shadow Brush='#18000000', Offset='0,2', Radius=6}">
-                                <Border.StrokeShape><RoundRectangle CornerRadius="12" /></Border.StrokeShape>
-                                <Grid Padding="10" ColumnDefinitions="65,*,Auto" ColumnSpacing="10" RowDefinitions="Auto,Auto,Auto">
-                                    <Grid.GestureRecognizers>
-                                        <TapGestureRecognizer
-                                            Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.OpenDetailCommand}"
-                                            CommandParameter="{Binding SaleId}" />
-                                    </Grid.GestureRecognizers>
-
-                                    <!-- Imagen placeholder (fachada/cliente/contrato) -->
-                                    <Border Grid.Column="0" Grid.RowSpan="3" HeightRequest="65" WidthRequest="65"
-                                            StrokeThickness="0" BackgroundColor="#F3E5F5" VerticalOptions="Center">
-                                        <Border.StrokeShape><RoundRectangle CornerRadius="10" /></Border.StrokeShape>
-                                        <Label Text="🏠" FontSize="28" HorizontalOptions="Center" VerticalOptions="Center" TextColor="#CE93D8" />
-                                    </Border>
-
-                                    <!-- Row 0: Cliente + Estatus badge -->
-                                    <HorizontalStackLayout Grid.Column="1" Grid.Row="0" Spacing="6">
-                                        <Label Text="👤" FontSize="11" TextColor="#7B1FA2" VerticalOptions="Center" />
-                                        <Label Text="{Binding CustomerName}" FontSize="14" FontAttributes="Bold"
-                                               TextColor="#333" LineBreakMode="TailTruncation" MaximumWidthRequest="160" />
+                            <!-- Header OR Sale item, determined by IsHeader -->
+                            <Grid>
+                                <!-- GROUP HEADER -->
+                                <VerticalStackLayout Padding="14,10,14,2" IsVisible="{Binding IsHeader}">
+                                    <HorizontalStackLayout Spacing="6">
+                                        <Label Text="⭐" FontSize="14" TextColor="#7B1FA2" VerticalOptions="Center" />
+                                        <Label Text="{Binding DateLabel}" FontSize="15" FontAttributes="Bold" TextColor="#7B1FA2" />
+                                        <Border StrokeThickness="0" BackgroundColor="#F3E5F5" Padding="6,1">
+                                            <Border.StrokeShape><RoundRectangle CornerRadius="8" /></Border.StrokeShape>
+                                            <Label Text="{Binding ItemCount}" FontSize="11" TextColor="#7B1FA2" FontAttributes="Bold" />
+                                        </Border>
                                     </HorizontalStackLayout>
-                                    <Border Grid.Column="2" Grid.Row="0" StrokeThickness="0" Padding="6,2"
-                                            BackgroundColor="{Binding StatusColor}" VerticalOptions="Center">
-                                        <Border.StrokeShape><RoundRectangle CornerRadius="4" /></Border.StrokeShape>
-                                        <Label Text="{Binding StatusLabel}" FontSize="9" TextColor="White" FontAttributes="Bold" />
-                                    </Border>
+                                </VerticalStackLayout>
 
-                                    <!-- Row 1: Forma pago + Monto -->
-                                    <HorizontalStackLayout Grid.Column="1" Grid.Row="1" Spacing="4">
-                                        <Label Text="💳" FontSize="10" TextColor="#999" VerticalOptions="Center" />
-                                        <Label Text="{Binding PaymentTerms}" FontSize="11" TextColor="#888" VerticalOptions="Center" />
-                                    </HorizontalStackLayout>
-                                    <Label Grid.Column="2" Grid.Row="1" Text="{Binding TotalAmount, StringFormat='${0:N0}'}"
-                                           FontSize="15" FontAttributes="Bold" TextColor="#7B1FA2"
-                                           HorizontalTextAlignment="End" VerticalOptions="Center" />
+                                <!-- SALE CARD -->
+                                <Border Margin="10,4" StrokeThickness="0" BackgroundColor="White"
+                                        Shadow="{Shadow Brush='#18000000', Offset='0,2', Radius=6}"
+                                        IsVisible="{Binding IsHeader, Converter={StaticResource InverseBoolConverter}}">
+                                    <Border.StrokeShape><RoundRectangle CornerRadius="12" /></Border.StrokeShape>
+                                    <Grid Padding="10" ColumnDefinitions="65,*,Auto" ColumnSpacing="10" RowDefinitions="Auto,Auto,Auto">
+                                        <Grid.GestureRecognizers>
+                                            <TapGestureRecognizer
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.OpenDetailCommand}"
+                                                CommandParameter="{Binding Sale.SaleId}" />
+                                        </Grid.GestureRecognizers>
 
-                                    <!-- Row 2: Fecha + Botones icono -->
-                                    <HorizontalStackLayout Grid.Column="1" Grid.Row="2" Spacing="4">
-                                        <Label Text="📅" FontSize="10" TextColor="#999" VerticalOptions="Center" />
-                                        <Label Text="{Binding SaleDate, StringFormat='{0:dd/MM/yy}'}" FontSize="11" TextColor="#AAA" VerticalOptions="Center" />
-                                    </HorizontalStackLayout>
-                                    <HorizontalStackLayout Grid.Column="2" Grid.Row="2" Spacing="10" HorizontalOptions="End">
-                                        <Label Text="📍" FontSize="14" TextColor="#9C27B0" VerticalOptions="Center" />
-                                        <Label Text="✏️" FontSize="14" TextColor="#7B1FA2" VerticalOptions="Center" />
-                                    </HorizontalStackLayout>
-                                </Grid>
-                            </Border>
+                                        <!-- Imagen: fachada real o placeholder -->
+                                        <Border Grid.Column="0" Grid.RowSpan="3" HeightRequest="65" WidthRequest="65"
+                                                StrokeThickness="0" BackgroundColor="#F3E5F5" VerticalOptions="Center">
+                                            <Border.StrokeShape><RoundRectangle CornerRadius="10" /></Border.StrokeShape>
+                                            <Grid>
+                                                <Image Source="{Binding Sale.ThumbnailPath, Converter={StaticResource FileToImageSource}}" Aspect="AspectFill"
+                                                       IsVisible="{Binding Sale.HasThumbnail}">
+                                                    <Image.GestureRecognizers>
+                                                        <TapGestureRecognizer Tapped="OnImageTapped" CommandParameter="{Binding Sale.ThumbnailPath}" />
+                                                    </Image.GestureRecognizers>
+                                                </Image>
+                                                <Label Text="🏠" FontSize="28" HorizontalOptions="Center" VerticalOptions="Center"
+                                                       TextColor="#CE93D8" IsVisible="{Binding Sale.HasThumbnail, Converter={StaticResource InverseBoolConverter}}" />
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- Row 0: Cliente + Estatus badge -->
+                                        <HorizontalStackLayout Grid.Column="1" Grid.Row="0" Spacing="6">
+                                            <Label Text="👤" FontSize="11" TextColor="#7B1FA2" VerticalOptions="Center" />
+                                            <Label Text="{Binding Sale.CustomerName}" FontSize="14" FontAttributes="Bold"
+                                                   TextColor="#333" LineBreakMode="TailTruncation" MaximumWidthRequest="160" />
+                                        </HorizontalStackLayout>
+                                        <Border Grid.Column="2" Grid.Row="0" StrokeThickness="0" Padding="6,2"
+                                                BackgroundColor="{Binding Sale.StatusColor}" VerticalOptions="Center">
+                                            <Border.StrokeShape><RoundRectangle CornerRadius="4" /></Border.StrokeShape>
+                                            <Label Text="{Binding Sale.StatusLabel}" FontSize="9" TextColor="White" FontAttributes="Bold" />
+                                        </Border>
+
+                                        <!-- Row 1: Forma pago + Monto -->
+                                        <HorizontalStackLayout Grid.Column="1" Grid.Row="1" Spacing="4">
+                                            <Label Text="💳" FontSize="10" TextColor="#999" VerticalOptions="Center" />
+                                            <Label Text="{Binding Sale.PaymentTerms}" FontSize="11" TextColor="#888" VerticalOptions="Center" />
+                                        </HorizontalStackLayout>
+                                        <Label Grid.Column="2" Grid.Row="1" Text="{Binding Sale.TotalAmount, StringFormat='${0:N0}'}"
+                                               FontSize="15" FontAttributes="Bold" TextColor="#7B1FA2"
+                                               HorizontalTextAlignment="End" VerticalOptions="Center" />
+
+                                        <!-- Row 2: Fecha + Botones icono -->
+                                        <HorizontalStackLayout Grid.Column="1" Grid.Row="2" Spacing="4">
+                                            <Label Text="📅" FontSize="10" TextColor="#999" VerticalOptions="Center" />
+                                            <Label Text="{Binding Sale.SaleDate, StringFormat='{0:dd/MM/yy}'}" FontSize="11" TextColor="#AAA" VerticalOptions="Center" />
+                                        </HorizontalStackLayout>
+                                        <HorizontalStackLayout Grid.Column="2" Grid.Row="2" Spacing="10" HorizontalOptions="End">
+                                            <Label Text="📍" FontSize="14" TextColor="#9C27B0" VerticalOptions="Center" />
+                                            <Label Text="✏️" FontSize="14" TextColor="#7B1FA2" VerticalOptions="Center" />
+                                        </HorizontalStackLayout>
+                                    </Grid>
+                                </Border>
+                            </Grid>
                         </DataTemplate>
                     </CollectionView.ItemTemplate>
 
@@ -181,5 +196,41 @@
                 </VerticalStackLayout>
             </Grid>
         </Border>
+
+        <!-- ═══ IMAGE VIEWER MODAL ═══ -->
+        <Grid Grid.Row="0" Grid.RowSpan="3" IsVisible="{Binding IsImageViewerVisible}" BackgroundColor="#E6000000" ZIndex="1000">
+            <Grid.GestureRecognizers>
+                <TapGestureRecognizer Tapped="OnCloseImageViewer" />
+            </Grid.GestureRecognizers>
+            
+            <Image Source="{Binding ExpandedImagePath}" 
+                   Aspect="AspectFit"
+                   Margin="20"
+                   HorizontalOptions="Fill"
+                   VerticalOptions="Fill" />
+            
+            <!-- Close button -->
+            <Border WidthRequest="50" HeightRequest="50" 
+                    BackgroundColor="#88FFFFFF"
+                    StrokeThickness="0"
+                    HorizontalOptions="End" 
+                    VerticalOptions="Start" 
+                    Margin="20">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="25" />
+                </Border.StrokeShape>
+                <Label Text="✕" 
+                       FontSize="24" 
+                       FontAttributes="Bold"
+                       TextColor="#333" 
+                       HorizontalOptions="Center" 
+                       VerticalOptions="Center">
+                    <Label.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnCloseImageViewer" />
+                    </Label.GestureRecognizers>
+                </Label>
+            </Border>
+        </Grid>
+
     </Grid>
 </ContentPage>

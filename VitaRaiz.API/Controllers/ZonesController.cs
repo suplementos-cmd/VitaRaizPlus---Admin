@@ -12,10 +12,12 @@ namespace VitaRaiz.API.Controllers;
 public class ZonesController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly ILogger<ZonesController> _logger;
 
-    public ZonesController(IMediator mediator)
+    public ZonesController(IMediator mediator, ILogger<ZonesController> logger)
     {
         _mediator = mediator;
+        _logger = logger;
     }
 
     /// <summary>
@@ -27,16 +29,16 @@ public class ZonesController : ControllerBase
         try
         {
             var username = User.Identity?.Name ?? "Anonymous";
-            Console.WriteLine($"[ZonesController] GetZones called by {username}");
+            _logger.LogInformation("[ZonesController] GetZones called by {Username}", username);
 
             var query = new GetZonesQuery();
             var zones = await _mediator.Send(query);
-            Console.WriteLine($"[ZonesController] Returning {zones?.Count ?? 0} zones");
+            _logger.LogInformation("[ZonesController] Returning {Count} zones", zones?.Count ?? 0);
             return Ok(zones);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[ZonesController] ERROR: {ex.Message}");
+            _logger.LogError(ex, "[ZonesController] Error getting zones");
             return StatusCode(500, new { error = ex.Message, stackTrace = ex.StackTrace });
         }
     }

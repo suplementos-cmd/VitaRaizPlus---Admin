@@ -13,6 +13,7 @@ public class CreateCustomerCommand : IRequest<int>
     public string? GpsLongitude { get; set; }
     public bool IsGoldCustomer { get; set; }
     public bool IsBlacklisted { get; set; }
+    public int? CreatedBy { get; set; }
 }
 
 public class UpdateCustomerCommand : IRequest<bool>

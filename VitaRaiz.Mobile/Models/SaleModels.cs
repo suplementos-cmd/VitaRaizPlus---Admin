@@ -3,6 +3,7 @@ namespace VitaRaiz.Mobile.Models;
 /// <summary>
 /// Enriched sale for list display. Mapped from API SaleDto.
 /// Colors/labels resolved from catalogs, NOT hardcoded.
+/// ALL properties are fully materialized (no computed), thread-safe, and null-safe for XAML binding.
 /// </summary>
 public class SaleListItem
 {
@@ -21,11 +22,55 @@ public class SaleListItem
     public string? StatusIcon { get; set; }
     public string RiskColor { get; set; } = "#28A745";
 
-    // Calculated
-    public double PaymentProgress => TotalAmount > 0
-        ? (double)((TotalAmount - Balance) / TotalAmount)
-        : 0;
+    // CRITICAL: Use simple stored property instead of computed property
+    // Computed properties can cause crashes during XAML binding in WinUI
+    public double PaymentProgressValue { get; set; }
+    
     public string PaymentTerms { get; set; } = string.Empty;
+    public string? ThumbnailPath { get; set; }
+    public bool HasThumbnail { get; set; }
+    
+    /// <summary>
+    /// Factory method to create safe SaleListItem with all calculations pre-computed
+    /// </summary>
+    public static SaleListItem CreateSafe(int saleId, string customerName, decimal totalAmount,
+        decimal paidAmount, decimal balance, DateTime saleDate, string status,
+        string statusLabel, string statusColor, string? statusIcon, string paymentTerms,
+        string? thumbnailPath = null)
+    {
+        // Pre-calculate PaymentProgress safely
+        double progress = 0.0;
+        try
+        {
+            if (totalAmount > 0)
+            {
+                progress = (double)((totalAmount - balance) / totalAmount);
+                progress = Math.Min(Math.Max(progress, 0.0), 1.0);
+            }
+        }
+        catch
+        {
+            progress = 0.0;
+        }
+
+        return new SaleListItem
+        {
+            SaleId = saleId,
+            CustomerName = customerName ?? string.Empty,
+            TotalAmount = totalAmount,
+            PaidAmount = paidAmount,
+            Balance = balance,
+            SaleDate = saleDate,
+            Status = status ?? string.Empty,
+            StatusLabel = statusLabel ?? string.Empty,
+            StatusColor = statusColor ?? "#999999",
+            StatusIcon = statusIcon,
+            PaymentTerms = paymentTerms ?? string.Empty,
+            PaymentProgressValue = progress,
+            ThumbnailPath = thumbnailPath,
+            HasThumbnail = !string.IsNullOrEmpty(thumbnailPath) && File.Exists(thumbnailPath)
+        };
+    }
 }
 
 /// <summary>
@@ -53,6 +98,7 @@ public class SaleFullDetail
     public decimal? CustomerGpsLongitude { get; set; }
     public bool CustomerIsGold { get; set; }
     public bool CustomerIsBlacklisted { get; set; }
+    public string? ZoneName { get; set; }
 
     // Seller / Collector
     public int SellerId { get; set; }

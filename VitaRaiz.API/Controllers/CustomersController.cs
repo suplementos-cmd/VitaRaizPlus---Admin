@@ -81,8 +81,16 @@ public class CustomersController : ControllerBase
     {
         try
         {
-            _logger.LogInformation("[CustomersController] CreateCustomer: {Name}, Phone: {Phone}, Zone: {Zone}", 
-                command.CustomerName, command.PhoneNumber, command.ZoneId);
+            // Extract user ID from JWT claims for CREATED_BY
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)
+                           ?? User.FindFirst("sub");
+            if (userIdClaim != null && int.TryParse(userIdClaim.Value, out int userId))
+            {
+                command.CreatedBy = userId;
+            }
+
+            _logger.LogInformation("[CustomersController] CreateCustomer: {Name}, Phone: {Phone}, Zone: {Zone}, CreatedBy: {CreatedBy}", 
+                command.CustomerName, command.PhoneNumber, command.ZoneId, command.CreatedBy);
             var customerId = await _mediator.Send(command);
             _logger.LogInformation("[CustomersController] Customer created with ID: {Id}", customerId);
             return CreatedAtAction(nameof(GetCustomerById), new { id = customerId }, new { customerId });

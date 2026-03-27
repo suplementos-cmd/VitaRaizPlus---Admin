@@ -129,7 +129,7 @@ public class SaleRepository : BaseOracleRepository, ISaleRepository
                     Balance = s.TotalAmount - s.Payments.Where(p => p.Status.ToUpper() == "APPROVED").Sum(p => p.Amount),
                     SaleDate = s.SaleDate,
                     Status = s.Status, // Se normaliza después de materializar
-                    PaymentTerms = $"{s.PaymentTermDays} días"
+                    PaymentTerms = s.PaymentTerms
                 })
                 .ToListAsync();
 
@@ -188,7 +188,7 @@ public class SaleRepository : BaseOracleRepository, ISaleRepository
                         Balance = s.TotalAmount - paidAmount,
                         SaleDate = s.SaleDate,
                         Status = NormalizeStatus(s.Status),
-                        PaymentTerms = $"{s.PaymentTermDays} días"
+                        PaymentTerms = s.PaymentTerms
                     };
                 })
                 .Where(s => s.Balance > 0) // Solo ventas con saldo pendiente
@@ -229,7 +229,7 @@ public class SaleRepository : BaseOracleRepository, ISaleRepository
             Balance = sale.TotalAmount - paidAmount,
             SaleDate = sale.SaleDate,
             Status = NormalizeStatus(sale.Status),
-            PaymentTerms = $"{sale.PaymentTermDays} días"
+            PaymentTerms = sale.PaymentTerms
         };
     }
 
@@ -333,6 +333,7 @@ public class SaleRepository : BaseOracleRepository, ISaleRepository
                 CustomerGpsLongitude = sale.Customer?.GpsLongitude,
                 CustomerIsGold = sale.Customer?.IsGoldCustomer ?? false,
                 CustomerIsBlacklisted = sale.Customer?.IsBlacklisted ?? false,
+                ZoneName = sale.Customer?.Zone?.ZoneName,
 
                 SellerId = sale.SellerId,
                 SellerName = sale.Seller?.Username,

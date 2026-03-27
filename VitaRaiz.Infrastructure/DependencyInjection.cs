@@ -22,6 +22,7 @@ public static class DependencyInjection
         services.AddScoped<IProductRepository, ProductRepository>();
         services.AddScoped<IZoneRepository, ZoneRepository>();
         services.AddScoped<ICatalogRepository, CatalogRepository>();
+        services.AddScoped<ISalePhotoRepository, SalePhotoRepository>();
 
         return services;
     }

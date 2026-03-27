@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Windows.Input;
+using System.Text.Json;
 using VitaRaiz.Mobile.Models;
 using VitaRaiz.Mobile.Services;
 
@@ -22,6 +23,7 @@ public partial class SaleDetailPage : ContentPage
 
         CallClientCommand = new Command(async () => await CallClient());
         WhatsAppCommand = new Command(async () => await OpenWhatsApp());
+        OpenPaymentDetailCommand = new Command<int>(OnOpenPaymentDetail);
 
         BindingContext = this;
     }
@@ -59,7 +61,21 @@ public partial class SaleDetailPage : ContentPage
     public ObservableCollection<SaleItemDetail> Items { get; } = new();
     public ObservableCollection<PaymentDetail> Payments { get; } = new();
 
-    public string ZoneName => "—";
+    private string? _bannerPhotoPath;
+    public string? BannerPhotoPath
+    {
+        get => _bannerPhotoPath;
+        set
+        {
+            _bannerPhotoPath = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(HasBannerPhoto));
+        }
+    }
+
+    public bool HasBannerPhoto => !string.IsNullOrEmpty(BannerPhotoPath);
+
+    public string ZoneName => Sale?.ZoneName ?? "—";
     public string CollectionDay
     {
         get
@@ -79,6 +95,7 @@ public partial class SaleDetailPage : ContentPage
 
     public ICommand CallClientCommand { get; }
     public ICommand WhatsAppCommand { get; }
+    public ICommand OpenPaymentDetailCommand { get; }
 
     // ── Lifecycle ──
     protected override async void OnAppearing()
@@ -115,6 +132,11 @@ public partial class SaleDetailPage : ContentPage
                 return;
             }
 
+            // Resolve sale status from catalogs
+            var (sLabel, sColor, sIcon) = _catalogService.ResolveSaleStatus(dto.Status);
+            dto.StatusLabel = sLabel;
+            dto.StatusColor = sColor;
+
             foreach (var p in dto.Payments)
             {
                 var (pLabel, pColor, _) = _catalogService.ResolvePaymentStatus(p.Status);
@@ -124,21 +146,32 @@ public partial class SaleDetailPage : ContentPage
 
             Sale = dto;
 
-            Items.Clear();
-            foreach (var item in dto.Items)
-                Items.Add(item);
-
-            Payments.Clear();
+            // Prepare payment data with pending amounts
             decimal runningPaid = 0;
             foreach (var p in dto.Payments.OrderBy(p => p.PaymentDate))
             {
                 runningPaid += p.Amount;
                 p.PendingAmount = dto.TotalAmount - runningPaid;
             }
-            foreach (var p in dto.Payments.OrderByDescending(p => p.PaymentDate))
-                Payments.Add(p);
+            
+            var sortedPayments = dto.Payments.OrderByDescending(p => p.PaymentDate).ToList();
+            
+            // CRITICAL: Modify ObservableCollection only on UI thread to prevent crash 0xc000027b
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                Items.Clear();
+                foreach (var item in dto.Items)
+                    Items.Add(item);
 
-            OnPropertyChanged(nameof(HasPayments));
+                Payments.Clear();
+                foreach (var p in sortedPayments)
+                    Payments.Add(p);
+
+                OnPropertyChanged(nameof(HasPayments));
+            });
+
+            // Load photos from server
+            await LoadSalePhotosAsync();
         }
         catch (Exception ex)
         {
@@ -151,13 +184,158 @@ public partial class SaleDetailPage : ContentPage
         }
     }
 
+    // ── Load photos from server ──
+    private async Task LoadSalePhotosAsync()
+    {
+        try
+        {
+            System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] LoadSalePhotosAsync START for saleId={SaleId}");
+            
+            var photos = await _apiService.GetAsync<List<SalePhotoDto>>($"api/sales/{SaleId}/photos");
+            
+            if (photos != null && photos.Count > 0)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] Loaded {photos.Count} photos from server");
+                
+                // Find photos by type
+                var fachadaPhoto = photos.FirstOrDefault(p => p.PhotoType == "FACHADA");
+                var clientePhoto = photos.FirstOrDefault(p => p.PhotoType == "CLIENTE");
+                var contratoPhoto = photos.FirstOrDefault(p => p.PhotoType == "CONTRATO");
+                var adicionalPhoto = photos.FirstOrDefault(p => p.PhotoType == "ADICIONAL");
+
+                // Select banner photo with priority: Fachada > Cliente > Contrato
+                string? selectedPhotoPath = null;
+                if (fachadaPhoto != null && File.Exists(fachadaPhoto.FilePath))
+                {
+                    selectedPhotoPath = fachadaPhoto.FilePath;
+                    System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] Banner: Using Fachada photo");
+                }
+                else if (clientePhoto != null && File.Exists(clientePhoto.FilePath))
+                {
+                    selectedPhotoPath = clientePhoto.FilePath;
+                    System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] Banner: Using Cliente photo (Fachada not found)");
+                }
+                else if (contratoPhoto != null && File.Exists(contratoPhoto.FilePath))
+                {
+                    selectedPhotoPath = contratoPhoto.FilePath;
+                    System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] Banner: Using Contrato photo (Fachada/Cliente not found)");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] Banner: No valid photo files found, checking local DB");
+                    // Fallback: Try to load from local SQLite DB
+                    await LoadPhotosFromLocalDbAsync();
+                    return;
+                }
+
+                // Set banner photo on UI thread
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    BannerPhotoPath = selectedPhotoPath;
+                });
+
+                // Log all photos for debugging
+                if (fachadaPhoto != null)
+                    System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] Fachada photo: {fachadaPhoto.FilePath}");
+                if (clientePhoto != null)
+                    System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] Cliente photo: {clientePhoto.FilePath}");
+                if (contratoPhoto != null)
+                    System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] Contrato photo: {contratoPhoto.FilePath}");
+                if (adicionalPhoto != null)
+                    System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] Adicional photo: {adicionalPhoto.FilePath}");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] No photos from server, checking local DB");
+                await LoadPhotosFromLocalDbAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] Error loading photos from server: {ex.Message}");
+            // Fallback to local DB
+            await LoadPhotosFromLocalDbAsync();
+        }
+    }
+
+    // ── Load photos from local SQLite DB (fallback) ──
+    private async Task LoadPhotosFromLocalDbAsync()
+    {
+        try
+        {
+            System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] LoadPhotosFromLocalDbAsync START for saleId={SaleId}");
+            
+            var dbPath = Path.Combine(FileSystem.AppDataDirectory, "vitaraiz.db3");
+            if (!File.Exists(dbPath))
+            {
+                System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] Local DB not found");
+                return;
+            }
+
+            var db = new Data.LocalDatabase(dbPath);
+            var localPhotos = await db.GetSalePhotosAsync(SaleId);
+
+            if (localPhotos != null && localPhotos.Count > 0)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] Found {localPhotos.Count} photos in local DB");
+
+                // Priority: Fachada > Cliente > Contrato
+                var fachadaPhoto = localPhotos.FirstOrDefault(p => p.PhotoType == "Fachada");
+                var clientePhoto = localPhotos.FirstOrDefault(p => p.PhotoType == "Cliente");
+                var contratoPhoto = localPhotos.FirstOrDefault(p => p.PhotoType == "Contrato");
+
+                string? selectedPhotoPath = null;
+                if (fachadaPhoto != null && File.Exists(fachadaPhoto.LocalPath))
+                {
+                    selectedPhotoPath = fachadaPhoto.LocalPath;
+                    System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] Banner (Local): Using Fachada");
+                }
+                else if (clientePhoto != null && File.Exists(clientePhoto.LocalPath))
+                {
+                    selectedPhotoPath = clientePhoto.LocalPath;
+                    System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] Banner (Local): Using Cliente");
+                }
+                else if (contratoPhoto != null && File.Exists(contratoPhoto.LocalPath))
+                {
+                    selectedPhotoPath = contratoPhoto.LocalPath;
+                    System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] Banner (Local): Using Contrato");
+                }
+
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    BannerPhotoPath = selectedPhotoPath;
+                });
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] No photos in local DB");
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    BannerPhotoPath = null;
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] Error loading local photos: {ex.Message}");
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                BannerPhotoPath = null;
+            });
+        }
+    }
+
     // ── Navigation ──
     private async void OnBackTapped(object? sender, EventArgs e) => await Shell.Current.GoToAsync("..");
 
     private async void OnEditTapped(object? sender, EventArgs e)
     {
         if (Sale == null) return;
-        await Shell.Current.GoToAsync($"CreateSalePage?saleId={Sale.SaleId}");
+        
+        // ⚡ OPTIMIZATION: Pass sale data directly to avoid API reload
+        var saleJson = JsonSerializer.Serialize(Sale);
+        var encodedJson = Uri.EscapeDataString(saleJson);
+        await Shell.Current.GoToAsync($"CreateSalePage?saleId={Sale.SaleId}&saleData={encodedJson}");
     }
 
     // ── Phone / WhatsApp ──
@@ -331,5 +509,46 @@ public partial class SaleDetailPage : ContentPage
         {
             await DisplayAlert("Error", $"Error: {ex.Message}", "OK");
         }
+    }
+
+    // ── Navigate to Payment Detail ──
+    private async void OnOpenPaymentDetail(int paymentId)
+    {
+        System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] Navigating to PaymentDetailPage with paymentId={paymentId}");
+        await Shell.Current.GoToAsync($"PaymentDetailPage?paymentId={paymentId}");
+    }
+
+    // ── Image Viewer Modal ──
+    private bool _isImageViewerVisible;
+    public bool IsImageViewerVisible
+    {
+        get => _isImageViewerVisible;
+        set { _isImageViewerVisible = value; OnPropertyChanged(); }
+    }
+
+    private string? _expandedImagePath;
+    public string? ExpandedImagePath
+    {
+        get => _expandedImagePath;
+        set { _expandedImagePath = value; OnPropertyChanged(); }
+    }
+
+    private void OnImageTapped(object? sender, EventArgs e)
+    {
+        if (sender is Image image && image.Source is FileImageSource fileSource)
+        {
+            ExpandedImagePath = fileSource.File;
+            IsImageViewerVisible = true;
+        }
+        else if (!string.IsNullOrEmpty(BannerPhotoPath))
+        {
+            ExpandedImagePath = BannerPhotoPath;
+            IsImageViewerVisible = true;
+        }
+    }
+
+    private void OnCloseImageViewer(object? sender, EventArgs e)
+    {
+        IsImageViewerVisible = false;
     }
 }

@@ -18,18 +18,40 @@
                 <Border.StrokeShape>
                     <RoundRectangle CornerRadius="15" />
                 </Border.StrokeShape>
-                <VerticalStackLayout Spacing="5">
-                    <Label Text="¡Bienvenido!"
-                           FontSize="24"
-                           FontAttributes="Bold"
-                           TextColor="White" />
-                    <Label Text="{Binding Username}"
-                           FontSize="18"
-                           TextColor="#E8F5E9" />
-                    <Label Text="{Binding Role}"
-                           FontSize="14"
-                           TextColor="#C8E6C9" />
-                </VerticalStackLayout>
+                <Grid ColumnDefinitions="*,Auto">
+                    <VerticalStackLayout Grid.Column="0" Spacing="5">
+                        <Label Text="¡Bienvenido!"
+                               FontSize="24"
+                               FontAttributes="Bold"
+                               TextColor="White" />
+                        <Label Text="{Binding Username}"
+                               FontSize="18"
+                               TextColor="#E8F5E9" />
+                        <Label Text="{Binding Role}"
+                               FontSize="14"
+                               TextColor="#C8E6C9" />
+                    </VerticalStackLayout>
+                    
+                    <!-- Botón cerrar sesión -->
+                    <Border Grid.Column="1" 
+                            WidthRequest="40" 
+                            HeightRequest="40" 
+                            BackgroundColor="#E53935"
+                            StrokeThickness="0"
+                            VerticalOptions="Start">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="20" />
+                        </Border.StrokeShape>
+                        <Label Text="🚪" 
+                               FontSize="20" 
+                               HorizontalOptions="Center" 
+                               VerticalOptions="Center">
+                            <Label.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="OnLogoutTapped" />
+                            </Label.GestureRecognizers>
+                        </Label>
+                    </Border>
+                </Grid>
             </Border>
             
             <!-- Estadísticas del día -->
@@ -176,6 +198,17 @@
                     HeightRequest="60"
                     CornerRadius="12"
                     FontSize="16" />
+            
+            <Button x:Name="LogoutButton"
+                    Text="🚪 Cerrar Sesión"
+                    Clicked="OnLogoutTapped"
+                    BackgroundColor="#E53935"
+                    TextColor="White"
+                    FontAttributes="Bold"
+                    HeightRequest="60"
+                    CornerRadius="12"
+                    FontSize="16"
+                    Margin="0,20,0,0" />
             
         </VerticalStackLayout>
     </ScrollView>

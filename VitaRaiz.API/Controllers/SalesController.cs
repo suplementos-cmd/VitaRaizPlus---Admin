@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using VitaRaiz.Application.Commands.Sales;
 using VitaRaiz.Application.Queries.Sales;
+using VitaRaiz.Application.Interfaces;
 
 namespace VitaRaiz.API.Controllers;
 
@@ -13,11 +14,13 @@ public class SalesController : ControllerBase
 {
     private readonly IMediator _mediator;
     private readonly ILogger<SalesController> _logger;
+    private readonly ISalePhotoRepository _salePhotoRepository;
 
-    public SalesController(IMediator mediator, ILogger<SalesController> logger)
+    public SalesController(IMediator mediator, ILogger<SalesController> logger, ISalePhotoRepository salePhotoRepository)
     {
         _mediator = mediator;
         _logger = logger;
+        _salePhotoRepository = salePhotoRepository;
     }
 
     /// <summary>
@@ -200,4 +203,81 @@ public class SalesController : ControllerBase
             return BadRequest(new { error = ex.Message });
         }
     }
+
+    /// <summary>
+    /// Obtener las fotos de una venta
+    /// </summary>
+    [HttpGet("{saleId}/photos")]
+    public async Task<IActionResult> GetSalePhotos(int saleId)
+    {
+        try
+        {
+            var photos = await _salePhotoRepository.GetSalePhotosAsync(saleId);
+            return Ok(photos);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[SalesController] Error getting photos for sale {SaleId}", saleId);
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Agregar una foto a una venta
+    /// </summary>
+    [HttpPost("{saleId}/photos")]
+    [Authorize(Roles = "Vendedor,Supervisor,AdminFull,Admin")]
+    public async Task<IActionResult> AddSalePhoto(int saleId, [FromBody] AddSalePhotoRequest request)
+    {
+        try
+        {
+            var userId = User.FindFirst("user_id")?.Value;
+            int.TryParse(userId, out int uploadedBy);
+
+            var photoId = await _salePhotoRepository.AddSalePhotoAsync(
+                saleId,
+                request.PhotoType,
+                request.FilePath,
+                request.GpsLatitude,
+                request.GpsLongitude,
+                request.FileSize,
+                uploadedBy > 0 ? uploadedBy : null
+            );
+
+            return Ok(new { photoId, message = "Foto agregada exitosamente" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[SalesController] Error adding photo to sale {SaleId}", saleId);
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Eliminar una foto de venta
+    /// </summary>
+    [HttpDelete("{saleId}/photos/{photoId}")]
+    [Authorize(Roles = "Vendedor,Supervisor,AdminFull,Admin")]
+    public async Task<IActionResult> DeleteSalePhoto(int saleId, int photoId)
+    {
+        try
+        {
+            await _salePhotoRepository.DeleteSalePhotoAsync(photoId);
+            return Ok(new { message = "Foto eliminada exitosamente" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[SalesController] Error deleting photo {PhotoId}", photoId);
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+}
+
+public class AddSalePhotoRequest
+{
+    public string PhotoType { get; set; } = string.Empty; // FACHADA, CLIENTE, CONTRATO, ADICIONAL
+    public string FilePath { get; set; } = string.Empty;
+    public decimal? GpsLatitude { get; set; }
+    public decimal? GpsLongitude { get; set; }
+    public long? FileSize { get; set; }
 }

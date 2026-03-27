@@ -8,15 +8,18 @@ public class AuthService
 {
     private readonly HttpClient _httpClient;
     private readonly IConfiguration _configuration;
+    private readonly ILogger<AuthService> _logger;
     private const string TOKEN_KEY = "authToken";
     private const string USER_KEY = "currentUser";
 
     public event EventHandler? AuthenticationStateChanged;
 
-    public AuthService(IConfiguration configuration)
+    public AuthService(IConfiguration configuration, ILogger<AuthService> logger)
     {
         _configuration = configuration;
+        _logger = logger;
         var apiBaseUrl = _configuration["ApiSettings:BaseUrl"] ?? "https://localhost:7001";
+        _logger.LogInformation("[AuthService] Initialized with API base URL: {ApiBaseUrl}", apiBaseUrl);
         
         _httpClient = new HttpClient
         {
@@ -26,6 +29,7 @@ public class AuthService
 
     public async Task<AuthResponse> LoginAsync(string username, string password)
     {
+        _logger.LogInformation("[LoginAsync] Login attempt for user: {Username}", username);
         try
         {
             var loginRequest = new { username, password };
@@ -33,6 +37,7 @@ public class AuthService
             var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
             var response = await _httpClient.PostAsync("/api/auth/login", content);
+            _logger.LogDebug("[LoginAsync] API response status: {StatusCode}", response.StatusCode);
 
             if (response.IsSuccessStatusCode)
             {
@@ -44,6 +49,8 @@ public class AuthService
 
                 if (loginResponse != null && !string.IsNullOrEmpty(loginResponse.Token))
                 {
+                    _logger.LogInformation("[LoginAsync] Login successful for user: {Username}, Role: {Role}", loginResponse.Username, loginResponse.Role);
+                    
                     // Guardar token y usuario en sessionStorage (se implementará en el componente)
                     var authResponse = new AuthResponse
                     {
@@ -60,6 +67,7 @@ public class AuthService
                 }
             }
 
+            _logger.LogWarning("[LoginAsync] Login failed for user: {Username} - Invalid credentials", username);
             return new AuthResponse
             {
                 Success = false,
@@ -68,6 +76,7 @@ public class AuthService
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "[LoginAsync] Error during login for user: {Username}", username);
             return new AuthResponse
             {
                 Success = false,

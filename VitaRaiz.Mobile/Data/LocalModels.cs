@@ -87,3 +87,15 @@ public class LocalPaymentPhoto
     public DateTime TakenAt { get; set; } = DateTime.UtcNow;
     public bool IsSynced { get; set; } = false;
 }
+
+[Table("LocalSalePhotos")]
+public class LocalSalePhoto
+{
+    [PrimaryKey, AutoIncrement]
+    public int Id { get; set; }
+
+    public int SaleId { get; set; }
+    public string PhotoType { get; set; } = string.Empty; // Fachada, Cliente, Contrato, Adicional
+    public string LocalPath { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+}

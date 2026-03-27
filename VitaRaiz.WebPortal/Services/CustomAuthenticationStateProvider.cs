@@ -8,9 +8,10 @@ public class CustomAuthenticationStateProvider : AuthenticationStateProvider
 {
     private readonly ProtectedSessionStorage _sessionStorage;
     private readonly AuthService _authService;
+    private readonly ILogger<CustomAuthenticationStateProvider> _logger;
     private ClaimsPrincipal _anonymous = new ClaimsPrincipal(new ClaimsIdentity());
 
-    public CustomAuthenticationStateProvider(ProtectedSessionStorage sessionStorage, AuthService authService)
+    public CustomAuthenticationStateProvider(ProtectedSessionStorage sessionStorage, AuthService authService, ILogger<CustomAuthenticationStateProvider> logger)
     {
         _sessionStorage = sessionStorage;
         _authService = authService;
@@ -47,6 +48,7 @@ public class CustomAuthenticationStateProvider : AuthenticationStateProvider
 
     public async Task MarkUserAsAuthenticatedAsync(CurrentUser user)
     {
+        _logger.LogInformation("[MarkUserAsAuthenticatedAsync] Marking user as authenticated: {Username}, Role: {Role}", user.Username, user.Role);
         await _sessionStorage.SetAsync("currentUser", user);
         
         var claimsPrincipal = new ClaimsPrincipal(new ClaimsIdentity(new[]
@@ -61,6 +63,7 @@ public class CustomAuthenticationStateProvider : AuthenticationStateProvider
 
     public async Task MarkUserAsLoggedOutAsync()
     {
+        _logger.LogInformation("[MarkUserAsLoggedOutAsync] User logged out");
         await _sessionStorage.DeleteAsync("currentUser");
         NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(_anonymous)));
     }

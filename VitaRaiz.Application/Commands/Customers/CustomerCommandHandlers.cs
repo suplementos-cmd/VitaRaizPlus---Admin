@@ -23,7 +23,8 @@ public class CreateCustomerCommandHandler : IRequestHandler<CreateCustomerComman
             request.GpsLatitude,
             request.GpsLongitude,
             request.IsGoldCustomer,
-            request.IsBlacklisted
+            request.IsBlacklisted,
+            request.CreatedBy
         );
     }
 }

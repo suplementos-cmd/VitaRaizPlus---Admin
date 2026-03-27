@@ -2,6 +2,8 @@
 using VitaRaiz.Mobile.Data;
 using VitaRaiz.Mobile.Pages;
 using VitaRaiz.Mobile.Services;
+using NLog;
+using NLog.Extensions.Logging;
 
 namespace VitaRaiz.Mobile;
 
@@ -9,6 +11,9 @@ public static class MauiProgram
 {
 	public static MauiApp CreateMauiApp()
 	{
+		// Initialize NLog FIRST before anything else
+		AppLogger.Initialize();
+		
 		var builder = MauiApp.CreateBuilder();
 		builder
 			.UseMauiApp<App>()
@@ -17,6 +22,10 @@ public static class MauiProgram
 				fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
 				fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
 			});
+
+		// Configure logging with NLog
+		builder.Logging.ClearProviders();
+		builder.Logging.AddNLog();
 
 		// Configurar SQLite database path
 		string dbPath = Path.Combine(FileSystem.AppDataDirectory, "vitaraiz.db3");
@@ -35,6 +44,11 @@ public static class MauiProgram
 		builder.Logging.AddDebug();
 #endif
 
-		return builder.Build();
+		var app = builder.Build();
+		
+		var logger = AppLogger.Get();
+		logger.Info("MAUI Application configured successfully");
+		
+		return app;
 	}
 }

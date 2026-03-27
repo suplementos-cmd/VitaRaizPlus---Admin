@@ -1,4 +1,5 @@
 using VitaRaiz.Mobile.Models;
+using NLog;
 
 namespace VitaRaiz.Mobile.Services;
 
@@ -8,6 +9,7 @@ namespace VitaRaiz.Mobile.Services;
 /// </summary>
 public class CatalogService
 {
+    private readonly Logger _logger = AppLogger.Get();
     private readonly ApiService _apiService;
 
     private List<CatalogSaleStatus> _saleStatuses = new();
@@ -31,7 +33,13 @@ public class CatalogService
 
     public async Task LoadAsync()
     {
-        if (_loaded) return;
+        if (_loaded)
+        {
+            _logger.Debug("[LoadAsync] Catalogs already loaded, skipping");
+            return;
+        }
+            
+        _logger.Info("[LoadAsync] Loading catalogs from API...");
         try
         {
             var data = await _apiService.GetAsync<AllCatalogsResponse>("api/catalogs/all");
@@ -43,10 +51,20 @@ public class CatalogService
                 _visitActions = data.VisitActions;
                 _theme = data.Theme;
                 _loaded = true;
+                
+                _logger.Info("[LoadAsync] Catalogs loaded successfully: SaleStatuses={SaleCount}, PaymentStatuses={PaymentCount}, RiskStatuses={RiskCount}",
+                    _saleStatuses.Count, _paymentStatuses.Count, _riskStatuses.Count);
+            }
+            else
+            {
+                _logger.Warn("[LoadAsync] API returned null, using defaults");
+                EnsureDefaults();
+                _loaded = true;
             }
         }
         catch (Exception ex)
         {
+            _logger.Error(ex, "[LoadAsync] Error loading catalogs, using defaults");
             System.Diagnostics.Debug.WriteLine($"[CatalogService] Error loading catalogs: {ex.Message}");
             EnsureDefaults();
             _loaded = true;

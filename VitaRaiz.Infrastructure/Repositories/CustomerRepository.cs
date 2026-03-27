@@ -14,7 +14,7 @@ public class CustomerRepository : BaseOracleRepository, ICustomerRepository
 
     public async Task<int> CreateCustomerAsync(string customerName, string? phoneNumber, string? email, 
         string? address, int? zoneId, string? gpsLatitude, string? gpsLongitude, 
-        bool isGoldCustomer, bool isBlacklisted)
+        bool isGoldCustomer, bool isBlacklisted, int? createdBy = null)
     {
         var connection = await GetOpenConnectionAsync();
         using var command = CreatePackageProcedureCommand(connection, "sp_register_customer");
@@ -30,6 +30,7 @@ public class CustomerRepository : BaseOracleRepository, ICustomerRepository
         AddInputParameter(command, "p_gps_lon", gpsLongitude);
         AddInputParameter(command, "p_is_gold", isGoldCustomer ? 1 : 0);
         AddInputParameter(command, "p_is_blacklisted", isBlacklisted ? 1 : 0);
+        AddInputParameter(command, "p_created_by", createdBy.HasValue ? (object)createdBy.Value : DBNull.Value);
 
         await command.ExecuteNonQueryAsync();
 

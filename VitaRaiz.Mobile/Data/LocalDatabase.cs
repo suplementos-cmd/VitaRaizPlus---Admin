@@ -16,6 +16,7 @@ public class LocalDatabase
         _database.CreateTableAsync<LocalPayment>().Wait();
         _database.CreateTableAsync<LocalPaymentPhoto>().Wait();
         _database.CreateTableAsync<SyncQueueItem>().Wait();
+        _database.CreateTableAsync<LocalSalePhoto>().Wait();
     }
 
     #region Customers
@@ -227,6 +228,70 @@ public class LocalDatabase
             .ToListAsync();
         
         return sales.Sum(s => s.PendingAmount);
+    }
+    #endregion
+
+    #region SalePhotos
+    public Task<int> SaveSalePhotoAsync(LocalSalePhoto photo)
+    {
+        return _database.InsertAsync(photo);
+    }
+
+    public Task<List<LocalSalePhoto>> GetSalePhotosAsync(int saleId)
+    {
+        return _database.Table<LocalSalePhoto>()
+            .Where(p => p.SaleId == saleId)
+            .ToListAsync();
+    }
+
+    /// <summary>
+    /// Gets the best photo for a sale (priority: Fachada > Cliente > Contrato > Adicional)
+    /// </summary>
+    public async Task<string?> GetSaleThumbnailAsync(int saleId)
+    {
+        try
+        {
+            System.Diagnostics.Debug.WriteLine($"[LocalDatabase] GetSaleThumbnailAsync START for saleId={saleId}");
+            
+            var photos = await _database.Table<LocalSalePhoto>()
+                .Where(p => p.SaleId == saleId)
+                .ToListAsync();
+
+            System.Diagnostics.Debug.WriteLine($"[LocalDatabase] Found {photos?.Count ?? 0} photos for sale {saleId}");
+
+            if (photos != null && photos.Count > 0)
+            {
+                foreach (var photo in photos)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[LocalDatabase]   Photo: Type={photo.PhotoType}, Path={photo.LocalPath}");
+                }
+            }
+
+            foreach (var type in new[] { "Fachada", "Cliente", "Contrato", "Adicional" })
+            {
+                var photo = photos?.FirstOrDefault(p => p.PhotoType == type);
+                if (photo != null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[LocalDatabase] Checking {type}: {photo.LocalPath}");
+                    bool exists = File.Exists(photo.LocalPath);
+                    System.Diagnostics.Debug.WriteLine($"[LocalDatabase] File.Exists: {exists}");
+                    
+                    if (exists)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[LocalDatabase] Returning thumbnail: {photo.LocalPath}");
+                        return photo.LocalPath;
+                    }
+                }
+            }
+            
+            System.Diagnostics.Debug.WriteLine($"[LocalDatabase] No valid thumbnail found for sale {saleId}");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[LocalDatabase] ERROR in GetSaleThumbnailAsync: {ex.Message}");
+            return null;
+        }
     }
     #endregion
 }

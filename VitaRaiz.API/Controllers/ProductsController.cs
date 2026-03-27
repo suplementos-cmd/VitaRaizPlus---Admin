@@ -12,10 +12,12 @@ namespace VitaRaiz.API.Controllers;
 public class ProductsController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly ILogger<ProductsController> _logger;
 
-    public ProductsController(IMediator mediator)
+    public ProductsController(IMediator mediator, ILogger<ProductsController> logger)
     {
         _mediator = mediator;
+        _logger = logger;
     }
 
     /// <summary>
@@ -29,8 +31,10 @@ public class ProductsController : ControllerBase
     {
         try
         {
+            _logger.LogInformation("[ProductsController] GetProducts called with searchTerm={SearchTerm}, isActive={IsActive}", searchTerm, isActive);
+            
             var username = User.Identity?.Name ?? "Anonymous";
-            Console.WriteLine($"[ProductsController] GetProducts called by {username}, Params: searchTerm={searchTerm}, isActive={isActive}");
+            // Already logged above
 
             var query = new GetProductsQuery
             {
@@ -39,12 +43,12 @@ public class ProductsController : ControllerBase
             };
 
             var products = await _mediator.Send(query);
-            Console.WriteLine($"[ProductsController] Returning {products?.Count ?? 0} products");
+            _logger.LogInformation("[ProductsController] Returning {Count} products", products?.Count ?? 0);
             return Ok(products);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[ProductsController] ERROR: {ex.Message}");
+            _logger.LogError(ex, "[ProductsController] Error getting products");
             return StatusCode(500, new { error = ex.Message, stackTrace = ex.StackTrace });
         }
     }

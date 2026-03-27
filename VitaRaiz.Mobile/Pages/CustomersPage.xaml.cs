@@ -1,11 +1,13 @@
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 using VitaRaiz.Mobile.Services;
+using NLog;
 
 namespace VitaRaiz.Mobile.Pages;
 
 public partial class CustomersPage : ContentPage
 {
+    private readonly Logger _logger = AppLogger.Get();
     private readonly ApiService _apiService;
     private string _searchText = string.Empty;
     private List<CustomerDto> _allCustomers = new();
@@ -14,7 +16,8 @@ public partial class CustomersPage : ContentPage
     {
         try
         {
-            System.Diagnostics.Debug.WriteLine("=== Inicializando CustomersPage ===");
+            _logger.Info("═══════════════════════════════════════════════════════");
+            _logger.Info("[Constructor] Inicializando CustomersPage...");
             InitializeComponent();
             BindingContext = this;
             
@@ -24,11 +27,13 @@ public partial class CustomersPage : ContentPage
             ViewCustomerDetailCommand = new Command(OnViewCustomerDetail);
             
             _ = LoadCustomersAsync();
-            System.Diagnostics.Debug.WriteLine("=== CustomersPage inicializado correctamente ===");
+            _logger.Info("[Constructor] CustomersPage inicializado correctamente");
+            _logger.Info("═══════════════════════════════════════════════════════");
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"ERROR en CustomersPage constructor: {ex.Message}");
+            _logger.LogException(ex, "Error crítico en constructor CustomersPage");
+            throw;
         }
     }
 
@@ -51,40 +56,45 @@ public partial class CustomersPage : ContentPage
     {
         try
         {
-            System.Diagnostics.Debug.WriteLine("CustomersPage: Cargando clientes desde API...");
+            _logger.Info("[LoadCustomersAsync] INICIO - Cargando clientes desde API...");
+            
             // Cargar clientes desde la API
             var customersData = await _apiService.GetAsync<List<CustomerDto>>("api/customers");
             
-            System.Diagnostics.Debug.WriteLine($"CustomersPage: Recibidos {customersData?.Count ?? 0} clientes");
+            _logger.Info("[LoadCustomersAsync] API Response recibida: Count={Count}, IsNull={IsNull}", 
+                customersData?.Count ?? 0, customersData == null);
             
             if (customersData != null)
             {
                 _allCustomers = customersData;
+                _logger.Debug("[LoadCustomersAsync] Datos asignados a _allCustomers. Llamando DisplayCustomers...");
+                
                 DisplayCustomers(_allCustomers);
-                System.Diagnostics.Debug.WriteLine($"CustomersPage: Mostrando {Customers.Count} clientes");
+                
+                _logger.Info("[LoadCustomersAsync] FIN - {Count} clientes cargados y mostrados en UI", Customers.Count);
             }
             else
             {
-                System.Diagnostics.Debug.WriteLine("CustomersPage: No se recibieron datos (null)");
+                _logger.Warn("[LoadCustomersAsync] API devolvió null - No hay datos de clientes");
             }
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"CustomersPage: Error loading customers: {ex.Message}");
-            System.Diagnostics.Debug.WriteLine($"StackTrace: {ex.StackTrace}");
+            _logger.LogException(ex, "Error crítico al cargar clientes desde API");
         }
     }
 
     private void DisplayCustomers(List<CustomerDto> customers)
     {
-        Customers.Clear();
+        _logger.Debug("[DisplayCustomers] INICIO - Procesando {Count} clientes", customers.Count);
         
         var colors = new[] { "#9C27B0", "#2196F3", "#4CAF50", "#FF9800", "#E91E63", "#00BCD4" };
         int colorIndex = 0;
         
+        var items = new List<CustomerItemDto>();
         foreach (var customer in customers)
         {
-            Customers.Add(new CustomerItemDto
+            var item = new CustomerItemDto
             {
                 CustomerId = customer.CustomerId,
                 CustomerName = customer.CustomerName,
@@ -94,15 +104,47 @@ public partial class CustomersPage : ContentPage
                 IsGoldCustomer = customer.IsGoldCustomer,
                 IsBlacklisted = customer.IsBlacklisted,
                 AvatarColor = colors[colorIndex % colors.Length]
-            });
+            };
+            items.Add(item);
+            
+            if (colorIndex < 3) // Log primeros 3 para muestra
+                _logger.Debug("[DisplayCustomers] Item {Index}: Id={Id}, Name={Name}, Zone={Zone}",
+                    colorIndex, item.CustomerId, item.CustomerName, item.ZoneName);
+            
             colorIndex++;
         }
+        
+        _logger.Debug("[DisplayCustomers] {Count} items procesados. Actualizando UI en MainThread...", items.Count);
+        
+        // CRITICAL: Modify ObservableCollection only on UI thread to prevent crash 0xc000027b
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            try
+            {
+                _logger.Debug("[DisplayCustomers] En UI Thread. Limpiando Customers ObservableCollection...");
+                Customers.Clear();
+                
+                _logger.Debug("[DisplayCustomers] Agregando {Count} items a Customers...", items.Count);
+                foreach (var item in items)
+                    Customers.Add(item);
+                
+                _logger.Info("[DisplayCustomers] FIN - UI actualizada con {Count} clientes", Customers.Count);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogException(ex, "CRASH al actualizar ObservableCollection Customers en UI thread");
+                throw;
+            }
+        });
     }
 
     private void OnSearch()
     {
+        _logger.Info("[OnSearch] Búsqueda solicitada: SearchText='{SearchText}'", SearchText ?? "(vacío)");
+        
         if (string.IsNullOrWhiteSpace(SearchText))
         {
+            _logger.Debug("[OnSearch] Búsqueda vacía - Mostrando todos los clientes ({Count})", _allCustomers.Count);
             DisplayCustomers(_allCustomers);
         }
         else
@@ -111,6 +153,10 @@ public partial class CustomersPage : ContentPage
                 c.CustomerName.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
                 (c.PhoneNumber != null && c.PhoneNumber.Contains(SearchText))
             ).ToList();
+            
+            _logger.Info("[OnSearch] Filtro aplicado: {FilteredCount} de {TotalCount} clientes", 
+                filtered.Count, _allCustomers.Count);
+            
             DisplayCustomers(filtered);
         }
     }

@@ -18,6 +18,7 @@ public class VitaRaizDbContext : DbContext
     public DbSet<SaleDetail> SaleDetails { get; set; }
     public DbSet<Payment> Payments { get; set; }
     public DbSet<PaymentPhoto> PaymentPhotos { get; set; }
+    public DbSet<SalePhoto> SalePhotos { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -254,6 +255,47 @@ public class VitaRaizDbContext : DbContext
                 .WithMany(p => p.PaymentPhotos)
                 .HasForeignKey(e => e.PaymentId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // SalePhoto configuration
+        modelBuilder.Entity<SalePhoto>(entity =>
+        {
+            entity.ToTable("SALE_PHOTOS");
+            entity.HasKey(e => e.PhotoId);
+            entity.Property(e => e.PhotoId).HasColumnName("PHOTO_ID")
+                .HasColumnType("NUMBER(10)");
+            entity.Property(e => e.SaleId).HasColumnName("SALE_ID")
+                .HasColumnType("NUMBER(10)");
+            entity.Property(e => e.PhotoType).HasColumnName("PHOTO_TYPE")
+                .HasMaxLength(20).IsRequired();
+            entity.Property(e => e.FilePath).HasColumnName("FILE_PATH")
+                .HasMaxLength(500).IsRequired();
+            entity.Property(e => e.ThumbnailPath).HasColumnName("THUMBNAIL_PATH")
+                .HasMaxLength(500);
+            entity.Property(e => e.GpsLatitude).HasColumnName("GPS_LATITUDE")
+                .HasPrecision(10, 7);
+            entity.Property(e => e.GpsLongitude).HasColumnName("GPS_LONGITUDE")
+                .HasPrecision(10, 7);
+            entity.Property(e => e.FileSize).HasColumnName("FILE_SIZE")
+                .HasColumnType("NUMBER");
+            entity.Property(e => e.UploadedAt).HasColumnName("UPLOADED_AT");
+            entity.Property(e => e.UploadedBy).HasColumnName("UPLOADED_BY")
+                .HasColumnType("NUMBER(10)");
+            entity.Property(e => e.Synced).HasColumnName("SYNCED")
+                .HasMaxLength(1)
+                .HasConversion(
+                    v => v ? "1" : "0",
+                    v => v == "1");
+
+            entity.HasOne(e => e.Sale)
+                .WithMany(s => s.SalePhotos)
+                .HasForeignKey(e => e.SaleId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.UploadedByUser)
+                .WithMany()
+                .HasForeignKey(e => e.UploadedBy)
+                .OnDelete(DeleteBehavior.SetNull);
         });
     }
 }

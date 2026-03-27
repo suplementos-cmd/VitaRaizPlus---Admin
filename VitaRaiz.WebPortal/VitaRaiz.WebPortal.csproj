@@ -6,4 +6,15 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="NLog" Version="5.3.4" />
+    <PackageReference Include="NLog.Web.AspNetCore" Version="5.3.14" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="NLog.config">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

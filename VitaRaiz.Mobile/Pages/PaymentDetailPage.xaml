@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="VitaRaiz.Mobile.Pages.PaymentDetailPage"
+             Title="Detalle de Abono"
+             Shell.NavBarIsVisible="False"
+             BackgroundColor="#FAFAFA">
+
+    <Grid RowDefinitions="Auto,*">
+
+        <!-- ═══ HEADER ═══ -->
+        <Border Grid.Row="0" StrokeThickness="0" BackgroundColor="#7B1FA2"
+                Shadow="{Shadow Brush='#44000000', Offset='0,3', Radius=6}">
+            <Grid Padding="14,12" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                <Label Grid.Column="0" Text="◀" FontSize="20" TextColor="White" VerticalOptions="Center">
+                    <Label.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnBackTapped" />
+                    </Label.GestureRecognizers>
+                </Label>
+                <Label Grid.Column="1" Text="💰 DETALLE ABONO" FontSize="16" FontAttributes="Bold"
+                       TextColor="White" VerticalOptions="Center" />
+                <Label Grid.Column="2" Text="✏️" FontSize="18" TextColor="White" VerticalOptions="Center"
+                       IsVisible="{Binding IsViewMode}">
+                    <Label.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnEditModeTapped" />
+                    </Label.GestureRecognizers>
+                </Label>
+            </Grid>
+        </Border>
+
+        <!-- ═══ CONTENT ═══ -->
+        <ScrollView Grid.Row="1">
+            <VerticalStackLayout Padding="14" Spacing="12" IsVisible="{Binding IsNotLoading}">
+
+                <!-- Payment info card -->
+                <Border StrokeThickness="1" Stroke="#E0D4F5" Padding="14" BackgroundColor="White">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="12" /></Border.StrokeShape>
+                    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="10">
+                        
+                        <!-- Importe Abonado -->
+                        <VerticalStackLayout Grid.Row="0" Spacing="4">
+                            <Label Text="💵 IMPORTE ABONADO" FontSize="11" TextColor="#7B1FA2" FontAttributes="Bold" />
+                            <Entry x:Name="EntryAmount" Text="{Binding Payment.Amount}" Keyboard="Numeric"
+                                   FontSize="20" FontAttributes="Bold" TextColor="#28A745" Placeholder="0.00"
+                                   IsEnabled="{Binding IsEditMode}" />
+                        </VerticalStackLayout>
+
+                        <!-- Fecha de Cobro -->
+                        <VerticalStackLayout Grid.Row="1" Spacing="4">
+                            <Label Text="📅 FECHA DE COBRO" FontSize="11" TextColor="#7B1FA2" FontAttributes="Bold" />
+                            <DatePicker x:Name="DatePayment" Date="{Binding Payment.PaymentDate}" Format="dd/MMM/yyyy"
+                                        FontSize="14" TextColor="#333" IsEnabled="{Binding IsEditMode}" />
+                        </VerticalStackLayout>
+
+                        <!-- Cobrador -->
+                        <VerticalStackLayout Grid.Row="2" Spacing="4">
+                            <Label Text="👤 COBRADOR" FontSize="11" TextColor="#7B1FA2" FontAttributes="Bold" />
+                            <Label Text="{Binding Payment.CollectorName}" FontSize="14" TextColor="#333" />
+                        </VerticalStackLayout>
+
+                        <!-- Estatus de Cobro -->
+                        <VerticalStackLayout Grid.Row="3" Spacing="4">
+                            <Label Text="🔖 ESTATUS" FontSize="11" TextColor="#7B1FA2" FontAttributes="Bold" />
+                            <Picker x:Name="PickerStatus" SelectedItem="{Binding Payment.Status}" FontSize="14" TextColor="#333"
+                                    IsEnabled="{Binding IsEditMode}">
+                                <Picker.ItemsSource>
+                                    <x:Array Type="{x:Type x:String}">
+                                        <x:String>APPROVED</x:String>
+                                        <x:String>PENDING</x:String>
+                                        <x:String>REJECTED</x:String>
+                                        <x:String>CANCELLED</x:String>
+                                    </x:Array>
+                                </Picker.ItemsSource>
+                            </Picker>
+                            <Border StrokeThickness="0" BackgroundColor="{Binding Payment.StatusColor}" 
+                                    Padding="8,4" HorizontalOptions="Start">
+                                <Border.StrokeShape><RoundRectangle CornerRadius="4" /></Border.StrokeShape>
+                                <Label Text="{Binding Payment.StatusLabel}" FontSize="11" TextColor="White" FontAttributes="Bold" />
+                            </Border>
+                        </VerticalStackLayout>
+
+                        <!-- Observaciones -->
+                        <VerticalStackLayout Grid.Row="4" Spacing="4">
+                            <Label Text="📝 OBSERVACIONES" FontSize="11" TextColor="#7B1FA2" FontAttributes="Bold" />
+                            <Editor x:Name="EditorNotes" Text="{Binding Payment.Notes}" Placeholder="Notas del cobro..."
+                                    FontSize="13" TextColor="#333" HeightRequest="80" IsEnabled="{Binding IsEditMode}" />
+                        </VerticalStackLayout>
+
+                        <!-- GPS Coordinates -->
+                        <VerticalStackLayout Grid.Row="5" Spacing="4">
+                            <Label Text="📍 UBICACIÓN GPS" FontSize="11" TextColor="#7B1FA2" FontAttributes="Bold" />
+                            <Label FontSize="12" TextColor="#666">
+                                <Label.FormattedText>
+                                    <FormattedString>
+                                        <Span Text="Lat: " />
+                                        <Span Text="{Binding Payment.GpsLatitude, StringFormat='{0:F6}'}" />
+                                        <Span Text=",  Lng: " />
+                                        <Span Text="{Binding Payment.GpsLongitude, StringFormat='{0:F6}'}" />
+                                    </FormattedString>
+                                </Label.FormattedText>
+                            </Label>
+                        </VerticalStackLayout>
+
+                        <!-- Importe Restante (calculated from sale context) -->
+                        <VerticalStackLayout Grid.Row="6" Spacing="4">
+                            <Label Text="💰 IMPORTE RESTANTE DESPUÉS DE ESTE PAGO" FontSize="11" TextColor="#7B1FA2" FontAttributes="Bold" />
+                            <Label Text="{Binding Payment.PendingAmount, StringFormat='${0:N2}'}" 
+                                   FontSize="18" FontAttributes="Bold" TextColor="#DC3545" />
+                        </VerticalStackLayout>
+
+                    </Grid>
+                </Border>
+
+                <!-- Edit mode buttons -->
+                <HorizontalStackLayout Spacing="8" IsVisible="{Binding IsEditMode}">
+                    <Button Text="💾 GUARDAR CAMBIOS" BackgroundColor="#28A745" TextColor="White"
+                            FontSize="14" FontAttributes="Bold" CornerRadius="8" HorizontalOptions="FillAndExpand"
+                            Clicked="OnSaveTapped"
+                            Shadow="{Shadow Brush='#4428A745', Offset='0,2', Radius=4}" />
+                    <Button Text="✖ CANCELAR" BackgroundColor="#6C757D" TextColor="White"
+                            FontSize="14" FontAttributes="Bold" CornerRadius="8" HorizontalOptions="FillAndExpand"
+                            Clicked="OnCancelEditTapped"
+                            Shadow="{Shadow Brush='#446C757D', Offset='0,2', Radius=4}" />
+                </HorizontalStackLayout>
+
+                <BoxView HeightRequest="40" Color="Transparent" />
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <!-- Loading indicator -->
+        <ActivityIndicator Grid.Row="1" IsRunning="{Binding IsLoading}" IsVisible="{Binding IsLoading}"
+                          Color="#7B1FA2" HeightRequest="50" WidthRequest="50" />
+
+    </Grid>
+</ContentPage>

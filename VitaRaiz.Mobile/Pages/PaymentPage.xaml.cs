@@ -1,11 +1,13 @@
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 using VitaRaiz.Mobile.Services;
+using NLog;
 
 namespace VitaRaiz.Mobile.Pages;
 
 public partial class PaymentPage : ContentPage
 {
+    private readonly Logger _logger = AppLogger.Get();
     private readonly ApiService _apiService;
 
     private string _gpsStatus = "Obteniendo ubicación...";
@@ -28,7 +30,8 @@ public partial class PaymentPage : ContentPage
     {
         try
         {
-            System.Diagnostics.Debug.WriteLine("=== Inicializando PaymentPage ===");
+            _logger.Info("═══════════════════════════════════════════════════════");
+            _logger.Info("[Constructor] Inicializando PaymentPage...");
             InitializeComponent();
             
             _apiService = new ApiService();
@@ -42,11 +45,13 @@ public partial class PaymentPage : ContentPage
             CancelCommand = new Command(OnCancel);
             
             _ = InitializeAsync();
-            System.Diagnostics.Debug.WriteLine("=== PaymentPage inicializado correctamente ===");
+            _logger.Info("[Constructor] PaymentPage inicializado correctamente");
+            _logger.Info("═══════════════════════════════════════════════════════");
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"ERROR en PaymentPage constructor: {ex.Message}");
+            _logger.LogException(ex, "Error crítico en constructor PaymentPage");
+            throw;
         }
     }
 
@@ -178,10 +183,14 @@ public partial class PaymentPage : ContentPage
     {
         try
         {
+            _logger.Info("[GetCurrentLocation] INICIO - Obteniendo ubicación GPS...");
+            
             var location = await Geolocation.GetLastKnownLocationAsync();
+            _logger.Debug("[GetCurrentLocation] LastKnownLocation: {IsNull}", location == null ? "NULL" : "OK");
             
             if (location == null)
             {
+                _logger.Info("[GetCurrentLocation] No hay ubicación conocida. Solicitando ubicación actual...");
                 var request = new GeolocationRequest(GeolocationAccuracy.Medium, TimeSpan.FromSeconds(10));
                 location = await Geolocation.GetLocationAsync(request);
             }
@@ -192,18 +201,20 @@ public partial class PaymentPage : ContentPage
                 _longitude = location.Longitude;
                 GpsStatus = "✓ Ubicación obtenida";
                 GpsCoordinates = $"Lat: {_latitude:F6}, Lon: {_longitude:F6}";
+                _logger.Info("[GetCurrentLocation] FIN - Ubicación obtenida: Lat={Lat}, Lon={Lon}", _latitude, _longitude);
             }
             else
             {
                 GpsStatus = "⚠ No se pudo obtener ubicación";
                 GpsCoordinates = "Verifica los permisos de ubicación";
+                _logger.Warn("[GetCurrentLocation] No se pudo obtener ubicación - Location es NULL");
             }
         }
         catch (Exception ex)
         {
             GpsStatus = "⚠ Error al obtener ubicación";
             GpsCoordinates = ex.Message;
-            Console.WriteLine($"GPS Error: {ex.Message}");
+            _logger.LogException(ex, "Error al obtener ubicación GPS");
         }
     }
 
@@ -211,36 +222,55 @@ public partial class PaymentPage : ContentPage
     {
         try
         {
-            System.Diagnostics.Debug.WriteLine("PaymentPage: Cargando ventas activas desde API...");
+            _logger.Info("[LoadSales] INICIO - Cargando ventas activas desde API...");
+            
             // Cargar ventas activas desde la API
             var salesData = await _apiService.GetAsync<List<VitaRaiz.Mobile.Services.SaleDto>>("api/sales/active");
 
-            System.Diagnostics.Debug.WriteLine($"PaymentPage: Recibidas {salesData?.Count ?? 0} ventas activas");
+            _logger.Info("[LoadSales] API Response: Count={Count}, IsNull={IsNull}", 
+                salesData?.Count ?? 0, salesData == null);
 
             if (salesData != null)
             {
-                Sales.Clear();
-                foreach (var sale in salesData)
+                var items = salesData.Select(sale => new PaymentSaleItem
                 {
-                    Sales.Add(new PaymentSaleItem
+                    SaleId = sale.SaleId,
+                    CustomerName = sale.CustomerName,
+                    TotalAmount = sale.TotalAmount,
+                    PendingAmount = sale.Balance
+                }).ToList();
+                
+                _logger.Debug("[LoadSales] {Count} items preparados para UI. Actualizando en MainThread...", items.Count);
+                
+                // CRITICAL: Modify ObservableCollection only on UI thread to prevent crash 0xc000027b
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    try
                     {
-                        SaleId = sale.SaleId,
-                        CustomerName = sale.CustomerName,
-                        TotalAmount = sale.TotalAmount,
-                        PendingAmount = sale.Balance
-                    });
-                }
-                System.Diagnostics.Debug.WriteLine($"PaymentPage: Mostrando {Sales.Count} ventas");
+                        _logger.Debug("[LoadSales] En UI Thread. Limpiando Sales ObservableCollection...");
+                        Sales.Clear();
+                        
+                        _logger.Debug("[LoadSales] Agregando {Count} ventas a Sales...", items.Count);
+                        foreach (var item in items)
+                            Sales.Add(item);
+                        
+                        _logger.Info("[LoadSales] FIN - {Count} ventas activas cargadas en UI", Sales.Count);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogException(ex, "CRASH al actualizar ObservableCollection Sales en UI thread");
+                        throw;
+                    }
+                });
             }
             else
             {
-                System.Diagnostics.Debug.WriteLine("PaymentPage: No se recibieron datos (null)");
+                _logger.Warn("[LoadSales] API devolvió null - No hay ventas activas");
             }
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"PaymentPage: Error loading sales: {ex.Message}");
-            System.Diagnostics.Debug.WriteLine($"StackTrace: {ex.StackTrace}");
+            _logger.LogException(ex, "Error crítico al cargar ventas desde API");
             ErrorMessage = "Error al cargar ventas";
             HasError = true;
         }
@@ -260,47 +290,79 @@ public partial class PaymentPage : ContentPage
     {
         try
         {
+            _logger.Info("[OnTakePhoto] INICIO - Tipo: {PhotoType}", photoType);
+            
             if (MediaPicker.Default.IsCaptureSupported)
             {
+                _logger.Debug("[OnTakePhoto] Cámara soportada. Capturando foto...");
                 var photo = await MediaPicker.Default.CapturePhotoAsync();
                 
                 if (photo != null)
                 {
+                    _logger.Debug("[OnTakePhoto] Foto capturada: {FileName}", photo.FileName);
+                    
                     // Guardar foto localmente
                     var localFilePath = Path.Combine(FileSystem.CacheDirectory, photo.FileName);
+                    _logger.Debug("[OnTakePhoto] Guardando en: {Path}", localFilePath);
                     
                     using Stream sourceStream = await photo.OpenReadAsync();
                     using FileStream localFileStream = File.OpenWrite(localFilePath);
                     
                     await sourceStream.CopyToAsync(localFileStream);
+                    _logger.Info("[OnTakePhoto] Foto guardada exitosamente");
                     
-                    Photos.Add(new PaymentPhoto
+                    var newPhoto = new PaymentPhoto
                     {
                         ImagePath = localFilePath,
                         PhotoType = photoType,
                         Latitude = _latitude,
                         Longitude = _longitude
-                    });
+                    };
                     
-                    OnPropertyChanged(nameof(HasPhotos));
+                    // CRITICAL: Modify ObservableCollection only on UI thread to prevent crash 0xc000027b
+                    MainThread.BeginInvokeOnMainThread(() =>
+                    {
+                        try
+                        {
+                            _logger.Debug("[OnTakePhoto] Agregando foto a Photos ObservableCollection...");
+                            Photos.Add(newPhoto);
+                            OnPropertyChanged(nameof(HasPhotos));
+                            _logger.Info("[OnTakePhoto] FIN - Total fotos: {Count}", Photos.Count);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogException(ex, "CRASH al agregar foto a ObservableCollection");
+                            throw;
+                        }
+                    });
+                }
+                else
+                {
+                    _logger.Warn("[OnTakePhoto] Usuario canceló captura de foto");
                 }
             }
             else
             {
+                _logger.Error("[OnTakePhoto] Cámara NO soportada en este dispositivo");
                 await DisplayAlert("Error", "La cámara no está disponible en este dispositivo", "OK");
             }
         }
         catch (Exception ex)
         {
+            _logger.LogException(ex, "Error crítico al tomar foto");
             await DisplayAlert("Error", $"Error al tomar foto: {ex.Message}", "OK");
         }
     }
 
     private async Task OnSavePayment()
     {
+        _logger.Info("════════════════════════════════════════");
+        _logger.Info("[OnSavePayment] INICIO - Guardando pago...");
+        
         // Validaciones
         if (SelectedSale == null)
         {
+            _logger.Warn("[OnSavePayment] Validación fallida: No hay venta seleccionada");
             ErrorMessage = "Debes seleccionar una venta";
             HasError = true;
             return;
@@ -308,6 +370,7 @@ public partial class PaymentPage : ContentPage
 
         if (string.IsNullOrWhiteSpace(PaymentAmount) || !decimal.TryParse(PaymentAmount, out var amount) || amount <= 0)
         {
+            _logger.Warn("[OnSavePayment] Validación fallida: Monto inválido: '{Amount}'", PaymentAmount);
             ErrorMessage = "Ingresa un monto válido";
             HasError = true;
             return;
@@ -315,10 +378,14 @@ public partial class PaymentPage : ContentPage
 
         if (Photos.Count < 2)
         {
+            _logger.Warn("[OnSavePayment] Validación fallida: Fotos insuficientes (Count={Count}, Requerido=2)", Photos.Count);
             ErrorMessage = "Debes tomar al menos 2 fotos (Fachada y Cliente)";
             HasError = true;
             return;
         }
+
+        _logger.Info("[OnSavePayment] Validaciones OK: SaleId={SaleId}, Amount={Amount}, Photos={PhotoCount}",
+            SelectedSale.SaleId, amount, Photos.Count);
 
         IsSaving = true;
         HasError = false;
@@ -329,7 +396,10 @@ public partial class PaymentPage : ContentPage
         try
         {
             var userId = await SecureStorage.GetAsync("user_id");
+            _logger.Debug("[OnSavePayment] UserId desde SecureStorage: {UserId}", userId ?? "NULL");
 
+            _logger.Debug("[OnSavePayment] Construyendo MultipartFormDataContent...");
+            
             // Crear MultipartFormDataContent para enviar fotos
             var multipartContent = new MultipartFormDataContent();
 
@@ -340,6 +410,8 @@ public partial class PaymentPage : ContentPage
             multipartContent.Add(new StringContent(_latitude.ToString()), "gpsLatitude");
             multipartContent.Add(new StringContent(_longitude.ToString()), "gpsLongitude");
             multipartContent.Add(new StringContent(Notes ?? ""), "notes");
+            
+            _logger.Debug("[OnSavePayment] Datos agregados. Procesando {Count} fotos...", Photos.Count);
 
             // Agregar fotos
             int photoIndex = 0;
@@ -356,10 +428,19 @@ public partial class PaymentPage : ContentPage
                     multipartContent.Add(new StringContent(photo.Latitude.ToString()), $"photoLatitudes[{photoIndex}]");
                     multipartContent.Add(new StringContent(photo.Longitude.ToString()), $"photoLongitudes[{photoIndex}]");
                     
+                    _logger.Debug("[OnSavePayment] Foto {Index}: Type={Type}, Size={Size} bytes",
+                        photoIndex, photo.PhotoType, fileBytes.Length);
+                    
                     photoIndex++;
+                }
+                else
+                {
+                    _logger.Warn("[OnSavePayment] Foto no existe en ruta: {Path}", photo.ImagePath);
                 }
             }
 
+            _logger.Info("[OnSavePayment] Enviando a API: POST /api/payments (con {Count} fotos)", photoIndex);
+            
             // Enviar a la API (si hay fotos usar multipart, sino JSON simple)
             bool success;
             if (Photos.Count > 0)
@@ -368,6 +449,7 @@ public partial class PaymentPage : ContentPage
             }
             else
             {
+                _logger.Debug("[OnSavePayment] Fallback: Enviando sin fotos (JSON)");
                 // Fallback sin fotos
                 var paymentData = new
                 {
@@ -383,6 +465,7 @@ public partial class PaymentPage : ContentPage
 
             if (success)
             {
+                _logger.Info("[OnSavePayment] ✓ PAGO GUARDADO EXITOSAMENTE");
                 SuccessMessage = "✓ Pago registrado exitosamente";
                 HasSuccess = true;
                 
@@ -394,19 +477,22 @@ public partial class PaymentPage : ContentPage
             }
             else
             {
+                _logger.Error("[OnSavePayment] API devolvió false - Error al registrar pago");
                 ErrorMessage = "Error al registrar el pago. Intenta nuevamente.";
                 HasError = true;
             }
         }
         catch (Exception ex)
         {
+            _logger.LogException(ex, "Error CRÍTICO al guardar pago");
             ErrorMessage = $"Error: {ex.Message}";
             HasError = true;
-            Console.WriteLine($"Payment save error: {ex.Message}");
         }
         finally
         {
             IsSaving = false;
+            _logger.Info("[OnSavePayment] FIN");
+            _logger.Info("════════════════════════════════════════");
         }
     }
 

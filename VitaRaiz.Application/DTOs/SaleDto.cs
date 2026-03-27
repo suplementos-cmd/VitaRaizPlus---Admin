@@ -37,6 +37,7 @@ public class SaleFullDto
     public decimal? CustomerGpsLongitude { get; set; }
     public bool CustomerIsGold { get; set; }
     public bool CustomerIsBlacklisted { get; set; }
+    public string? ZoneName { get; set; }
 
     // Seller / Collector
     public int SellerId { get; set; }

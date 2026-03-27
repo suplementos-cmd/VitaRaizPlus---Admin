@@ -194,8 +194,8 @@ public partial class LoginPage : ContentPage
                 {
                     System.Diagnostics.Debug.WriteLine("Login exitoso, guardando token...");
                     
-                    // Guardar token en SecureStorage
-                    await SecureStorage.SetAsync("jwt_token", loginResponse.Token);
+                    // Guardar token en SecureStorage (usar "auth_token" para coincidir con ApiService)
+                    await SecureStorage.SetAsync("auth_token", loginResponse.Token);
                     await SecureStorage.SetAsync("user_id", loginResponse.UserId.ToString());
                     await SecureStorage.SetAsync("username", loginResponse.Username);
                     await SecureStorage.SetAsync("role", loginResponse.Role);

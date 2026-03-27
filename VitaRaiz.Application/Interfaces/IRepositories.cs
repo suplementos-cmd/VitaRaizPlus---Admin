@@ -6,7 +6,7 @@ public interface ICustomerRepository
 {
     Task<int> CreateCustomerAsync(string customerName, string? phoneNumber, string? email, 
         string? address, int? zoneId, string? gpsLatitude, string? gpsLongitude, 
-        bool isGoldCustomer, bool isBlacklisted);
+        bool isGoldCustomer, bool isBlacklisted, int? createdBy = null);
     
     Task<bool> UpdateCustomerAsync(int customerId, string customerName, string? phoneNumber, 
         string? email, string? address, int? zoneId, string? gpsLatitude, string? gpsLongitude, 
