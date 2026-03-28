@@ -6,6 +6,7 @@ namespace VitaRaiz.Application.Interfaces;
 public interface ISaleRepository
 {
     Task<int> CreateSaleAsync(int customerId, int sellerId, int paymentTermDays, 
+        string? paymentTerm, string? collectionDay, DateTime? firstCollectionDate, decimal downPayment,
         string? notes, List<SaleDetailDto> details);
     
     Task<bool> CancelSaleAsync(int saleId, string? reason);

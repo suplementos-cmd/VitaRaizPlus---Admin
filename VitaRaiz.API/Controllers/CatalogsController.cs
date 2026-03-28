@@ -60,6 +60,7 @@ public class CatalogsController : ControllerBase
     /// <summary>
     /// Obtiene el catálogo de estados de venta
     /// </summary>
+    [AllowAnonymous]
     [HttpGet("sale-statuses")]
     public async Task<IActionResult> GetSaleStatuses()
     {
@@ -77,6 +78,7 @@ public class CatalogsController : ControllerBase
     /// <summary>
     /// Obtiene el catálogo de estados de pago
     /// </summary>
+    [AllowAnonymous]
     [HttpGet("payment-statuses")]
     public async Task<IActionResult> GetPaymentStatuses()
     {
@@ -94,6 +96,7 @@ public class CatalogsController : ControllerBase
     /// <summary>
     /// Obtiene el catálogo de estados de riesgo
     /// </summary>
+    [AllowAnonymous]
     [HttpGet("risk-statuses")]
     public async Task<IActionResult> GetRiskStatuses()
     {
@@ -111,6 +114,7 @@ public class CatalogsController : ControllerBase
     /// <summary>
     /// Obtiene el tema activo de la aplicación
     /// </summary>
+    [AllowAnonymous]
     [HttpGet("theme")]
     public async Task<IActionResult> GetActiveTheme()
     {

@@ -10,6 +10,7 @@
     <ContentPage.Resources>
         <ResourceDictionary>
             <converters:InverseBoolConverter x:Key="InvertedBoolConverter" />
+            <converters:FilePathToImageSourceConverter x:Key="FileToImageSource" />
         </ResourceDictionary>
     </ContentPage.Resources>
 
@@ -20,13 +21,13 @@
 
                 <!-- Loading -->
                 <ActivityIndicator IsRunning="{Binding IsLoading}" IsVisible="{Binding IsLoading}"
-                                   HorizontalOptions="Center" Color="#7B1FA2" Margin="0,40" />
+                                   HorizontalOptions="Center" Color="{DynamicResource ThemeColor}" Margin="0,40" />
 
                 <!-- ═══ BANNER IMAGE + overlay header ═══ -->
                 <Grid HeightRequest="200">
                     <!-- Placeholder background -->
-                    <Border BackgroundColor="#E1BEE7" StrokeThickness="0" IsVisible="{Binding HasBannerPhoto, Converter={StaticResource InvertedBoolConverter}}">
-                        <Label Text="🏠" FontSize="60" HorizontalOptions="Center" VerticalOptions="Center" TextColor="#CE93D8" />
+                    <Border BackgroundColor="{DynamicResource ThemeColorLightHex}" StrokeThickness="0" IsVisible="{Binding HasBannerPhoto, Converter={StaticResource InvertedBoolConverter}}">
+                        <Label Text="🏠" FontSize="60" HorizontalOptions="Center" VerticalOptions="Center" TextColor="{DynamicResource ThemeColorHex}" />
                     </Border>
                     
                     <!-- Sale photo -->
@@ -83,7 +84,7 @@
                         </HorizontalStackLayout>
                         <!-- Bottom: Sale # badge -->
                         <HorizontalStackLayout Grid.Row="2" Spacing="8" VerticalOptions="End">
-                            <Border StrokeThickness="0" BackgroundColor="#7B1FA2" Padding="10,4">
+                            <Border StrokeThickness="0" BackgroundColor="{DynamicResource ThemeColor}" Padding="10,4">
                                 <Border.StrokeShape><RoundRectangle CornerRadius="6" /></Border.StrokeShape>
                                 <Label Text="{Binding Sale.SaleId, StringFormat='Venta #{0}'}" FontSize="14" FontAttributes="Bold" TextColor="White" />
                             </Border>
@@ -107,11 +108,14 @@
                                 <Label Text="{Binding Sale.CustomerAddress}" FontSize="12" TextColor="#888" LineBreakMode="TailTruncation" />
                             </VerticalStackLayout>
                             <HorizontalStackLayout Grid.Column="1" Spacing="8" VerticalOptions="Center">
-                                <Label Text="📞" FontSize="20" TextColor="#2196F3">
+                                <Label Text="📞" FontSize="20" TextColor="{DynamicResource ThemeColor}">
                                     <Label.GestureRecognizers><TapGestureRecognizer Command="{Binding CallClientCommand}" /></Label.GestureRecognizers>
                                 </Label>
-                                <Label Text="💬" FontSize="20" TextColor="#28A745">
+                                <Label Text="💬" FontSize="20" TextColor="#25D366">
                                     <Label.GestureRecognizers><TapGestureRecognizer Command="{Binding WhatsAppCommand}" /></Label.GestureRecognizers>
+                                </Label>
+                                <Label Text="📍" FontSize="20" TextColor="#FF5722">
+                                    <Label.GestureRecognizers><TapGestureRecognizer Tapped="OnOpenGps" /></Label.GestureRecognizers>
                                 </Label>
                             </HorizontalStackLayout>
                         </Grid>
@@ -122,7 +126,7 @@
                         <Grid ColumnDefinitions="*,*,*">
                             <VerticalStackLayout Grid.Column="0" Spacing="2" HorizontalOptions="Center">
                                 <Label Text="TOTAL" FontSize="9" TextColor="#999" HorizontalOptions="Center" FontAttributes="Bold" />
-                                <Label Text="{Binding Sale.TotalAmount, StringFormat='${0:N2}'}" FontSize="16" FontAttributes="Bold" TextColor="#7B1FA2" HorizontalOptions="Center" />
+                                <Label Text="{Binding Sale.TotalAmount, StringFormat='${0:N2}'}" FontSize="16" FontAttributes="Bold" TextColor="{DynamicResource ThemeColorHex}" HorizontalOptions="Center" />
                             </VerticalStackLayout>
                             <VerticalStackLayout Grid.Column="1" Spacing="2" HorizontalOptions="Center">
                                 <Label Text="PAGADO" FontSize="9" TextColor="#999" HorizontalOptions="Center" FontAttributes="Bold" />
@@ -143,24 +147,37 @@
                     <Grid ColumnDefinitions="*,*" Padding="0,8" ColumnSpacing="10">
                         <VerticalStackLayout Grid.Column="0" Spacing="2">
                             <Label Text="📅 FECHA VENTA" FontSize="10" TextColor="#999" FontAttributes="Bold" />
-                            <Label Text="{Binding Sale.SaleDate, StringFormat='{0:dd/MM/yyyy}'}" FontSize="14" FontAttributes="Bold" TextColor="#7B1FA2" />
+                            <Label Text="{Binding Sale.SaleDate, StringFormat='{0:dd/MM/yyyy}'}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource ThemeColorHex}" />
                         </VerticalStackLayout>
                         <VerticalStackLayout Grid.Column="1" Spacing="2">
                             <Label Text="💳 FORMA DE PAGO" FontSize="10" TextColor="#999" FontAttributes="Bold" />
-                            <Label Text="{Binding Sale.PaymentTerms}" FontSize="14" TextColor="#333" />
+                            <Label Text="{Binding Sale.PaymentTerm}" FontSize="14" TextColor="#333" />
                         </VerticalStackLayout>
                     </Grid>
                     <BoxView HeightRequest="1" Color="#F0E6FA" />
 
-                    <!-- Row: Día cobro | Zona -->
+                    <!-- Row: Día cobro | Fecha primer cobro -->
                     <Grid ColumnDefinitions="*,*" Padding="0,8" ColumnSpacing="10">
                         <VerticalStackLayout Grid.Column="0" Spacing="2">
                             <Label Text="📆 DÍA DE COBRO" FontSize="10" TextColor="#999" FontAttributes="Bold" />
-                            <Label Text="{Binding CollectionDay}" FontSize="14" FontAttributes="Bold" TextColor="#7B1FA2" />
+                            <Label Text="{Binding Sale.CollectionDay}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource ThemeColorHex}" />
+                        </VerticalStackLayout>
+                        <VerticalStackLayout Grid.Column="1" Spacing="2">
+                            <Label Text="📅 FECHA PRIMER COBRO" FontSize="10" TextColor="#999" FontAttributes="Bold" />
+                            <Label Text="{Binding Sale.FirstCollectionDate, StringFormat='{0:dd/MM/yyyy}'}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource ThemeColorHex}" />
+                        </VerticalStackLayout>
+                    </Grid>
+                    <BoxView HeightRequest="1" Color="#F0E6FA" />
+
+                    <!-- Row: Enganche | Zona -->
+                    <Grid ColumnDefinitions="*,*" Padding="0,8" ColumnSpacing="10">
+                        <VerticalStackLayout Grid.Column="0" Spacing="2">
+                            <Label Text="💵 ENGANCHE" FontSize="10" TextColor="#999" FontAttributes="Bold" />
+                            <Label Text="{Binding Sale.DownPayment, StringFormat='${0:N2}'}" FontSize="14" FontAttributes="Bold" TextColor="#28A745" />
                         </VerticalStackLayout>
                         <VerticalStackLayout Grid.Column="1" Spacing="2">
                             <Label Text="📍 ZONA" FontSize="10" TextColor="#999" FontAttributes="Bold" />
-                            <Label Text="{Binding ZoneName}" FontSize="14" FontAttributes="Bold" TextColor="#7B1FA2" />
+                            <Label Text="{Binding ZoneName}" FontSize="14" FontAttributes="Bold" TextColor="{DynamicResource ThemeColorHex}" />
                         </VerticalStackLayout>
                     </Grid>
                     <BoxView HeightRequest="1" Color="#F0E6FA" />
@@ -172,9 +189,9 @@
                             <CollectionView.ItemTemplate>
                                 <DataTemplate>
                                     <HorizontalStackLayout Spacing="6" Padding="0,2">
-                                        <Label Text="•" TextColor="#7B1FA2" FontSize="13" />
+                                        <Label Text="•" TextColor="{DynamicResource ThemeColorHex}" FontSize="13" />
                                         <Label Text="{Binding ProductName}" FontSize="13" TextColor="#333" />
-                                        <Label Text="{Binding Subtotal, StringFormat='${0:N2}'}" FontSize="13" TextColor="#7B1FA2" FontAttributes="Bold" />
+                                        <Label Text="{Binding Subtotal, StringFormat='${0:N2}'}" FontSize="13" TextColor="{DynamicResource ThemeColorHex}" FontAttributes="Bold" />
                                     </HorizontalStackLayout>
                                 </DataTemplate>
                             </CollectionView.ItemTemplate>
@@ -202,108 +219,133 @@
                     </VerticalStackLayout>
                     <BoxView HeightRequest="1" Color="#F0E6FA" />
 
-                    <!-- Photos grid -->
+                    <!-- Photos grid - Enhanced with real images -->
                     <VerticalStackLayout Padding="0,8" Spacing="4">
                         <Label Text="📸 FOTOS" FontSize="10" TextColor="#999" FontAttributes="Bold" />
                         <HorizontalStackLayout Spacing="8">
-                            <Border BackgroundColor="#F3E5F5" StrokeThickness="0" WidthRequest="70" HeightRequest="70">
+                            <!-- Fachada -->
+                            <Border BackgroundColor="{DynamicResource ThemeColorLighterHex}" 
+                                    StrokeThickness="0" 
+                                    WidthRequest="70" 
+                                    HeightRequest="70">
                                 <Border.StrokeShape><RoundRectangle CornerRadius="8" /></Border.StrokeShape>
-                                <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="2">
-                                    <Label Text="🏠" FontSize="22" HorizontalOptions="Center" TextColor="#CE93D8" />
-                                    <Label Text="Fachada" FontSize="8" TextColor="#999" HorizontalOptions="Center" />
-                                </VerticalStackLayout>
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer 
+                                        Command="{Binding OpenPhotoCommand}" 
+                                        CommandParameter="{Binding FachadaPhotoPath}" />
+                                </Border.GestureRecognizers>
+                                <Grid>
+                                    <!-- Real photo -->
+                                    <Image Source="{Binding FachadaPhotoPath, Converter={StaticResource FileToImageSource}}" 
+                                           Aspect="AspectFill"
+                                           IsVisible="{Binding HasFachadaPhoto}" />
+                                    <!-- Placeholder -->
+                                    <VerticalStackLayout HorizontalOptions="Center" 
+                                                         VerticalOptions="Center" 
+                                                         Spacing="2"
+                                                         IsVisible="{Binding HasFachadaPhoto, Converter={StaticResource InvertedBoolConverter}}">
+                                        <Label Text="🏠" FontSize="22" HorizontalOptions="Center" TextColor="{DynamicResource ThemeColorLightHex}" />
+                                        <Label Text="Fachada" FontSize="8" TextColor="#999" HorizontalOptions="Center" />
+                                    </VerticalStackLayout>
+                                </Grid>
                             </Border>
-                            <Border BackgroundColor="#F3E5F5" StrokeThickness="0" WidthRequest="70" HeightRequest="70">
+                            
+                            <!-- Cliente -->
+                            <Border BackgroundColor="{DynamicResource ThemeColorLighterHex}" 
+                                    StrokeThickness="0" 
+                                    WidthRequest="70" 
+                                    HeightRequest="70">
                                 <Border.StrokeShape><RoundRectangle CornerRadius="8" /></Border.StrokeShape>
-                                <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="2">
-                                    <Label Text="👤" FontSize="22" HorizontalOptions="Center" TextColor="#CE93D8" />
-                                    <Label Text="Cliente" FontSize="8" TextColor="#999" HorizontalOptions="Center" />
-                                </VerticalStackLayout>
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer 
+                                        Command="{Binding OpenPhotoCommand}" 
+                                        CommandParameter="{Binding ClientePhotoPath}" />
+                                </Border.GestureRecognizers>
+                                <Grid>
+                                    <!-- Real photo -->
+                                    <Image Source="{Binding ClientePhotoPath, Converter={StaticResource FileToImageSource}}" 
+                                           Aspect="AspectFill"
+                                           IsVisible="{Binding HasClientePhoto}" />
+                                    <!-- Placeholder -->
+                                    <VerticalStackLayout HorizontalOptions="Center" 
+                                                         VerticalOptions="Center" 
+                                                         Spacing="2"
+                                                         IsVisible="{Binding HasClientePhoto, Converter={StaticResource InvertedBoolConverter}}">
+                                        <Label Text="👤" FontSize="22" HorizontalOptions="Center" TextColor="{DynamicResource ThemeColorLightHex}" />
+                                        <Label Text="Cliente" FontSize="8" TextColor="#999" HorizontalOptions="Center" />
+                                    </VerticalStackLayout>
+                                </Grid>
                             </Border>
-                            <Border BackgroundColor="#F3E5F5" StrokeThickness="0" WidthRequest="70" HeightRequest="70">
+                            
+                            <!-- Contrato -->
+                            <Border BackgroundColor="{DynamicResource ThemeColorLighterHex}" 
+                                    StrokeThickness="0" 
+                                    WidthRequest="70" 
+                                    HeightRequest="70">
                                 <Border.StrokeShape><RoundRectangle CornerRadius="8" /></Border.StrokeShape>
-                                <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="2">
-                                    <Label Text="📄" FontSize="22" HorizontalOptions="Center" TextColor="#CE93D8" />
-                                    <Label Text="Contrato" FontSize="8" TextColor="#999" HorizontalOptions="Center" />
-                                </VerticalStackLayout>
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer 
+                                        Command="{Binding OpenPhotoCommand}" 
+                                        CommandParameter="{Binding ContratoPhotoPath}" />
+                                </Border.GestureRecognizers>
+                                <Grid>
+                                    <!-- Real photo -->
+                                    <Image Source="{Binding ContratoPhotoPath, Converter={StaticResource FileToImageSource}}" 
+                                           Aspect="AspectFill"
+                                           IsVisible="{Binding HasContratoPhoto}" />
+                                    <!-- Placeholder -->
+                                    <VerticalStackLayout HorizontalOptions="Center" 
+                                                         VerticalOptions="Center" 
+                                                         Spacing="2"
+                                                         IsVisible="{Binding HasContratoPhoto, Converter={StaticResource InvertedBoolConverter}}">
+                                        <Label Text="📄" FontSize="22" HorizontalOptions="Center" TextColor="{DynamicResource ThemeColorLightHex}" />
+                                        <Label Text="Contrato" FontSize="8" TextColor="#999" HorizontalOptions="Center" />
+                                    </VerticalStackLayout>
+                                </Grid>
                             </Border>
-                            <Border BackgroundColor="#F3E5F5" StrokeThickness="0" WidthRequest="70" HeightRequest="70">
+                            
+                            <!-- Adicional -->
+                            <Border BackgroundColor="{DynamicResource ThemeColorLighterHex}" 
+                                    StrokeThickness="0" 
+                                    WidthRequest="70" 
+                                    HeightRequest="70">
                                 <Border.StrokeShape><RoundRectangle CornerRadius="8" /></Border.StrokeShape>
-                                <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="2">
-                                    <Label Text="🖼️" FontSize="22" HorizontalOptions="Center" TextColor="#CE93D8" />
-                                    <Label Text="Adicional" FontSize="8" TextColor="#999" HorizontalOptions="Center" />
-                                </VerticalStackLayout>
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer 
+                                        Command="{Binding OpenPhotoCommand}" 
+                                        CommandParameter="{Binding AdicionalPhotoPath}" />
+                                </Border.GestureRecognizers>
+                                <Grid>
+                                    <!-- Real photo -->
+                                    <Image Source="{Binding AdicionalPhotoPath, Converter={StaticResource FileToImageSource}}" 
+                                           Aspect="AspectFill"
+                                           IsVisible="{Binding HasAdicionalPhoto}" />
+                                    <!-- Placeholder -->
+                                    <VerticalStackLayout HorizontalOptions="Center" 
+                                                         VerticalOptions="Center" 
+                                                         Spacing="2"
+                                                         IsVisible="{Binding HasAdicionalPhoto, Converter={StaticResource InvertedBoolConverter}}">
+                                        <Label Text="🖼️" FontSize="22" HorizontalOptions="Center" TextColor="{DynamicResource ThemeColorLightHex}" />
+                                        <Label Text="Adicional" FontSize="8" TextColor="#999" HorizontalOptions="Center" />
+                                    </VerticalStackLayout>
+                                </Grid>
                             </Border>
                         </HorizontalStackLayout>
                     </VerticalStackLayout>
                 </VerticalStackLayout>
 
-                <!-- ═══ COBRADOR ACTION BAR ═══ -->
-                <VerticalStackLayout x:Name="CobradorActionSection" IsVisible="False" Spacing="10" Padding="14,10">
-                    <Label Text="⚡ ACCIONES COBRO" FontSize="12" TextColor="#7B1FA2" FontAttributes="Bold" />
-                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
-                        <Button Grid.Column="0" Text="⏭ Después" FontSize="11" BackgroundColor="#FFF3E0"
-                                TextColor="#E65100" CornerRadius="8" HeightRequest="40" Padding="4"
-                                Clicked="OnPasarDespues" />
-                        <Button Grid.Column="1" Text="⏰ Más tarde" FontSize="11" BackgroundColor="#E3F2FD"
-                                TextColor="#1565C0" CornerRadius="8" HeightRequest="40" Padding="4"
-                                Clicked="OnPasarMasTarde" />
-                        <Button Grid.Column="2" Text="📅 Prox sem" FontSize="11" BackgroundColor="#E8F5E9"
-                                TextColor="#2E7D32" CornerRadius="8" HeightRequest="40" Padding="4"
-                                Clicked="OnProximaSemana" />
-                    </Grid>
-
-                    <!-- Foto Contrato + Adicional -->
-                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8" Margin="0,4,0,0">
-                        <Border Grid.Column="0" StrokeThickness="1" Stroke="#E0D4F5" Padding="8" BackgroundColor="White">
-                            <Border.StrokeShape><RoundRectangle CornerRadius="8" /></Border.StrokeShape>
-                            <VerticalStackLayout Spacing="4">
-                                <Label Text="📄 Contrato" FontSize="10" TextColor="#7B1FA2" FontAttributes="Bold" />
-                                <Label x:Name="LblFotoContrato" Text="Sin foto" FontSize="10" TextColor="#BBB" HorizontalOptions="Center" />
-                                <Grid ColumnDefinitions="*,*" ColumnSpacing="4">
-                                    <Button Grid.Column="0" Text="📷" FontSize="14" BackgroundColor="#F3E5F5" TextColor="#7B1FA2"
-                                            CornerRadius="6" HeightRequest="30" Padding="0" Clicked="OnCameraContrato" />
-                                    <Button Grid.Column="1" Text="📁" FontSize="14" BackgroundColor="#F3E5F5" TextColor="#7B1FA2"
-                                            CornerRadius="6" HeightRequest="30" Padding="0" Clicked="OnUploadContrato" />
-                                </Grid>
-                            </VerticalStackLayout>
-                        </Border>
-                        <Border Grid.Column="1" StrokeThickness="1" Stroke="#E0D4F5" Padding="8" BackgroundColor="White">
-                            <Border.StrokeShape><RoundRectangle CornerRadius="8" /></Border.StrokeShape>
-                            <VerticalStackLayout Spacing="4">
-                                <Label Text="🖼️ Adicional" FontSize="10" TextColor="#7B1FA2" FontAttributes="Bold" />
-                                <Label x:Name="LblFotoAdicional" Text="Sin foto" FontSize="10" TextColor="#BBB" HorizontalOptions="Center" />
-                                <Grid ColumnDefinitions="*,*" ColumnSpacing="4">
-                                    <Button Grid.Column="0" Text="📷" FontSize="14" BackgroundColor="#F3E5F5" TextColor="#7B1FA2"
-                                            CornerRadius="6" HeightRequest="30" Padding="0" Clicked="OnCameraAdicionalD" />
-                                    <Button Grid.Column="1" Text="📁" FontSize="14" BackgroundColor="#F3E5F5" TextColor="#7B1FA2"
-                                            CornerRadius="6" HeightRequest="30" Padding="0" Clicked="OnUploadAdicionalD" />
-                                </Grid>
-                            </VerticalStackLayout>
-                        </Border>
-                    </Grid>
-
-                    <!-- Cobrador notes -->
-                    <Border StrokeThickness="1" Stroke="#E0D4F5" Padding="10" BackgroundColor="White">
-                        <Border.StrokeShape><RoundRectangle CornerRadius="8" /></Border.StrokeShape>
-                        <VerticalStackLayout Spacing="4">
-                            <Label Text="📝 NOTA COBRADOR" FontSize="10" TextColor="#7B1FA2" FontAttributes="Bold" />
-                            <Editor x:Name="EditorNotaCobrador" Placeholder="Agregar nota..." HeightRequest="55"
-                                    FontSize="12" TextColor="#333" />
-                        </VerticalStackLayout>
-                    </Border>
-                </VerticalStackLayout>
+               
 
                 <!-- ═══ ABONOS TABLE (Cobrador) ═══ -->
                 <VerticalStackLayout x:Name="AbonosSection" IsVisible="False" Padding="14,0,14,10" Spacing="8">
-                    <Label Text="💰 ABONOS" FontSize="12" TextColor="#7B1FA2" FontAttributes="Bold" Margin="0,6,0,0" />
+                    <Label Text="💰 ABONOS" FontSize="12" TextColor="{DynamicResource ThemeColorHex}" FontAttributes="Bold" Margin="0,6,0,0" />
 
                     <!-- Abono header -->
-                    <Grid ColumnDefinitions="70,70,100,*" Padding="4,6" BackgroundColor="#F3E5F5" ColumnSpacing="4">
-                        <Label Grid.Column="0" Text="ABONO" FontSize="9" TextColor="#7B1FA2" FontAttributes="Bold" />
-                        <Label Grid.Column="1" Text="PEND." FontSize="9" TextColor="#7B1FA2" FontAttributes="Bold" />
-                        <Label Grid.Column="2" Text="FECHA REG." FontSize="9" TextColor="#7B1FA2" FontAttributes="Bold" />
-                        <Label Grid.Column="3" Text="ESTATUS" FontSize="9" TextColor="#7B1FA2" FontAttributes="Bold" />
+                    <Grid ColumnDefinitions="70,70,100,*" Padding="4,6" BackgroundColor="{DynamicResource ThemeColorLighterHex}" ColumnSpacing="4">
+                        <Label Grid.Column="0" Text="ABONO" FontSize="9" TextColor="{DynamicResource ThemeColorHex}" FontAttributes="Bold" />
+                        <Label Grid.Column="1" Text="PEND." FontSize="9" TextColor="{DynamicResource ThemeColorHex}" FontAttributes="Bold" />
+                        <Label Grid.Column="2" Text="FECHA REG." FontSize="9" TextColor="{DynamicResource ThemeColorHex}" FontAttributes="Bold" />
+                        <Label Grid.Column="3" Text="ESTATUS" FontSize="9" TextColor="{DynamicResource ThemeColorHex}" FontAttributes="Bold" />
                     </Grid>
 
                     <CollectionView ItemsSource="{Binding Payments}">
@@ -328,45 +370,70 @@
                         </CollectionView.ItemTemplate>
                     </CollectionView>
 
+                    <!-- ═══ COBRADOR ACTION BAR ═══ -->
+                    <Border x:Name="CobradorActionSection" IsVisible="False" StrokeThickness="1" Stroke="{DynamicResource ThemeColorLighterHex}" Padding="12" BackgroundColor="White" Margin="0,4">
+                        <Border.StrokeShape><RoundRectangle CornerRadius="10" /></Border.StrokeShape>
+                        <VerticalStackLayout Spacing="10">
+                            <Label Text="⚡ ACCIONES COBRO" FontSize="12" TextColor="{DynamicResource ThemeColorHex}" FontAttributes="Bold" />
+                            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
+                                <Button Grid.Column="0" Text="⏭ Después" FontSize="11" BackgroundColor="#FFF3E0"
+                                        TextColor="#E65100" CornerRadius="8" HeightRequest="40" Padding="4"
+                                        Clicked="OnPasarDespues" />
+                                <Button Grid.Column="1" Text="⏰ Más tarde" FontSize="11" BackgroundColor="#E3F2FD"
+                                        TextColor="#1565C0" CornerRadius="8" HeightRequest="40" Padding="4"
+                                        Clicked="OnPasarMasTarde" />
+                                <Button Grid.Column="2" Text="📅 Prox sem" FontSize="11" BackgroundColor="#E8F5E9"
+                                        TextColor="#2E7D32" CornerRadius="8" HeightRequest="40" Padding="4"
+                                        Clicked="OnProximaSemana" />
+                            </Grid>
+
+                            <!-- Cobrador notes -->
+                            <Border StrokeThickness="1" Stroke="{DynamicResource ThemeColorLighterHex}" Padding="10" BackgroundColor="#FAFAFA">
+                                <Border.StrokeShape>
+                                    <RoundRectangle CornerRadius="8" />
+                                </Border.StrokeShape>
+                                <VerticalStackLayout Spacing="4">
+                                    <Label Text="📝 NOTA COBRADOR" FontSize="10" TextColor="{DynamicResource ThemeColorHex}" FontAttributes="Bold" />
+                                    <Editor x:Name="EditorNotaCobrador" Placeholder="Agregar nota..." HeightRequest="55"
+                                            FontSize="12" TextColor="#333" />
+                                </VerticalStackLayout>
+                            </Border>
+                        </VerticalStackLayout>
+                    </Border>
+
                     <!-- New abono form -->
-                    <Border StrokeThickness="1" Stroke="#E0D4F5" Padding="12" BackgroundColor="White">
+                    <Border StrokeThickness="1" Stroke="{DynamicResource ThemeColorLighterHex}" Padding="12" BackgroundColor="White" Margin="0,4">
                         <Border.StrokeShape><RoundRectangle CornerRadius="10" /></Border.StrokeShape>
                         <VerticalStackLayout Spacing="8">
-                            <Label Text="✚ REGISTRAR ABONO" FontSize="12" TextColor="#7B1FA2" FontAttributes="Bold" />
+                            <Label Text="✚ REGISTRAR ABONO" FontSize="12" TextColor="{DynamicResource ThemeColorHex}" FontAttributes="Bold" />
                             <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
-                                <Border Grid.Column="0" StrokeThickness="1" Stroke="#E0D4F5" Padding="8,4" BackgroundColor="White">
+                                <Border Grid.Column="0" StrokeThickness="1" Stroke="{DynamicResource ThemeColorLighterHex}" Padding="8,4" BackgroundColor="White">
                                     <Border.StrokeShape><RoundRectangle CornerRadius="8" /></Border.StrokeShape>
                                     <Entry x:Name="EntryAbono" Placeholder="$ Importe" Keyboard="Numeric"
                                            FontSize="13" TextColor="#333" />
                                 </Border>
-                                <Border Grid.Column="1" StrokeThickness="1" Stroke="#E0D4F5" Padding="8,4" BackgroundColor="White">
+                                <Border Grid.Column="1" StrokeThickness="1" Stroke="{DynamicResource ThemeColorLighterHex}" Padding="8,4" BackgroundColor="White">
                                     <Border.StrokeShape><RoundRectangle CornerRadius="8" /></Border.StrokeShape>
-                                    <Picker x:Name="PickerEstatusAbono" FontSize="12" TextColor="#333">
-                                        <Picker.ItemsSource>
-                                            <x:Array Type="{x:Type x:String}">
-                                                <x:String>COBRADO</x:String>
-                                                <x:String>NO ESTABA</x:String>
-                                                <x:String>PRÓXIMA SEMANA</x:String>
-                                            </x:Array>
-                                        </Picker.ItemsSource>
-                                    </Picker>
+                                    <Picker x:Name="PickerEstatusAbono" 
+                                            ItemsSource="{Binding PaymentStatuses}"
+                                            FontSize="12" TextColor="#333" />
                                 </Border>
                             </Grid>
-                            <Button Text="REGISTRAR ABONO" BackgroundColor="#7B1FA2" TextColor="White"
+                            <Button Text="REGISTRAR ABONO" BackgroundColor="{DynamicResource ThemeColor}" TextColor="White"
                                     FontSize="13" FontAttributes="Bold" CornerRadius="8" HeightRequest="40"
                                     Clicked="OnRegistrarAbono"
-                                    Shadow="{Shadow Brush='#447B1FA2', Offset='0,2', Radius=4}" />
+                                    Shadow="{Shadow Brush='#44000000', Offset='0,2', Radius=4}" />
                         </VerticalStackLayout>
                     </Border>
                 </VerticalStackLayout>
 
                 <!-- ═══ VENTAS ABONOS TABLE (Vendedora/Supervisora view) ═══ -->
                 <VerticalStackLayout x:Name="VendedoraAbonosSection" IsVisible="False" Padding="14,0,14,10" Spacing="8">
-                    <Label Text="💰 HISTORIAL DE ABONOS" FontSize="12" TextColor="#7B1FA2" FontAttributes="Bold" Margin="0,6,0,0" />
+                    <Label Text="💰 HISTORIAL DE ABONOS" FontSize="12" TextColor="{DynamicResource ThemeColorHex}" FontAttributes="Bold" Margin="0,6,0,0" />
                     <CollectionView ItemsSource="{Binding Payments}">
                         <CollectionView.ItemTemplate>
                             <DataTemplate>
-                                <Border StrokeThickness="1" Stroke="#E0D4F5" Padding="10" Margin="0,4" BackgroundColor="White">
+                                <Border StrokeThickness="1" Stroke="{DynamicResource ThemeColorLighterHex}" Padding="10" Margin="0,4" BackgroundColor="White">
                                     <Border.StrokeShape><RoundRectangle CornerRadius="8" /></Border.StrokeShape>
                                     <Border.GestureRecognizers>
                                         <TapGestureRecognizer 
@@ -403,7 +470,7 @@
                                         <!-- Row 2: Observación + Importe restante -->
                                         <Label Grid.Row="2" Grid.Column="1" Text="{Binding Notes}" 
                                                FontSize="11" TextColor="#888" LineBreakMode="TailTruncation" MaxLines="2" />
-                                        <Label Grid.Row="2" Grid.Column="2" FontSize="11" TextColor="#7B1FA2" FontAttributes="Bold">
+                                        <Label Grid.Row="2" Grid.Column="2" FontSize="11" TextColor="{DynamicResource ThemeColorHex}" FontAttributes="Bold">
                                             <Label.FormattedText>
                                                 <FormattedString>
                                                     <Span Text="Restante: $" />
@@ -425,41 +492,74 @@
         <!-- ═══ FAB: Edit button - Modern Design ═══ -->
         <Button Text="✏"
                 FontSize="24"
-                BackgroundColor="#7B1FA2"
+                BackgroundColor="{DynamicResource ThemeColor}"
                 TextColor="White"
                 CornerRadius="30"
                 HeightRequest="60" WidthRequest="60"
                 HorizontalOptions="End"
                 VerticalOptions="End"
                 Margin="0,0,20,20"
-                Shadow="{Shadow Brush='#667B1FA2', Offset='0,6', Radius=12}"
+                Shadow="{Shadow Brush='#66000000', Offset='0,6', Radius=12}"
                 ZIndex="20"
                 Clicked="OnEditTapped" />
 
-        <!-- ═══ IMAGE VIEWER MODAL ═══ -->
-        <Grid Grid.Row="0" IsVisible="{Binding IsImageViewerVisible}" BackgroundColor="#E6000000" ZIndex="1000">
+        <!-- ═══ IMAGE VIEWER MODAL (Enhanced) ═══ -->
+        <Grid x:Name="ImageViewerModal" 
+              Grid.Row="0" 
+              IsVisible="{Binding IsImageViewerVisible}" 
+              BackgroundColor="#E6000000" 
+              ZIndex="1000"
+              Opacity="0">
             <Grid.GestureRecognizers>
                 <TapGestureRecognizer Tapped="OnCloseImageViewer" />
             </Grid.GestureRecognizers>
             
-            <Image Source="{Binding ExpandedImagePath}" 
-                   Aspect="AspectFit"
-                   Margin="20"
-                   HorizontalOptions="Fill"
-                   VerticalOptions="Fill" />
-            
-            <!-- Close button -->
-            <Border WidthRequest="50" HeightRequest="50" 
-                    BackgroundColor="#88FFFFFF"
+            <!-- Container con efecto de escala -->
+            <Border x:Name="ImageContainer"
+                    BackgroundColor="Transparent"
                     StrokeThickness="0"
+                    Margin="20"
+                    HorizontalOptions="Fill"
+                    VerticalOptions="Fill"
+                    Scale="0.8">
+                <Grid>
+                    <!-- Loading indicator -->
+                    <ActivityIndicator IsRunning="{Binding IsImageLoading}"
+                                       Color="White"
+                                       WidthRequest="50"
+                                       HeightRequest="50"
+                                       HorizontalOptions="Center"
+                                       VerticalOptions="Center" />
+                    
+                    <!-- Imagen con zoom habilitado -->
+                    <Image x:Name="ExpandedImage"
+                           Source="{Binding ExpandedImagePath}" 
+                           Aspect="AspectFit"
+                           HorizontalOptions="Fill"
+                           VerticalOptions="Fill"
+                           BackgroundColor="Transparent">
+                        <Image.GestureRecognizers>
+                            <!-- Previene que el tap cierre el modal al hacer zoom -->
+                            <TapGestureRecognizer NumberOfTapsRequired="2" />
+                        </Image.GestureRecognizers>
+                    </Image>
+                </Grid>
+            </Border>
+            
+            <!-- Botón de cerrar mejorado -->
+            <Border WidthRequest="46" HeightRequest="46" 
+                    BackgroundColor="#DDFFFFFF"
+                    StrokeThickness="2"
+                    Stroke="#66000000"
                     HorizontalOptions="End" 
                     VerticalOptions="Start" 
-                    Margin="20">
+                    Margin="24"
+                    Shadow="{Shadow Brush='#66000000', Offset='0,3', Radius=8}">
                 <Border.StrokeShape>
-                    <RoundRectangle CornerRadius="25" />
+                    <RoundRectangle CornerRadius="23" />
                 </Border.StrokeShape>
                 <Label Text="✕" 
-                       FontSize="24" 
+                       FontSize="26" 
                        FontAttributes="Bold"
                        TextColor="#333" 
                        HorizontalOptions="Center" 
@@ -468,6 +568,23 @@
                         <TapGestureRecognizer Tapped="OnCloseImageViewer" />
                     </Label.GestureRecognizers>
                 </Label>
+            </Border>
+            
+            <!-- Instrucciones de uso (opcional) -->
+            <Border BackgroundColor="#CC000000"
+                    StrokeThickness="0"
+                    Padding="16,8"
+                    HorizontalOptions="Center"
+                    VerticalOptions="End"
+                    Margin="0,0,0,40"
+                    Opacity="0.8">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="20" />
+                </Border.StrokeShape>
+                <Label Text="🖼 Toca fuera para cerrar" 
+                       FontSize="12" 
+                       TextColor="White"
+                       HorizontalOptions="Center" />
             </Border>
         </Grid>
 

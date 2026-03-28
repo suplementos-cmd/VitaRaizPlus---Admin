@@ -9,7 +9,7 @@
     <Grid RowDefinitions="Auto,*">
 
         <!-- ═══ HEADER ═══ -->
-        <Border Grid.Row="0" StrokeThickness="0" BackgroundColor="#7B1FA2"
+        <Border Grid.Row="0" StrokeThickness="0" BackgroundColor="{DynamicResource ThemeColor}"
                 Shadow="{Shadow Brush='#44000000', Offset='0,3', Radius=6}">
             <Grid Padding="14,12" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
                 <Label Grid.Column="0" Text="◀" FontSize="20" TextColor="White" VerticalOptions="Center">
@@ -33,13 +33,13 @@
             <VerticalStackLayout Padding="14" Spacing="12" IsVisible="{Binding IsNotLoading}">
 
                 <!-- Payment info card -->
-                <Border StrokeThickness="1" Stroke="#E0D4F5" Padding="14" BackgroundColor="White">
+                <Border StrokeThickness="1" Stroke="{DynamicResource ThemeColorLighterHex}" Padding="14" BackgroundColor="White">
                     <Border.StrokeShape><RoundRectangle CornerRadius="12" /></Border.StrokeShape>
                     <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="10">
                         
                         <!-- Importe Abonado -->
                         <VerticalStackLayout Grid.Row="0" Spacing="4">
-                            <Label Text="💵 IMPORTE ABONADO" FontSize="11" TextColor="#7B1FA2" FontAttributes="Bold" />
+                            <Label Text="💵 IMPORTE ABONADO" FontSize="11" TextColor="{DynamicResource ThemeColorHex}" FontAttributes="Bold" />
                             <Entry x:Name="EntryAmount" Text="{Binding Payment.Amount}" Keyboard="Numeric"
                                    FontSize="20" FontAttributes="Bold" TextColor="#28A745" Placeholder="0.00"
                                    IsEnabled="{Binding IsEditMode}" />
@@ -47,31 +47,26 @@
 
                         <!-- Fecha de Cobro -->
                         <VerticalStackLayout Grid.Row="1" Spacing="4">
-                            <Label Text="📅 FECHA DE COBRO" FontSize="11" TextColor="#7B1FA2" FontAttributes="Bold" />
+                            <Label Text="📅 FECHA DE COBRO" FontSize="11" TextColor="{DynamicResource ThemeColorHex}" FontAttributes="Bold" />
                             <DatePicker x:Name="DatePayment" Date="{Binding Payment.PaymentDate}" Format="dd/MMM/yyyy"
                                         FontSize="14" TextColor="#333" IsEnabled="{Binding IsEditMode}" />
                         </VerticalStackLayout>
 
                         <!-- Cobrador -->
                         <VerticalStackLayout Grid.Row="2" Spacing="4">
-                            <Label Text="👤 COBRADOR" FontSize="11" TextColor="#7B1FA2" FontAttributes="Bold" />
+                            <Label Text="👤 COBRADOR" FontSize="11" TextColor="{DynamicResource ThemeColorHex}" FontAttributes="Bold" />
                             <Label Text="{Binding Payment.CollectorName}" FontSize="14" TextColor="#333" />
                         </VerticalStackLayout>
 
                         <!-- Estatus de Cobro -->
                         <VerticalStackLayout Grid.Row="3" Spacing="4">
-                            <Label Text="🔖 ESTATUS" FontSize="11" TextColor="#7B1FA2" FontAttributes="Bold" />
-                            <Picker x:Name="PickerStatus" SelectedItem="{Binding Payment.Status}" FontSize="14" TextColor="#333"
-                                    IsEnabled="{Binding IsEditMode}">
-                                <Picker.ItemsSource>
-                                    <x:Array Type="{x:Type x:String}">
-                                        <x:String>APPROVED</x:String>
-                                        <x:String>PENDING</x:String>
-                                        <x:String>REJECTED</x:String>
-                                        <x:String>CANCELLED</x:String>
-                                    </x:Array>
-                                </Picker.ItemsSource>
-                            </Picker>
+                            <Label Text="🔖 ESTATUS" FontSize="11" TextColor="{DynamicResource ThemeColorHex}" FontAttributes="Bold" />
+                            <Picker x:Name="PickerStatus" 
+                                    ItemsSource="{Binding PaymentStatuses}"
+                                    ItemDisplayBinding="{Binding StatusName}"
+                                    SelectedItem="{Binding SelectedPaymentStatus}" 
+                                    FontSize="14" TextColor="#333"
+                                    IsEnabled="{Binding IsEditMode}" />
                             <Border StrokeThickness="0" BackgroundColor="{Binding Payment.StatusColor}" 
                                     Padding="8,4" HorizontalOptions="Start">
                                 <Border.StrokeShape><RoundRectangle CornerRadius="4" /></Border.StrokeShape>
@@ -81,14 +76,14 @@
 
                         <!-- Observaciones -->
                         <VerticalStackLayout Grid.Row="4" Spacing="4">
-                            <Label Text="📝 OBSERVACIONES" FontSize="11" TextColor="#7B1FA2" FontAttributes="Bold" />
+                            <Label Text="📝 OBSERVACIONES" FontSize="11" TextColor="{DynamicResource ThemeColorHex}" FontAttributes="Bold" />
                             <Editor x:Name="EditorNotes" Text="{Binding Payment.Notes}" Placeholder="Notas del cobro..."
                                     FontSize="13" TextColor="#333" HeightRequest="80" IsEnabled="{Binding IsEditMode}" />
                         </VerticalStackLayout>
 
                         <!-- GPS Coordinates -->
                         <VerticalStackLayout Grid.Row="5" Spacing="4">
-                            <Label Text="📍 UBICACIÓN GPS" FontSize="11" TextColor="#7B1FA2" FontAttributes="Bold" />
+                            <Label Text="📍 UBICACIÓN GPS" FontSize="11" TextColor="{DynamicResource ThemeColorHex}" FontAttributes="Bold" />
                             <Label FontSize="12" TextColor="#666">
                                 <Label.FormattedText>
                                     <FormattedString>
@@ -103,7 +98,7 @@
 
                         <!-- Importe Restante (calculated from sale context) -->
                         <VerticalStackLayout Grid.Row="6" Spacing="4">
-                            <Label Text="💰 IMPORTE RESTANTE DESPUÉS DE ESTE PAGO" FontSize="11" TextColor="#7B1FA2" FontAttributes="Bold" />
+                            <Label Text="💰 IMPORTE RESTANTE DESPUÉS DE ESTE PAGO" FontSize="11" TextColor="{DynamicResource ThemeColorHex}" FontAttributes="Bold" />
                             <Label Text="{Binding Payment.PendingAmount, StringFormat='${0:N2}'}" 
                                    FontSize="18" FontAttributes="Bold" TextColor="#DC3545" />
                         </VerticalStackLayout>
@@ -129,7 +124,7 @@
 
         <!-- Loading indicator -->
         <ActivityIndicator Grid.Row="1" IsRunning="{Binding IsLoading}" IsVisible="{Binding IsLoading}"
-                          Color="#7B1FA2" HeightRequest="50" WidthRequest="50" />
+                          Color="{DynamicResource ThemeColor}" HeightRequest="50" WidthRequest="50" />
 
     </Grid>
 </ContentPage>

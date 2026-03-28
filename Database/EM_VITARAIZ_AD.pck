@@ -66,11 +66,15 @@
   /**
   * Registra una nueva venta
   */
-  PROCEDURE sp_register_sale(p_sale_id           OUT NUMBER,
-                             p_customer_id       IN NUMBER,
-                             p_seller_id         IN NUMBER,
-                             p_payment_term_days IN NUMBER,
-                             p_notes             IN VARCHAR2 DEFAULT NULL);
+  PROCEDURE sp_register_sale(p_sale_id               OUT NUMBER,
+                             p_customer_id           IN NUMBER,
+                             p_seller_id             IN NUMBER,
+                             p_payment_term_days     IN NUMBER,
+                             p_payment_term          IN VARCHAR2 DEFAULT 'SEMANAL',
+                             p_collection_day        IN VARCHAR2 DEFAULT NULL,
+                             p_first_collection_date IN DATE DEFAULT NULL,
+                             p_down_payment          IN NUMBER DEFAULT 0,
+                             p_notes                 IN VARCHAR2 DEFAULT NULL);
 
   /**
   * Agrega un detalle a una venta
@@ -674,11 +678,15 @@ CREATE OR REPLACE PACKAGE BODY EM_VITARAIZ_AD AS
   -- ========================================================================
   -- PROCEDIMIENTOS DE VENTAS
   -- ========================================================================
-  PROCEDURE sp_register_sale(p_sale_id           OUT NUMBER,
-                             p_customer_id       IN NUMBER,
-                             p_seller_id         IN NUMBER,
-                             p_payment_term_days IN NUMBER,
-                             p_notes             IN VARCHAR2 DEFAULT NULL) IS
+PROCEDURE sp_register_sale(p_sale_id               OUT NUMBER,
+                             p_customer_id           IN NUMBER,
+                             p_seller_id             IN NUMBER,
+                             p_payment_term_days     IN NUMBER,
+                             p_payment_term          IN VARCHAR2 DEFAULT 'SEMANAL',
+                             p_collection_day        IN VARCHAR2 DEFAULT NULL,
+                             p_first_collection_date IN DATE DEFAULT NULL,
+                             p_down_payment          IN NUMBER DEFAULT 0,
+                             p_notes                 IN VARCHAR2 DEFAULT NULL) IS
   BEGIN
     --
     INSERT INTO sales
@@ -687,7 +695,12 @@ CREATE OR REPLACE PACKAGE BODY EM_VITARAIZ_AD AS
        seller_id,
        sale_date,
        total_amount,
+       payment_term,
+       collection_day,
+       first_collection_date,
+       down_payment,
        payment_terms,
+       number_of_payments,
        status,
        notes,
        created_at)
@@ -696,14 +709,23 @@ CREATE OR REPLACE PACKAGE BODY EM_VITARAIZ_AD AS
        p_customer_id,
        p_seller_id,
        SYSDATE,
-       0, -- Se calculará al agregar detalles
-       p_payment_term_days || ' días',
+       0, -- Se calculara al agregar detalles
+       p_payment_term,
+       p_collection_day,
+       p_first_collection_date,
+       NVL(p_down_payment, 0),
+       p_payment_term_days || ' dias', -- Legacy field
+       p_payment_term_days,
        C_STATUS_POR_INICIAR,
        p_notes,
        SYSTIMESTAMP)
     RETURNING sale_id INTO p_sale_id;
     --
-    log_audit('SALE', p_sale_id, 'INSERT', p_seller_id, 'Venta registrada');
+    log_audit('SALE', p_sale_id, 'INSERT', p_seller_id, 
+              'Venta registrada | Plazo: ' || p_payment_term || 
+              ' | Dia cobro: ' || NVL(p_collection_day, 'N/A') ||
+              ' | Enganche: $' || NVL(p_down_payment, 0));
+    --
     COMMIT;
     --
   EXCEPTION
@@ -892,7 +914,24 @@ CREATE OR REPLACE PACKAGE BODY EM_VITARAIZ_AD AS
                                  p_is_gold        IN NUMBER DEFAULT 0,
                                  p_is_blacklisted IN NUMBER DEFAULT 0,
                                  p_created_by     IN NUMBER DEFAULT NULL) IS
+    v_gps_lat NUMBER;
+    v_gps_lon NUMBER;
   BEGIN
+    -- Convertir GPS de VARCHAR2 a NUMBER con manejo de errores
+    BEGIN
+      v_gps_lat := CASE WHEN p_gps_lat IS NOT NULL THEN TO_NUMBER(p_gps_lat, '999.999999', 'NLS_NUMERIC_CHARACTERS=''.,''') ELSE NULL END;
+    EXCEPTION
+      WHEN OTHERS THEN
+        v_gps_lat := NULL;
+    END;
+    
+    BEGIN
+      v_gps_lon := CASE WHEN p_gps_lon IS NOT NULL THEN TO_NUMBER(p_gps_lon, '999.999999', 'NLS_NUMERIC_CHARACTERS=''.,''') ELSE NULL END;
+    EXCEPTION
+      WHEN OTHERS THEN
+        v_gps_lon := NULL;
+    END;
+    
     --
     INSERT INTO customers
       (customer_id,
@@ -914,8 +953,8 @@ CREATE OR REPLACE PACKAGE BODY EM_VITARAIZ_AD AS
        p_email,
        p_address,
        p_zone_id,
-       p_gps_lat,
-       p_gps_lon,
+       v_gps_lat,
+       v_gps_lon,
        CASE WHEN p_is_gold = 1 THEN 1 ELSE 0 END,
        CASE WHEN p_is_blacklisted = 1 THEN 1 ELSE 0 END,
        p_created_by,
@@ -925,8 +964,9 @@ CREATE OR REPLACE PACKAGE BODY EM_VITARAIZ_AD AS
     log_audit('CUSTOMER',
               p_customer_id,
               'INSERT',
-              NULL,
-              'Cliente: ' || p_name);
+              p_created_by,
+              'Cliente registrado: ' || p_name);
+    --
     COMMIT;
     --
   EXCEPTION
@@ -945,7 +985,24 @@ CREATE OR REPLACE PACKAGE BODY EM_VITARAIZ_AD AS
                                p_gps_lon        IN VARCHAR2 DEFAULT NULL,
                                p_is_gold        IN NUMBER DEFAULT 0,
                                p_is_blacklisted IN NUMBER DEFAULT 0) IS
+    v_gps_lat NUMBER;
+    v_gps_lon NUMBER;
   BEGIN
+    -- Convertir GPS de VARCHAR2 a NUMBER con manejo de errores
+    BEGIN
+      v_gps_lat := CASE WHEN p_gps_lat IS NOT NULL THEN TO_NUMBER(p_gps_lat, '999.999999', 'NLS_NUMERIC_CHARACTERS=''.,''') ELSE NULL END;
+    EXCEPTION
+      WHEN OTHERS THEN
+        v_gps_lat := NULL;
+    END;
+    
+    BEGIN
+      v_gps_lon := CASE WHEN p_gps_lon IS NOT NULL THEN TO_NUMBER(p_gps_lon, '999.999999', 'NLS_NUMERIC_CHARACTERS=''.,''') ELSE NULL END;
+    EXCEPTION
+      WHEN OTHERS THEN
+        v_gps_lon := NULL;
+    END;
+    
     --
     UPDATE customers
        SET customer_name    = p_name,
@@ -953,8 +1010,8 @@ CREATE OR REPLACE PACKAGE BODY EM_VITARAIZ_AD AS
            email            = p_email,
            address          = p_address,
            zone_id          = p_zone_id,
-           gps_latitude     = p_gps_lat,
-           gps_longitude    = p_gps_lon,
+           gps_latitude     = v_gps_lat,
+           gps_longitude    = v_gps_lon,
            is_gold_customer = CASE
                                 WHEN p_is_gold = 1 THEN
                                  1

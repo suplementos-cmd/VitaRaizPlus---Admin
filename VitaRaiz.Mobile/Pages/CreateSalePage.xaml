@@ -9,14 +9,14 @@
     <ContentPage.Resources>
         <Style x:Key="LblField" TargetType="Label">
             <Setter Property="FontSize" Value="11" />
-            <Setter Property="TextColor" Value="#7B1FA2" />
+            <Setter Property="TextColor" Value="{DynamicResource ThemeColor}" />
             <Setter Property="FontAttributes" Value="Bold" />
             <Setter Property="Margin" Value="0,0,0,2" />
         </Style>
         <Style x:Key="FieldBorder" TargetType="Border">
             <Setter Property="BackgroundColor" Value="White" />
             <Setter Property="StrokeThickness" Value="1" />
-            <Setter Property="Stroke" Value="#E0D4F5" />
+            <Setter Property="Stroke" Value="{DynamicResource ThemeColorLighterHex}" />
             <Setter Property="Padding" Value="10,4" />
             <Setter Property="StrokeShape">
                 <Setter.Value><RoundRectangle CornerRadius="8" /></Setter.Value>
@@ -27,7 +27,7 @@
     <Grid RowDefinitions="Auto,*,Auto">
 
         <!-- ═══ HEADER ═══ -->
-        <Border Grid.Row="0" StrokeThickness="0" BackgroundColor="#7B1FA2"
+        <Border Grid.Row="0" StrokeThickness="0" BackgroundColor="{DynamicResource ThemeColor}"
                 Shadow="{Shadow Brush='#44000000', Offset='0,3', Radius=8}">
             <Grid Padding="14,16" ColumnDefinitions="Auto,*,Auto">
                 <Label Grid.Column="0" Text="✕" FontSize="22" TextColor="White" VerticalOptions="Center" Padding="6,0" FontAttributes="Bold">
@@ -37,11 +37,11 @@
                 </Label>
                 <Label Grid.Column="1" x:Name="LblPageTitle" Text="  ✏ Alta Venta" FontSize="18" FontAttributes="Bold"
                        TextColor="White" VerticalOptions="Center" />
-                <Label Grid.Column="2" Text="📍" FontSize="18" TextColor="#CE93D8" VerticalOptions="Center">
+                <Label Grid.Column="2" Text="📍" FontSize="18" TextColor="{DynamicResource ThemeColorLightHex}" VerticalOptions="Center">
                     <Label.FormattedText>
                         <FormattedString>
                             <Span Text="📍 " FontSize="14" />
-                            <Span x:Name="LblGpsShort" Text="..." FontSize="11" TextColor="#CE93D8" />
+                            <Span x:Name="LblGpsShort" Text="..." FontSize="11" TextColor="{DynamicResource ThemeColorLightHex}" />
                         </FormattedString>
                     </Label.FormattedText>
                 </Label>
@@ -150,7 +150,7 @@
                                 ItemDisplayBinding="{Binding ProductName}"
                                 SelectedIndexChanged="OnProductSelected" />
                     </Border>
-                    <Label x:Name="LblPrice" Text="" FontSize="12" TextColor="#7B1FA2" FontAttributes="Bold" Margin="4,0,0,0" />
+                    <Label x:Name="LblPrice" Text="" FontSize="12" TextColor="{DynamicResource ThemeColorHex}" FontAttributes="Bold" Margin="4,0,0,0" />
                 </VerticalStackLayout>
 
                 <!-- ENGANCHE -->
@@ -184,15 +184,11 @@
                     <VerticalStackLayout Grid.Column="2" Spacing="3">
                         <Label Text="🔖 ESTATUS" Style="{StaticResource LblField}" />
                         <Border Style="{StaticResource FieldBorder}">
-                            <Picker x:Name="PickerEstatus" FontSize="13" TextColor="#333">
-                                <Picker.ItemsSource>
-                                    <x:Array Type="{x:Type x:String}">
-                                        <x:String>POR INICIAR</x:String>
-                                        <x:String>LIQUIDADO</x:String>
-                                        <x:String>CANCELADO</x:String>
-                                    </x:Array>
-                                </Picker.ItemsSource>
-                            </Picker>
+                            <Picker x:Name="PickerEstatus" 
+                                    ItemsSource="{Binding SaleStatuses}"
+                                    ItemDisplayBinding="{Binding StatusName}"
+                                    SelectedItem="{Binding SelectedSaleStatus}"
+                                    FontSize="13" TextColor="#333" />
                         </Border>
                     </VerticalStackLayout>
                 </Grid>
@@ -200,26 +196,26 @@
                 <!-- COORDENADAS -->
                 <VerticalStackLayout Spacing="3">
                     <Label Text="🛰️ COORDENADAS (GPS)" Style="{StaticResource LblField}" />
-                    <Border Style="{StaticResource FieldBorder}" BackgroundColor="#F3E5F5">
+                    <Border Style="{StaticResource FieldBorder}" BackgroundColor="{DynamicResource ThemeColorLighterHex}">
                         <Entry x:Name="EntryCoords" IsReadOnly="True" Placeholder="Obteniendo GPS..."
-                               FontSize="12" TextColor="#7B1FA2" />
+                               FontSize="12" TextColor="{DynamicResource ThemeColorHex}" />
                     </Border>
                 </VerticalStackLayout>
 
                 <!-- ═══ FOTOS 2x2 GRID ═══ -->
-                <Label Text="📸 FOTOS" FontSize="12" TextColor="#7B1FA2" FontAttributes="Bold" Margin="0,6,0,0" />
+                <Label Text="📸 FOTOS" FontSize="12" TextColor="{DynamicResource ThemeColorHex}" FontAttributes="Bold" Margin="0,6,0,0" />
                 <Grid ColumnDefinitions="*,10,*" RowDefinitions="Auto,Auto" RowSpacing="10">
                     <!-- FACHADA -->
                     <Border Grid.Row="0" Grid.Column="0" Style="{StaticResource FieldBorder}" Padding="8">
                         <VerticalStackLayout Spacing="4">
-                            <Label Text="🏠 Fachada *" FontSize="10" TextColor="#7B1FA2" FontAttributes="Bold" />
+                            <Label Text="🏠 Fachada *" FontSize="10" TextColor="{DynamicResource ThemeColorHex}" FontAttributes="Bold" />
                             <Image x:Name="ImgFachada" HeightRequest="70" Aspect="AspectFill" IsVisible="False" />
                             <Label x:Name="LblFotoFachada" Text="Sin foto" FontSize="10" TextColor="#BBB"
                                    HorizontalOptions="Center" IsVisible="True" />
                             <Grid ColumnDefinitions="*,*" ColumnSpacing="4">
-                                <Button Grid.Column="0" Text="📷" FontSize="14" BackgroundColor="#F3E5F5" TextColor="#7B1FA2"
+                                <Button Grid.Column="0" Text="📷" FontSize="14" BackgroundColor="{DynamicResource ThemeColorLighterHex}" TextColor="{DynamicResource ThemeColorHex}"
                                         CornerRadius="6" HeightRequest="32" Padding="0" Clicked="OnCameraFachada" />
-                                <Button Grid.Column="1" Text="📁" FontSize="14" BackgroundColor="#F3E5F5" TextColor="#7B1FA2"
+                                <Button Grid.Column="1" Text="📁" FontSize="14" BackgroundColor="{DynamicResource ThemeColorLighterHex}" TextColor="{DynamicResource ThemeColorHex}"
                                         CornerRadius="6" HeightRequest="32" Padding="0" Clicked="OnUploadFachada" />
                             </Grid>
                         </VerticalStackLayout>
@@ -227,14 +223,14 @@
                     <!-- CLIENTE -->
                     <Border Grid.Row="0" Grid.Column="2" Style="{StaticResource FieldBorder}" Padding="8">
                         <VerticalStackLayout Spacing="4">
-                            <Label Text="👤 Cliente" FontSize="10" TextColor="#7B1FA2" FontAttributes="Bold" />
+                            <Label Text="👤 Cliente" FontSize="10" TextColor="{DynamicResource ThemeColorHex}" FontAttributes="Bold" />
                             <Image x:Name="ImgCliente" HeightRequest="70" Aspect="AspectFill" IsVisible="False" />
                             <Label x:Name="LblFotoCliente" Text="Sin foto" FontSize="10" TextColor="#BBB"
                                    HorizontalOptions="Center" IsVisible="True" />
                             <Grid ColumnDefinitions="*,*" ColumnSpacing="4">
-                                <Button Grid.Column="0" Text="📷" FontSize="14" BackgroundColor="#F3E5F5" TextColor="#7B1FA2"
+                                <Button Grid.Column="0" Text="📷" FontSize="14" BackgroundColor="{DynamicResource ThemeColorLighterHex}" TextColor="{DynamicResource ThemeColorHex}"
                                         CornerRadius="6" HeightRequest="32" Padding="0" Clicked="OnCameraCliente" />
-                                <Button Grid.Column="1" Text="📁" FontSize="14" BackgroundColor="#F3E5F5" TextColor="#7B1FA2"
+                                <Button Grid.Column="1" Text="📁" FontSize="14" BackgroundColor="{DynamicResource ThemeColorLighterHex}" TextColor="{DynamicResource ThemeColorHex}"
                                         CornerRadius="6" HeightRequest="32" Padding="0" Clicked="OnUploadCliente" />
                             </Grid>
                         </VerticalStackLayout>
@@ -242,14 +238,14 @@
                     <!-- CONTRATO -->
                     <Border Grid.Row="1" Grid.Column="0" Style="{StaticResource FieldBorder}" Padding="8">
                         <VerticalStackLayout Spacing="4">
-                            <Label Text="📄 Contrato" FontSize="10" TextColor="#7B1FA2" FontAttributes="Bold" />
+                            <Label Text="📄 Contrato" FontSize="10" TextColor="{DynamicResource ThemeColorHex}" FontAttributes="Bold" />
                             <Image x:Name="ImgContrato" HeightRequest="70" Aspect="AspectFill" IsVisible="False" />
                             <Label x:Name="LblFotoContrato" Text="Sin foto" FontSize="10" TextColor="#BBB"
                                    HorizontalOptions="Center" IsVisible="True" />
                             <Grid ColumnDefinitions="*,*" ColumnSpacing="4">
-                                <Button Grid.Column="0" Text="📷" FontSize="14" BackgroundColor="#F3E5F5" TextColor="#7B1FA2"
+                                <Button Grid.Column="0" Text="📷" FontSize="14" BackgroundColor="{DynamicResource ThemeColorLighterHex}" TextColor="{DynamicResource ThemeColorHex}"
                                         CornerRadius="6" HeightRequest="32" Padding="0" Clicked="OnCameraContrato" />
-                                <Button Grid.Column="1" Text="📁" FontSize="14" BackgroundColor="#F3E5F5" TextColor="#7B1FA2"
+                                <Button Grid.Column="1" Text="📁" FontSize="14" BackgroundColor="{DynamicResource ThemeColorLighterHex}" TextColor="{DynamicResource ThemeColorHex}"
                                         CornerRadius="6" HeightRequest="32" Padding="0" Clicked="OnUploadContrato" />
                             </Grid>
                         </VerticalStackLayout>
@@ -257,14 +253,14 @@
                     <!-- ADICIONAL -->
                     <Border Grid.Row="1" Grid.Column="2" Style="{StaticResource FieldBorder}" Padding="8">
                         <VerticalStackLayout Spacing="4">
-                            <Label Text="🖼️ Adicional" FontSize="10" TextColor="#7B1FA2" FontAttributes="Bold" />
+                            <Label Text="🖼️ Adicional" FontSize="10" TextColor="{DynamicResource ThemeColorHex}" FontAttributes="Bold" />
                             <Image x:Name="ImgAdicional" HeightRequest="70" Aspect="AspectFill" IsVisible="False" />
                             <Label x:Name="LblFotoAdicional" Text="Sin foto" FontSize="10" TextColor="#BBB"
                                    HorizontalOptions="Center" IsVisible="True" />
                             <Grid ColumnDefinitions="*,*" ColumnSpacing="4">
-                                <Button Grid.Column="0" Text="📷" FontSize="14" BackgroundColor="#F3E5F5" TextColor="#7B1FA2"
+                                <Button Grid.Column="0" Text="📷" FontSize="14" BackgroundColor="{DynamicResource ThemeColorLighterHex}" TextColor="{DynamicResource ThemeColorHex}"
                                         CornerRadius="6" HeightRequest="32" Padding="0" Clicked="OnCameraAdicional" />
-                                <Button Grid.Column="1" Text="📁" FontSize="14" BackgroundColor="#F3E5F5" TextColor="#7B1FA2"
+                                <Button Grid.Column="1" Text="📁" FontSize="14" BackgroundColor="{DynamicResource ThemeColorLighterHex}" TextColor="{DynamicResource ThemeColorHex}"
                                         CornerRadius="6" HeightRequest="32" Padding="0" Clicked="OnUploadAdicional" />
                             </Grid>
                         </VerticalStackLayout>
@@ -282,29 +278,29 @@
 
                 <!-- ═══ CAMPOS SUPERVISORA ═══ -->
                 <VerticalStackLayout x:Name="SectionSupervisor" IsVisible="False" Spacing="8">
-                    <Label Text="👑 COMISIONES (Supervisora)" FontSize="12" TextColor="#7B1FA2"
+                    <Label Text="👑 COMISIONES (Supervisora)" FontSize="12" TextColor="{DynamicResource ThemeColorHex}"
                            FontAttributes="Bold" Margin="0,6,0,0" />
                     <Grid ColumnDefinitions="*,8,*" RowDefinitions="Auto,Auto" RowSpacing="8">
                         <VerticalStackLayout Grid.Row="0" Grid.Column="0" Spacing="2">
-                            <Label Text="Vendedora %" FontSize="10" TextColor="#7B1FA2" FontAttributes="Bold" />
+                            <Label Text="Vendedora %" FontSize="10" TextColor="{DynamicResource ThemeColorHex}" FontAttributes="Bold" />
                             <Border Style="{StaticResource FieldBorder}">
                                 <Entry x:Name="EntryComisionVendedora" Placeholder="0" Keyboard="Numeric" FontSize="13" TextColor="#333" />
                             </Border>
                         </VerticalStackLayout>
                         <VerticalStackLayout Grid.Row="0" Grid.Column="2" Spacing="2">
-                            <Label Text="Supervisora %" FontSize="10" TextColor="#7B1FA2" FontAttributes="Bold" />
+                            <Label Text="Supervisora %" FontSize="10" TextColor="{DynamicResource ThemeColorHex}" FontAttributes="Bold" />
                             <Border Style="{StaticResource FieldBorder}">
                                 <Entry x:Name="EntryComisionSupervisora" Placeholder="0" Keyboard="Numeric" FontSize="13" TextColor="#333" />
                             </Border>
                         </VerticalStackLayout>
                         <VerticalStackLayout Grid.Row="1" Grid.Column="0" Spacing="2">
-                            <Label Text="Gerente %" FontSize="10" TextColor="#7B1FA2" FontAttributes="Bold" />
+                            <Label Text="Gerente %" FontSize="10" TextColor="{DynamicResource ThemeColorHex}" FontAttributes="Bold" />
                             <Border Style="{StaticResource FieldBorder}">
                                 <Entry x:Name="EntryComisionGerente" Placeholder="0" Keyboard="Numeric" FontSize="13" TextColor="#333" />
                             </Border>
                         </VerticalStackLayout>
                         <VerticalStackLayout Grid.Row="1" Grid.Column="2" Spacing="2">
-                            <Label Text="Total Neto $" FontSize="10" TextColor="#7B1FA2" FontAttributes="Bold" />
+                            <Label Text="Total Neto $" FontSize="10" TextColor="{DynamicResource ThemeColorHex}" FontAttributes="Bold" />
                             <Border Style="{StaticResource FieldBorder}">
                                 <Entry x:Name="EntryTotalNeto" Placeholder="0.00" Keyboard="Numeric" FontSize="13" TextColor="#333" />
                             </Border>
@@ -321,12 +317,12 @@
                 Shadow="{Shadow Brush='#22000000', Offset='0,-2', Radius=6}">
             <Grid ColumnDefinitions="*,*" Padding="14,10" ColumnSpacing="12">
                 <Button Grid.Column="0" Text="✕  CANCELAR" Clicked="OnCancelTapped"
-                        BackgroundColor="#F3E5F5" TextColor="#7B1FA2" FontSize="14" FontAttributes="Bold"
+                        BackgroundColor="{DynamicResource ThemeColorLighterHex}" TextColor="{DynamicResource ThemeColorHex}" FontSize="14" FontAttributes="Bold"
                         CornerRadius="10" HeightRequest="46" />
                 <Button Grid.Column="1" Text="✔  GUARDAR" Clicked="OnSaveTapped"
-                        BackgroundColor="#7B1FA2" TextColor="White" FontSize="14" FontAttributes="Bold"
+                        BackgroundColor="{DynamicResource ThemeColor}" TextColor="White" FontSize="14" FontAttributes="Bold"
                         CornerRadius="10" HeightRequest="46"
-                        Shadow="{Shadow Brush='#447B1FA2', Offset='0,3', Radius=6}" />
+                        Shadow="{Shadow Brush='#44000000', Offset='0,3', Radius=6}" />
             </Grid>
         </Border>
     </Grid>

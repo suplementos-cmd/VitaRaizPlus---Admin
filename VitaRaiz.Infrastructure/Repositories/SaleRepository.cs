@@ -32,6 +32,7 @@ public class SaleRepository : BaseOracleRepository, ISaleRepository
     }
 
     public async Task<int> CreateSaleAsync(int customerId, int sellerId, int paymentTermDays, 
+        string? paymentTerm, string? collectionDay, DateTime? firstCollectionDate, decimal downPayment,
         string? notes, List<SaleDetailDto> details)
     {
         var connection = await GetOpenConnectionAsync();
@@ -42,6 +43,10 @@ public class SaleRepository : BaseOracleRepository, ISaleRepository
         AddInputParameter(command, "p_customer_id", customerId);
         AddInputParameter(command, "p_seller_id", sellerId);
         AddInputParameter(command, "p_payment_term_days", paymentTermDays);
+        AddInputParameter(command, "p_payment_term", paymentTerm ?? "SEMANAL");
+        AddInputParameter(command, "p_collection_day", !string.IsNullOrEmpty(collectionDay) ? collectionDay : DBNull.Value);
+        AddInputParameter(command, "p_first_collection_date", firstCollectionDate.HasValue ? firstCollectionDate.Value : DBNull.Value);
+        AddInputParameter(command, "p_down_payment", downPayment);
         AddInputParameter(command, "p_notes", notes);
 
         await command.ExecuteNonQueryAsync();
@@ -88,6 +93,7 @@ public class SaleRepository : BaseOracleRepository, ISaleRepository
                 .Include(s => s.Customer)
                 .Include(s => s.Seller)
                 .Include(s => s.Payments) // Necesario para calcular PaidAmount
+                .Include(s => s.SaleDetails).ThenInclude(si => si.Product) // Incluir items y productos
                 .AsQueryable();
 
             if (customerId.HasValue)
@@ -120,25 +126,42 @@ public class SaleRepository : BaseOracleRepository, ISaleRepository
 
             var sales = await query
                 .OrderByDescending(s => s.SaleDate)
-                .Select(s => new SaleDto
+                .Select(s => new
                 {
-                    SaleId = s.SaleId,
-                    CustomerName = s.Customer != null ? s.Customer.CustomerName : "Sin cliente",
-                    TotalAmount = s.TotalAmount,
-                    PaidAmount = s.Payments.Where(p => p.Status.ToUpper() == "APPROVED").Sum(p => p.Amount),
-                    Balance = s.TotalAmount - s.Payments.Where(p => p.Status.ToUpper() == "APPROVED").Sum(p => p.Amount),
-                    SaleDate = s.SaleDate,
-                    Status = s.Status, // Se normaliza después de materializar
-                    PaymentTerms = s.PaymentTerms
+                    SaleData = s,
+                    ApprovedPayments = s.Payments.Where(p => p.Status.ToUpper() == "APPROVED").ToList()
                 })
                 .ToListAsync();
 
-            // Normalizar status de Oracle a inglés después de materializar la query
-            foreach (var sale in sales)
-                sale.Status = NormalizeStatus(sale.Status);
+            // Mapear a DTO después de materializar para evitar recalcular en cada proyección
+            var result = sales.Select(item =>
+            {
+                var paidAmount = item.ApprovedPayments.Sum(p => p.Amount);
+                var firstPayment = item.ApprovedPayments
+                    .OrderBy(p => p.PaymentDate)
+                    .FirstOrDefault();
 
-            Console.WriteLine($"[SaleRepository] Devolviendo {sales.Count} ventas");
-            return sales;
+                return new SaleDto
+                {
+                    SaleId = item.SaleData.SaleId,
+                    CustomerName = item.SaleData.Customer != null ? item.SaleData.Customer.CustomerName : "Sin cliente",
+                    CustomerAddress = item.SaleData.Customer != null ? item.SaleData.Customer.Address : null,
+                    TotalAmount = item.SaleData.TotalAmount,
+                    PaidAmount = paidAmount,
+                    Balance = item.SaleData.TotalAmount - paidAmount,
+                    SaleDate = item.SaleData.SaleDate,
+                    FirstPaymentDate = firstPayment?.PaymentDate,
+                    Status = NormalizeStatus(item.SaleData.Status),
+                    PaymentTerms = item.SaleData.PaymentTerms,
+                    ProductName = item.SaleData.SaleDetails != null && item.SaleData.SaleDetails.Any() 
+                        ? item.SaleData.SaleDetails.OrderBy(si => si.DetailId).First().Product!.ProductName 
+                        : null,
+                    SellerName = item.SaleData.Seller != null ? item.SaleData.Seller.Username : null
+                };
+            }).ToList();
+
+            Console.WriteLine($"[SaleRepository] Devolviendo {result.Count} ventas");
+            return result;
         }
         catch (Exception ex)
         {
@@ -157,9 +180,11 @@ public class SaleRepository : BaseOracleRepository, ISaleRepository
             // No podemos filtrar por PaidAmount en el Where porque no existe la columna - filtraremos después
             var query = _context.Sales
                 .Include(s => s.Customer)
-                .ThenInclude(c => c!.Zone)
-            .Include(s => s.Payments)
-            .Where(s => s.Status != null && (s.Status.ToUpper() == "EN_PROCESO" || s.Status.ToUpper() == "ACTIVE" || s.Status.ToUpper() == "POR_INICIAR"));
+                    .ThenInclude(c => c!.Zone)
+                .Include(s => s.Payments)
+                .Include(s => s.Seller)
+                .Include(s => s.SaleDetails).ThenInclude(si => si.Product)
+                .Where(s => s.Status != null && (s.Status.ToUpper() == "EN_PROCESO" || s.Status.ToUpper() == "ACTIVE" || s.Status.ToUpper() == "POR_INICIAR"));
 
             if (collectorId.HasValue)
             {
@@ -179,16 +204,26 @@ public class SaleRepository : BaseOracleRepository, ISaleRepository
                     var paidAmount = (s.Payments ?? new List<Payment>())
                         .Where(p => p.Status != null && p.Status.ToUpper() == "APPROVED")
                         .Sum(p => p.Amount);
+                    var firstPayment = (s.Payments ?? new List<Payment>())
+                        .Where(p => p.Status != null && p.Status.ToUpper() == "APPROVED")
+                        .OrderBy(p => p.PaymentDate)
+                        .FirstOrDefault();
                     return new SaleDto
                     {
                         SaleId = s.SaleId,
                         CustomerName = s.Customer?.CustomerName ?? "Sin cliente",
+                        CustomerAddress = s.Customer?.Address,
                         TotalAmount = s.TotalAmount,
                         PaidAmount = paidAmount,
                         Balance = s.TotalAmount - paidAmount,
                         SaleDate = s.SaleDate,
+                        FirstPaymentDate = firstPayment?.PaymentDate,
                         Status = NormalizeStatus(s.Status),
-                        PaymentTerms = s.PaymentTerms
+                        PaymentTerms = s.PaymentTerms,
+                        ProductName = s.SaleDetails != null && s.SaleDetails.Any()
+                            ? s.SaleDetails.OrderBy(si => si.DetailId).First().Product?.ProductName
+                            : null,
+                        SellerName = s.Seller?.Username
                     };
                 })
                 .Where(s => s.Balance > 0) // Solo ventas con saldo pendiente
@@ -211,6 +246,7 @@ public class SaleRepository : BaseOracleRepository, ISaleRepository
             .Include(s => s.Customer)
             .Include(s => s.Seller)
             .Include(s => s.Payments)
+            .Include(s => s.SaleDetails).ThenInclude(si => si.Product)
             .Where(s => s.SaleId == saleId)
             .FirstOrDefaultAsync();
         
@@ -220,16 +256,27 @@ public class SaleRepository : BaseOracleRepository, ISaleRepository
         var paidAmount = (sale.Payments ?? new List<Payment>())
             .Where(p => p.Status != null && p.Status.ToUpper() == "APPROVED").Sum(p => p.Amount);
         
+        var firstPayment = (sale.Payments ?? new List<Payment>())
+            .Where(p => p.Status != null && p.Status.ToUpper() == "APPROVED")
+            .OrderBy(p => p.PaymentDate)
+            .FirstOrDefault();
+        
         return new SaleDto
         {
             SaleId = sale.SaleId,
             CustomerName = sale.Customer?.CustomerName ?? "Sin cliente",
+            CustomerAddress = sale.Customer?.Address,
             TotalAmount = sale.TotalAmount,
             PaidAmount = paidAmount,
             Balance = sale.TotalAmount - paidAmount,
             SaleDate = sale.SaleDate,
+            FirstPaymentDate = firstPayment?.PaymentDate,
             Status = NormalizeStatus(sale.Status),
-            PaymentTerms = sale.PaymentTerms
+            PaymentTerms = sale.PaymentTerms,
+            ProductName = sale.SaleDetails != null && sale.SaleDetails.Any()
+                ? sale.SaleDetails.OrderBy(si => si.DetailId).First().Product?.ProductName
+                : null,
+            SellerName = sale.Seller?.Username
         };
     }
 
@@ -322,6 +369,14 @@ public class SaleRepository : BaseOracleRepository, ISaleRepository
                 Balance = balance,
                 SaleDate = sale.SaleDate,
                 Status = NormalizeStatus(sale.Status),
+                
+                // Structured payment fields
+                PaymentTerm = sale.PaymentTerm,
+                CollectionDay = sale.CollectionDay,
+                FirstCollectionDate = sale.FirstCollectionDate,
+                DownPayment = sale.DownPayment,
+                
+                // Legacy/Additional
                 PaymentTerms = sale.PaymentTerms,
                 Notes = sale.Notes,
 

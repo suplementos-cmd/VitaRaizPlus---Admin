@@ -63,15 +63,15 @@ public class ApiService
             }
 #else
             // En plataformas que no soportan SecureStorage, omitir la lectura del token.
-            _logger.Warn("[SetAuthorizationHeaderAsync] SecureStorage no está soportado en esta plataforma. Se omite lectura del token.");
+            _logger.Warn("[SetAuthorizationHeaderAsync] SecureStorage no estï¿½ soportado en esta plataforma. Se omite lectura del token.");
             System.Diagnostics.Debug.WriteLine("[ApiService] WARNING: SecureStorage not supported on this platform. Skipping auth header.");
             return;
 #endif
         }
         catch (PlatformNotSupportedException pnse)
         {
-            // Protección adicional por si la API lanza PlatformNotSupported en tiempo de ejecución
-            _logger.Warn(pnse, "[SetAuthorizationHeaderAsync] SecureStorage no está soportado en esta plataforma (excepción).");
+            // Protecciï¿½n adicional por si la API lanza PlatformNotSupported en tiempo de ejecuciï¿½n
+            _logger.Warn(pnse, "[SetAuthorizationHeaderAsync] SecureStorage no estï¿½ soportado en esta plataforma (excepciï¿½n).");
             System.Diagnostics.Debug.WriteLine($"[ApiService] SecureStorage not supported: {pnse.Message}");
         }
         catch (Exception ex)
@@ -290,12 +290,16 @@ public class SaleDto
 {
     public int SaleId { get; set; }
     public string CustomerName { get; set; } = string.Empty;
+    public string? CustomerAddress { get; set; }
     public decimal TotalAmount { get; set; }
     public decimal PaidAmount { get; set; }
     public decimal Balance { get; set; }
     public DateTime SaleDate { get; set; }
+    public DateTime? FirstPaymentDate { get; set; }
     public string Status { get; set; } = string.Empty;
     public string? PaymentTerms { get; set; }
+    public string? ProductName { get; set; }
+    public string? SellerName { get; set; }
 }
 
 public class PaymentDto
@@ -326,4 +330,18 @@ public class CustomerDto
     public bool IsGoldCustomer { get; set; }
     public bool IsBlacklisted { get; set; }
     public DateTime CreatedAt { get; set; }
+}
+
+/// <summary>
+/// DTO para configuraciÃ³n de usuario y temas dinÃ¡micos
+/// </summary>
+public class UserSettingsDto
+{
+    public int UserId { get; set; }
+    public string? ThemeColor { get; set; }
+    public string? ThemeColorLight { get; set; }
+    public string? ThemeColorLighter { get; set; }
+    public string? Language { get; set; }
+    public bool NotificationsEnabled { get; set; }
+    public string? Preferences { get; set; }
 }

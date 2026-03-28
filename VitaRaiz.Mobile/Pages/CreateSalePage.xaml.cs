@@ -1,12 +1,14 @@
 using VitaRaiz.Mobile.Models;
 using VitaRaiz.Mobile.Services;
 using System.Text.Json;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 
 namespace VitaRaiz.Mobile.Pages;
 
 [QueryProperty(nameof(EditSaleId), "saleId")]
 [QueryProperty(nameof(SaleDataJson), "saleData")]
-public partial class CreateSalePage : ContentPage
+public partial class CreateSalePage : ContentPage, INotifyPropertyChanged
 {
     private readonly ApiService _apiService;
     private readonly CatalogService _catalogService;
@@ -25,6 +27,16 @@ public partial class CreateSalePage : ContentPage
     private int _editSaleId;
     private bool _isEditMode;
     private SaleFullDetail? _existingSaleData; // NEW: Data passed directly from DetailPage
+    
+    // Catálogos de API
+    public System.Collections.ObjectModel.ObservableCollection<Models.CatalogSaleStatus> SaleStatuses { get; } = new();
+    
+    private Models.CatalogSaleStatus? _selectedSaleStatus;
+    public Models.CatalogSaleStatus? SelectedSaleStatus 
+    {
+        get => _selectedSaleStatus;
+        set { _selectedSaleStatus = value; OnPropertyChanged(); }
+    }
 
     public int EditSaleId
     {
@@ -62,6 +74,7 @@ public partial class CreateSalePage : ContentPage
         InitializeComponent();
         _apiService = new ApiService();
         _catalogService = new CatalogService(_apiService);
+        BindingContext = this;
     }
 
     protected override async void OnAppearing()
@@ -84,6 +97,17 @@ public partial class CreateSalePage : ContentPage
             
             // Load catalog service cache first
             await _catalogService.LoadAsync();
+            
+            // Populate SaleStatuses from catalog
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                SaleStatuses.Clear();
+                foreach (var status in _catalogService.SaleStatuses)
+                    SaleStatuses.Add(status);
+                // Set default to "pending" (Por Iniciar)
+                SelectedSaleStatus = SaleStatuses.FirstOrDefault(s => 
+                    s.StatusCode.Equals("pending", StringComparison.OrdinalIgnoreCase));
+            });
             
             await Task.WhenAll(LoadCombosAsync(), GetGpsAsync());
             await CheckSupervisorAsync();
@@ -346,7 +370,7 @@ public partial class CreateSalePage : ContentPage
             var product = _products[PickerProduct.SelectedIndex];
             var paymentTerm = PickerFormaPago.SelectedItem?.ToString() ?? "SEMANAL";
             var collectionDay = PickerDiaCobro.SelectedItem?.ToString() ?? "";
-            var estatus = PickerEstatus.SelectedItem?.ToString() ?? "POR INICIAR";
+            var estatus = SelectedSaleStatus?.StatusCode ?? "pending";
             var calle = EntryCalle.Text?.Trim() ?? "";
             var entreCalle1 = EntryEntreCalle1.Text?.Trim() ?? "";
             var entreCalle2 = EntryEntreCalle2.Text?.Trim() ?? "";
@@ -401,7 +425,11 @@ public partial class CreateSalePage : ContentPage
                 customerId = customerResult.CustomerId,
                 sellerId = userId > 0 ? userId : 1,
                 paymentTermDays,
-                notes = $"Estatus: {estatus} | Cobro: {collectionDay} | FechaPrimerCobro: {DpPrimerCobro.Date:dd/MM/yyyy} | Enganche: {enganche:N2} | {notes}",
+                paymentTerm, // SEMANAL, QUINCENAL, MENSUAL, CONTADO
+                collectionDay, // LUN, MAR, MIE, JUE, VIE, SAB, DOM
+                firstCollectionDate = DpPrimerCobro.Date, // Fecha del primer cobro
+                downPayment = enganche, // Enganche/pago inicial
+                notes = notes, // Solo notas adicionales, no datos estructurados
                 details = new[]
                 {
                     new
@@ -593,7 +621,7 @@ public partial class CreateSalePage : ContentPage
             {
                 EntryNombre.Text = sale.CustomerName;
                 EntryCelular.Text = sale.CustomerPhone;
-                EditorNotas.Text = sale.Notes;
+                EditorNotas.Text = sale.Notes; // Only actual notes, not concatenated data
 
                 // Parse address parts
                 var addr = sale.CustomerAddress ?? "";
@@ -629,6 +657,12 @@ public partial class CreateSalePage : ContentPage
                 }
 
                 DpFechaVenta.Date = sale.SaleDate;
+                
+                // Set first collection date if available
+                if (sale.FirstCollectionDate.HasValue)
+                {
+                    DpPrimerCobro.Date = sale.FirstCollectionDate.Value;
+                }
 
                 // Select zone
                 if (sale.ZoneName != null)
@@ -637,12 +671,12 @@ public partial class CreateSalePage : ContentPage
                     if (zoneIdx >= 0) PickerZone.SelectedIndex = zoneIdx;
                 }
 
-                // Select payment term
-                var terms = sale.PaymentTerms ?? "";
-                if (terms.Contains("7")) PickerFormaPago.SelectedIndex = 0;       // SEMANAL
-                else if (terms.Contains("15")) PickerFormaPago.SelectedIndex = 1;  // QUINCENAL
-                else if (terms.Contains("30")) PickerFormaPago.SelectedIndex = 2;  // MENSUAL
-                else if (terms.Contains("0")) PickerFormaPago.SelectedIndex = 3;   // CONTADO
+                // Select payment term (from structured field, not legacy text)
+                var paymentTerm = sale.PaymentTerm ?? "";
+                if (paymentTerm.Equals("SEMANAL", StringComparison.OrdinalIgnoreCase)) PickerFormaPago.SelectedIndex = 0;
+                else if (paymentTerm.Equals("QUINCENAL", StringComparison.OrdinalIgnoreCase)) PickerFormaPago.SelectedIndex = 1;
+                else if (paymentTerm.Equals("MENSUAL", StringComparison.OrdinalIgnoreCase)) PickerFormaPago.SelectedIndex = 2;
+                else if (paymentTerm.Equals("CONTADO", StringComparison.OrdinalIgnoreCase)) PickerFormaPago.SelectedIndex = 3;
 
                 // Select product (first item)
                 if (sale.Items.Count > 0)
@@ -656,32 +690,27 @@ public partial class CreateSalePage : ContentPage
                     }
                 }
 
-                // Parse collection day and status from notes
-                var notes = sale.Notes ?? "";
-                var notesParts = notes.Split('|');
-                foreach (var part in notesParts)
+                // Set collection day (from structured field)
+                var collectionDay = sale.CollectionDay ?? "";
+                for (int i = 0; i < PickerDiaCobro.Items.Count; i++)
                 {
-                    var p = part.Trim();
-                    if (p.StartsWith("Cobro:"))
+                    if (PickerDiaCobro.Items[i].Equals(collectionDay, StringComparison.OrdinalIgnoreCase))
                     {
-                        var day = p.Replace("Cobro:", "").Trim();
-                        for (int i = 0; i < PickerDiaCobro.Items.Count; i++)
-                            if (PickerDiaCobro.Items[i].Equals(day, StringComparison.OrdinalIgnoreCase))
-                            { PickerDiaCobro.SelectedIndex = i; break; }
-                    }
-                    else if (p.StartsWith("Estatus:"))
-                    {
-                        var st = p.Replace("Estatus:", "").Trim();
-                        for (int i = 0; i < PickerEstatus.Items.Count; i++)
-                            if (PickerEstatus.Items[i].Equals(st, StringComparison.OrdinalIgnoreCase))
-                            { PickerEstatus.SelectedIndex = i; break; }
-                    }
-                    else if (p.StartsWith("Enganche:"))
-                    {
-                        var eng = p.Replace("Enganche:", "").Trim();
-                        EntryEnganche.Text = eng;
+                        PickerDiaCobro.SelectedIndex = i;
+                        break;
                     }
                 }
+
+                // Set down payment (from structured field)
+                if (sale.DownPayment > 0)
+                {
+                    EntryEnganche.Text = sale.DownPayment.ToString("F2");
+                }
+
+                // Set status (from structured field)
+                SelectedSaleStatus = SaleStatuses.FirstOrDefault(s => 
+                    s.StatusCode.Equals(sale.Status, StringComparison.OrdinalIgnoreCase) ||
+                    s.StatusName.Equals(sale.Status, StringComparison.OrdinalIgnoreCase));
 
                 if (sale.CustomerGpsLatitude.HasValue && sale.CustomerGpsLongitude.HasValue)
                 {
@@ -698,6 +727,13 @@ public partial class CreateSalePage : ContentPage
     // ═══ Navigation ═══
     private async void OnBackTapped(object? sender, EventArgs e) => await Shell.Current.GoToAsync("..");
     private async void OnCancelTapped(object? sender, EventArgs e) => await Shell.Current.GoToAsync("..");
+    
+    // ═══ INotifyPropertyChanged ═══
+    public new event PropertyChangedEventHandler? PropertyChanged;
+    protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
 }
 
 // ═══ Local DTOs ═══

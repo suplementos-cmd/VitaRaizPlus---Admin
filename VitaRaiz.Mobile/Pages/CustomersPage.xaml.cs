@@ -49,6 +49,13 @@ public partial class CustomersPage : ContentPage
 
     public ObservableCollection<CustomerItemDto> Customers { get; set; } = new();
 
+    /// <summary>
+    /// Habilita el botón de búsqueda solo cuando hay clientes
+    /// </summary>
+    public bool HasCustomers => _allCustomers.Count > 0;
+    
+    public double SearchIconOpacity => HasCustomers ? 1.0 : 0.5;
+
     public ICommand SearchCommand { get; }
     public ICommand ViewCustomerDetailCommand { get; }
 
@@ -70,6 +77,10 @@ public partial class CustomersPage : ContentPage
                 _logger.Debug("[LoadCustomersAsync] Datos asignados a _allCustomers. Llamando DisplayCustomers...");
                 
                 DisplayCustomers(_allCustomers);
+                
+                // Notificar cambios en propiedades dependientes
+                OnPropertyChanged(nameof(HasCustomers));
+                OnPropertyChanged(nameof(SearchIconOpacity));
                 
                 _logger.Info("[LoadCustomersAsync] FIN - {Count} clientes cargados y mostrados en UI", Customers.Count);
             }
@@ -164,6 +175,86 @@ public partial class CustomersPage : ContentPage
     private void OnViewCustomerDetail()
     {
         // TODO: Navegar a detalle de cliente
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    // HEADER ACTIONS
+    // ══════════════════════════════════════════════════════════════════
+    private void OnSearchToggle(object? sender, EventArgs e)
+    {
+        try
+        {
+            if (!HasCustomers)
+            {
+                _logger.Info("[OnSearchToggle] No hay clientes para buscar");
+                return;
+            }
+            
+            // Toggle la barra de búsqueda compacta dentro del header
+            SearchBarCompact.IsVisible = !SearchBarCompact.IsVisible;
+            _logger.Info("[OnSearchToggle] SearchBarCompact visible: {IsVisible}", SearchBarCompact.IsVisible);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogException(ex, "Error al toggle SearchBar");
+        }
+    }
+
+    private void OnSearchCompleted(object? sender, EventArgs e)
+    {
+        OnSearch();
+    }
+
+    private async void OnRefreshTapped(object? sender, EventArgs e)
+    {
+        try
+        {
+            _logger.Info("[OnRefreshTapped] Actualizando lista de clientes...");
+            await LoadCustomersAsync();
+            await DisplayAlert("Actualizado", "La lista de clientes se ha actualizado correctamente", "OK");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogException(ex, "Error al actualizar clientes");
+            await DisplayAlert("Error", "No se pudo actualizar la lista de clientes", "OK");
+        }
+    }
+
+    private async void OnLogoutTapped(object? sender, EventArgs e)
+    {
+        try
+        {
+            var confirm = await DisplayAlert(
+                "Cerrar Sesión", 
+                "¿Está seguro que desea cerrar sesión?", 
+                "Sí", 
+                "No"
+            );
+            
+            if (!confirm) return;
+            
+            _logger.Info("[OnLogoutTapped] Cerrando sesión...");
+            
+            // IMPORTANTE: Resetear tema ANTES de limpiar storage
+            App.ResetThemeToDefault();
+            
+            // Limpiar credenciales almacenadas
+            SecureStorage.Remove("auth_token");
+            SecureStorage.Remove("username");
+            SecureStorage.Remove("role");
+            SecureStorage.Remove("user_id");
+            SecureStorage.RemoveAll();
+            
+            // Cambiar la MainPage a LoginPage
+            Application.Current!.MainPage = new LoginPage();
+            
+            _logger.Info("[OnLogoutTapped] Sesión cerrada correctamente");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogException(ex, "Error al cerrar sesión");
+            await DisplayAlert("Error", "No se pudo cerrar la sesión", "OK");
+        }
     }
 
     // ═══ Bottom Tab Navigation ═══

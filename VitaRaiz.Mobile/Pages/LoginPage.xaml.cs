@@ -200,7 +200,12 @@ public partial class LoginPage : ContentPage
                     await SecureStorage.SetAsync("username", loginResponse.Username);
                     await SecureStorage.SetAsync("role", loginResponse.Role);
 
-                    System.Diagnostics.Debug.WriteLine("Token guardado, navegando a AppShell...");
+                    System.Diagnostics.Debug.WriteLine("Token guardado, cargando tema...");
+                    
+                    // Cargar tema según el rol del usuario antes de navegar
+                    LoadThemeForRole(loginResponse.Role);
+
+                    System.Diagnostics.Debug.WriteLine("Navegando a AppShell...");
                     
                     // Navegar a la página principal en el hilo principal
                     await MainThread.InvokeOnMainThreadAsync(() =>
@@ -271,6 +276,55 @@ public partial class LoginPage : ContentPage
         finally
         {
             IsLoading = false;
+        }
+    }
+    
+    /// <summary>
+    /// Carga el tema basado en el rol del usuario
+    /// </summary>
+    private void LoadThemeForRole(string role)
+    {
+        try
+        {
+            System.Diagnostics.Debug.WriteLine($"[LoginPage] Loading theme for role: {role}");
+            
+            string themeColor = role switch
+            {
+                "Admin" or "Administrador" => "#E91E63", // Rosa/Magenta
+                "Supervisor" => "#FF9800", // Naranja
+                "Vendedor" => "#2196F3", // Azul
+                "Cobrador" or _ => "#28A745" // Verde (default)
+            };
+            
+            // Calcular colores claros
+            string lightColor = LightenColor(themeColor, 0.7);
+            string lighterColor = LightenColor(themeColor, 0.85);
+            
+            App.UpdateThemeColors(themeColor, lightColor, lighterColor);
+            System.Diagnostics.Debug.WriteLine($"[LoginPage] Theme loaded: {themeColor}");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[LoginPage] Error loading theme: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// Aclara un color hexadecimal mezclándolo con blanco
+    /// </summary>
+    private static string LightenColor(string hexColor, double factor)
+    {
+        try
+        {
+            var color = Color.FromArgb(hexColor);
+            var r = (int)(color.Red * 255 + (255 - color.Red * 255) * factor);
+            var g = (int)(color.Green * 255 + (255 - color.Green * 255) * factor);
+            var b = (int)(color.Blue * 255 + (255 - color.Blue * 255) * factor);
+            return $"#{r:X2}{g:X2}{b:X2}";
+        }
+        catch
+        {
+            return hexColor;
         }
     }
 }

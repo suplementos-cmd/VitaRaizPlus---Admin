@@ -51,6 +51,32 @@ public partial class PaymentDetailPage : ContentPage
     }
 
     public bool IsViewMode => !IsEditMode;
+    
+    // ── Catálogos de API ──
+    public IReadOnlyList<Models.CatalogPaymentStatus> PaymentStatuses => _catalogService.PaymentStatuses;
+    
+    public Models.CatalogPaymentStatus? SelectedPaymentStatus
+    {
+        get
+        {
+            if (Payment == null || string.IsNullOrEmpty(Payment.Status))
+                return null;
+            return PaymentStatuses.FirstOrDefault(s => 
+                s.StatusCode.Equals(Payment.Status, StringComparison.OrdinalIgnoreCase));
+        }
+        set
+        {
+            if (Payment != null && value != null)
+            {
+                Payment.Status = value.StatusCode;
+                var (label, color, _) = _catalogService.ResolvePaymentStatus(value.StatusCode);
+                Payment.StatusLabel = label;
+                Payment.StatusColor = color;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(Payment));
+            }
+        }
+    }
 
     // ── Lifecycle ──
     protected override async void OnAppearing()
@@ -58,6 +84,7 @@ public partial class PaymentDetailPage : ContentPage
         base.OnAppearing();
         await _catalogService.LoadAsync();
         await LoadPaymentDetail();
+        OnPropertyChanged(nameof(PaymentStatuses));
     }
 
     private async Task LoadPaymentDetail()
@@ -100,6 +127,8 @@ public partial class PaymentDetailPage : ContentPage
                 StatusLabel = payment.StatusLabel,
                 StatusColor = payment.StatusColor
             };
+            
+            OnPropertyChanged(nameof(SelectedPaymentStatus));
 
             System.Diagnostics.Debug.WriteLine($"[PaymentDetailPage] Payment loaded: Amount={payment.Amount}, Collector={payment.CollectorName}");
         }
@@ -145,11 +174,16 @@ public partial class PaymentDetailPage : ContentPage
             Payment.Status = _originalPayment.Status;
             Payment.Notes = _originalPayment.Notes;
             
+            var (label, color, _) = _catalogService.ResolvePaymentStatus(Payment.Status);
+            Payment.StatusLabel = label;
+            Payment.StatusColor = color;
+            
             // Update UI
             EntryAmount.Text = Payment.Amount.ToString();
             DatePayment.Date = Payment.PaymentDate;
-            PickerStatus.SelectedItem = Payment.Status;
             EditorNotes.Text = Payment.Notes;
+            OnPropertyChanged(nameof(SelectedPaymentStatus));
+            OnPropertyChanged(nameof(Payment));
         }
 
         IsEditMode = false;
@@ -167,7 +201,7 @@ public partial class PaymentDetailPage : ContentPage
         }
 
         // Validate status
-        if (PickerStatus.SelectedIndex < 0)
+        if (SelectedPaymentStatus == null)
         {
             await DisplayAlert("Validación", "Selecciona un estatus", "OK");
             return;
@@ -182,7 +216,7 @@ public partial class PaymentDetailPage : ContentPage
                 paymentId = Payment.PaymentId,
                 amount = newAmount,
                 paymentDate = DatePayment.Date,
-                status = PickerStatus.SelectedItem?.ToString() ?? Payment.Status,
+                status = SelectedPaymentStatus.StatusCode,
                 notes = EditorNotes.Text?.Trim() ?? ""
             };
 

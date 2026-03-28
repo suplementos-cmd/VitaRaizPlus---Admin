@@ -76,7 +76,7 @@ public class CustomersController : ControllerBase
     /// Crear un nuevo cliente
     /// </summary>
     [HttpPost]
-    [Authorize(Roles = "AdminFull,Admin,Supervisor,Vendedor")]
+    [Authorize] // TEMPORAL: Permite cualquier usuario autenticado crear clientes
     public async Task<IActionResult> CreateCustomer([FromBody] CreateCustomerCommand command)
     {
         try

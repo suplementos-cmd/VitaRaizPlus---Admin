@@ -12,8 +12,6 @@ public partial class SaleDetailPage : ContentPage
     private readonly ApiService _apiService;
     private readonly CatalogService _catalogService;
     private bool _isCobrador;
-    private string? _fotoContratoPath;
-    private string? _fotoAdicionalPath;
 
     public SaleDetailPage(ApiService apiService, CatalogService catalogService)
     {
@@ -24,6 +22,7 @@ public partial class SaleDetailPage : ContentPage
         CallClientCommand = new Command(async () => await CallClient());
         WhatsAppCommand = new Command(async () => await OpenWhatsApp());
         OpenPaymentDetailCommand = new Command<int>(OnOpenPaymentDetail);
+        OpenPhotoCommand = new Command<string>(OnOpenPhoto);
 
         BindingContext = this;
     }
@@ -75,6 +74,39 @@ public partial class SaleDetailPage : ContentPage
 
     public bool HasBannerPhoto => !string.IsNullOrEmpty(BannerPhotoPath);
 
+    // ── Individual Photo Properties ──
+    private string? _fachadaPhotoPath;
+    public string? FachadaPhotoPath
+    {
+        get => _fachadaPhotoPath;
+        set { _fachadaPhotoPath = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasFachadaPhoto)); }
+    }
+    public bool HasFachadaPhoto => !string.IsNullOrEmpty(FachadaPhotoPath) && File.Exists(FachadaPhotoPath);
+
+    private string? _clientePhotoPath;
+    public string? ClientePhotoPath
+    {
+        get => _clientePhotoPath;
+        set { _clientePhotoPath = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasClientePhoto)); }
+    }
+    public bool HasClientePhoto => !string.IsNullOrEmpty(ClientePhotoPath) && File.Exists(ClientePhotoPath);
+
+    private string? _contratoPhotoPath;
+    public string? ContratoPhotoPath
+    {
+        get => _contratoPhotoPath;
+        set { _contratoPhotoPath = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasContratoPhoto)); }
+    }
+    public bool HasContratoPhoto => !string.IsNullOrEmpty(ContratoPhotoPath) && File.Exists(ContratoPhotoPath);
+
+    private string? _adicionalPhotoPath;
+    public string? AdicionalPhotoPath
+    {
+        get => _adicionalPhotoPath;
+        set { _adicionalPhotoPath = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasAdicionalPhoto)); }
+    }
+    public bool HasAdicionalPhoto => !string.IsNullOrEmpty(AdicionalPhotoPath) && File.Exists(AdicionalPhotoPath);
+
     public string ZoneName => Sale?.ZoneName ?? "—";
     public string CollectionDay
     {
@@ -93,17 +125,51 @@ public partial class SaleDetailPage : ContentPage
     }
     public bool HasPayments => Payments.Count > 0;
 
+    private List<string> _paymentStatuses = new();
+    public List<string> PaymentStatuses
+    {
+        get => _paymentStatuses;
+        set
+        {
+            _paymentStatuses = value;
+            OnPropertyChanged();
+        }
+    }
+
     public ICommand CallClientCommand { get; }
     public ICommand WhatsAppCommand { get; }
     public ICommand OpenPaymentDetailCommand { get; }
+    public ICommand OpenPhotoCommand { get; }
 
     // ── Lifecycle ──
     protected override async void OnAppearing()
     {
         base.OnAppearing();
         await _catalogService.LoadAsync();
+        LoadPaymentStatuses();
         await CheckRoleAsync();
         await LoadSaleDetail();
+    }
+
+    private void LoadPaymentStatuses()
+    {
+        // Load payment statuses from catalog service
+        if (_catalogService.PaymentStatuses.Count > 0)
+        {
+            PaymentStatuses = _catalogService.PaymentStatuses
+                .Where(ps => ps.IsActive)
+                .OrderBy(ps => ps.DisplayOrder)
+                .Select(ps => ps.StatusName)
+                .ToList();
+            
+            System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] Loaded {PaymentStatuses.Count} payment statuses from catalog");
+        }
+        else
+        {
+            // Fallback to default statuses
+            PaymentStatuses = new List<string> { "COBRADO", "NO ESTABA", "PRÓXIMA SEMANA" };
+            System.Diagnostics.Debug.WriteLine("[SaleDetailPage] Using default payment statuses");
+        }
     }
 
     private async Task CheckRoleAsync()
@@ -202,6 +268,22 @@ public partial class SaleDetailPage : ContentPage
                 var clientePhoto = photos.FirstOrDefault(p => p.PhotoType == "CLIENTE");
                 var contratoPhoto = photos.FirstOrDefault(p => p.PhotoType == "CONTRATO");
                 var adicionalPhoto = photos.FirstOrDefault(p => p.PhotoType == "ADICIONAL");
+
+                // Set individual photo paths
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    if (fachadaPhoto != null && File.Exists(fachadaPhoto.FilePath))
+                        FachadaPhotoPath = fachadaPhoto.FilePath;
+                    
+                    if (clientePhoto != null && File.Exists(clientePhoto.FilePath))
+                        ClientePhotoPath = clientePhoto.FilePath;
+                    
+                    if (contratoPhoto != null && File.Exists(contratoPhoto.FilePath))
+                        ContratoPhotoPath = contratoPhoto.FilePath;
+                    
+                    if (adicionalPhoto != null && File.Exists(adicionalPhoto.FilePath))
+                        AdicionalPhotoPath = adicionalPhoto.FilePath;
+                });
 
                 // Select banner photo with priority: Fachada > Cliente > Contrato
                 string? selectedPhotoPath = null;
@@ -397,12 +479,6 @@ public partial class SaleDetailPage : ContentPage
         await DisplayAlert("Acción", "Marcado: Próxima semana", "OK");
     }
 
-    // ── Photos (Cobrador) ──
-    private async void OnCameraContrato(object? s, EventArgs e) => await CapturePhoto("contrato", r => { _fotoContratoPath = r; UpdatePhotoLabel(LblFotoContrato, r); });
-    private async void OnUploadContrato(object? s, EventArgs e) => await PickPhoto(r => { _fotoContratoPath = r; UpdatePhotoLabel(LblFotoContrato, r); });
-    private async void OnCameraAdicionalD(object? s, EventArgs e) => await CapturePhoto("adicional", r => { _fotoAdicionalPath = r; UpdatePhotoLabel(LblFotoAdicional, r); });
-    private async void OnUploadAdicionalD(object? s, EventArgs e) => await PickPhoto(r => { _fotoAdicionalPath = r; UpdatePhotoLabel(LblFotoAdicional, r); });
-
     private void UpdatePhotoLabel(Label label, string? path)
     {
         if (path != null)
@@ -412,7 +488,61 @@ public partial class SaleDetailPage : ContentPage
         }
     }
 
-    private async Task CapturePhoto(string name, Action<string?> callback)
+    private async Task SavePhotoToDbAndServer(string photoType, string localPath)
+    {
+        try
+        {
+            System.Diagnostics.Debug.WriteLine($"[SaleDetail] SavePhotoToDbAndServer - Type: {photoType}, Path: {localPath}");
+            
+            // 1. Guardar en base de datos local
+            var dbPath = Path.Combine(FileSystem.AppDataDirectory, "vitaraiz.db3");
+            var db = new Data.LocalDatabase(dbPath);
+            
+            var photo = new Data.LocalSalePhoto
+            {
+                SaleId = this.SaleId,
+                PhotoType = photoType,
+                LocalPath = localPath,
+                CreatedAt = DateTime.Now
+            };
+            
+            await db.SaveSalePhotoAsync(photo);
+            System.Diagnostics.Debug.WriteLine($"[SaleDetail] ✓ Photo saved to local DB: {photoType}");
+            
+            // 2. Enviar al servidor
+            try
+            {
+                var fileInfo = new FileInfo(localPath);
+                var photoPayload = new
+                {
+                    photoType,
+                    filePath = localPath,
+                    gpsLatitude = (double?)null,
+                    gpsLongitude = (double?)null,
+                    fileSize = fileInfo.Length
+                };
+                
+                var result = await _apiService.PostAsync<object>($"api/sales/{SaleId}/photos", photoPayload);
+                if (result)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[SaleDetail] ✓ Photo uploaded to server: {photoType}");
+                    await DisplayAlert("Éxito", $"Foto {photoType} guardada correctamente", "OK");
+                }
+            }
+            catch (Exception apiEx)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SaleDetail] Server upload error: {apiEx.Message}");
+                // No mostrar error al usuario, la foto ya está guardada localmente
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[SaleDetail] SavePhotoToDbAndServer error: {ex.Message}");
+            await DisplayAlert("Error", "No se pudo guardar la foto", "OK");
+        }
+    }
+
+    private async Task CapturePhoto(string name, Func<string?, Task> callback)
     {
         try
         {
@@ -427,15 +557,16 @@ public partial class SaleDetailPage : ContentPage
             using var stream = await photo.OpenReadAsync();
             using var fs = File.OpenWrite(path);
             await stream.CopyToAsync(fs);
-            callback(path);
+            await callback(path);
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[SaleDetail] Camera error ({name}): {ex.Message}");
+            await DisplayAlert("Error", $"Error al capturar foto: {ex.Message}", "OK");
         }
     }
 
-    private async Task PickPhoto(Action<string?> callback)
+    private async Task PickPhoto(Func<string?, Task> callback)
     {
         try
         {
@@ -445,11 +576,12 @@ public partial class SaleDetailPage : ContentPage
             using var stream = await photo.OpenReadAsync();
             using var fs = File.OpenWrite(path);
             await stream.CopyToAsync(fs);
-            callback(path);
+            await callback(path);
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[SaleDetail] Upload error: {ex.Message}");
+            await DisplayAlert("Error", $"Error al seleccionar foto: {ex.Message}", "OK");
         }
     }
 
@@ -518,12 +650,19 @@ public partial class SaleDetailPage : ContentPage
         await Shell.Current.GoToAsync($"PaymentDetailPage?paymentId={paymentId}");
     }
 
-    // ── Image Viewer Modal ──
+    // ── Image Viewer Modal (Enhanced) ──
     private bool _isImageViewerVisible;
     public bool IsImageViewerVisible
     {
         get => _isImageViewerVisible;
         set { _isImageViewerVisible = value; OnPropertyChanged(); }
+    }
+
+    private bool _isImageLoading;
+    public bool IsImageLoading
+    {
+        get => _isImageLoading;
+        set { _isImageLoading = value; OnPropertyChanged(); }
     }
 
     private string? _expandedImagePath;
@@ -533,22 +672,83 @@ public partial class SaleDetailPage : ContentPage
         set { _expandedImagePath = value; OnPropertyChanged(); }
     }
 
-    private void OnImageTapped(object? sender, EventArgs e)
+    private async void OnImageTapped(object? sender, EventArgs e)
     {
-        if (sender is Image image && image.Source is FileImageSource fileSource)
+        try
         {
-            ExpandedImagePath = fileSource.File;
-            IsImageViewerVisible = true;
+            string? imagePath = null;
+
+            if (sender is Image image && image.Source is FileImageSource fileSource)
+            {
+                imagePath = fileSource.File;
+            }
+            else if (!string.IsNullOrEmpty(BannerPhotoPath))
+            {
+                imagePath = BannerPhotoPath;
+            }
+
+            if (!string.IsNullOrEmpty(imagePath) && File.Exists(imagePath))
+            {
+                await OpenImageInModalAsync(imagePath);
+            }
         }
-        else if (!string.IsNullOrEmpty(BannerPhotoPath))
+        catch (Exception ex)
         {
-            ExpandedImagePath = BannerPhotoPath;
-            IsImageViewerVisible = true;
+            await DisplayAlert("Error", "No se pudo cargar la imagen", "OK");
+            IsImageViewerVisible = false;
         }
     }
 
-    private void OnCloseImageViewer(object? sender, EventArgs e)
+    private async void OnOpenPhoto(string? photoPath)
     {
-        IsImageViewerVisible = false;
+        if (!string.IsNullOrEmpty(photoPath) && File.Exists(photoPath))
+        {
+            await OpenImageInModalAsync(photoPath);
+        }
+    }
+
+    private async Task OpenImageInModalAsync(string imagePath)
+    {
+        try
+        {
+            // Configurar imagen y mostrar modal
+            ExpandedImagePath = imagePath;
+            IsImageLoading = true;
+            IsImageViewerVisible = true;
+
+            // Animación de entrada suave
+            await Task.WhenAll(
+                ImageViewerModal.FadeTo(1, 250, Easing.CubicOut),
+                ImageContainer.ScaleTo(1, 300, Easing.CubicOut)
+            );
+
+            // Simular tiempo de carga
+            await Task.Delay(200);
+            IsImageLoading = false;
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlert("Error", "No se pudo cargar la imagen", "OK");
+            IsImageViewerVisible = false;
+        }
+    }
+
+    private async void OnCloseImageViewer(object? sender, EventArgs e)
+    {
+        try
+        {
+            // Animación de salida suave
+            await Task.WhenAll(
+                ImageViewerModal.FadeTo(0, 200, Easing.CubicIn),
+                ImageContainer.ScaleTo(0.8, 200, Easing.CubicIn)
+            );
+            
+            IsImageViewerVisible = false;
+            ExpandedImagePath = null;
+        }
+        catch (Exception ex)
+        {
+            IsImageViewerVisible = false;
+        }
     }
 }

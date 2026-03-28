@@ -26,6 +26,13 @@ public partial class PaymentPage : ContentPage
     public ObservableCollection<PaymentSaleItem> Sales { get; set; } = new();
     public ObservableCollection<PaymentPhoto> Photos { get; set; } = new();
 
+    /// <summary>
+    /// Habilita el botón de búsqueda solo cuando hay ventas disponibles
+    /// </summary>
+    public bool HasSales => Sales.Count > 0;
+    
+    public double SearchIconOpacity => HasSales ? 1.0 : 0.5;
+
     public PaymentPage()
     {
         try
@@ -253,6 +260,10 @@ public partial class PaymentPage : ContentPage
                         _logger.Debug("[LoadSales] Agregando {Count} ventas a Sales...", items.Count);
                         foreach (var item in items)
                             Sales.Add(item);
+                        
+                        // Notificar cambios en propiedades dependientes
+                        OnPropertyChanged(nameof(HasSales));
+                        OnPropertyChanged(nameof(SearchIconOpacity));
                         
                         _logger.Info("[LoadSales] FIN - {Count} ventas activas cargadas en UI", Sales.Count);
                     }
@@ -512,6 +523,75 @@ public partial class PaymentPage : ContentPage
         HasSuccess = false;
         ErrorMessage = string.Empty;
         SuccessMessage = string.Empty;
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    // HEADER ACTIONS
+    // ══════════════════════════════════════════════════════════════════
+    private void OnSearchToggle(object? sender, EventArgs e)
+    {
+        if (!HasSales)
+        {
+            _logger.Info("[OnSearchToggle] No hay ventas para buscar");
+            return;
+        }
+        
+        // Toggle la barra de búsqueda compacta dentro del header
+        SearchBarCompact.IsVisible = !SearchBarCompact.IsVisible;
+        _logger.Info("[OnSearchToggle] SearchBarCompact visible: {IsVisible}", SearchBarCompact.IsVisible);
+    }
+
+    private async void OnRefreshTapped(object? sender, EventArgs e)
+    {
+        try
+        {
+            _logger.Info("[OnRefreshTapped] Actualizando datos de PaymentPage...");
+            await GetCurrentLocation();
+            await LoadSales();
+            await DisplayAlert("Actualizado", "Los datos se han actualizado correctamente", "OK");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogException(ex, "Error al actualizar datos");
+            await DisplayAlert("Error", "No se pudo actualizar los datos", "OK");
+        }
+    }
+
+    private async void OnLogoutTapped(object? sender, EventArgs e)
+    {
+        try
+        {
+            var confirm = await DisplayAlert(
+                "Cerrar Sesión", 
+                "¿Está seguro que desea cerrar sesión?", 
+                "Sí", 
+                "No"
+            );
+            
+            if (!confirm) return;
+            
+            _logger.Info("[OnLogoutTapped] Cerrando sesión...");
+            
+            // IMPORTANTE: Resetear tema ANTES de limpiar storage
+            App.ResetThemeToDefault();
+            
+            // Limpiar credenciales almacenadas
+            SecureStorage.Remove("auth_token");
+            SecureStorage.Remove("username");
+            SecureStorage.Remove("role");
+            SecureStorage.Remove("user_id");
+            SecureStorage.RemoveAll();
+            
+            // Cambiar la MainPage a LoginPage
+            Application.Current!.MainPage = new LoginPage();
+            
+            _logger.Info("[OnLogoutTapped] Sesión cerrada correctamente");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogException(ex, "Error al cerrar sesión");
+            await DisplayAlert("Error", "No se pudo cerrar la sesión", "OK");
+        }
     }
 
     // ═══ Bottom Tab Navigation ═══

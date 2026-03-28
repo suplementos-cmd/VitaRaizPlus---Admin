@@ -14,6 +14,7 @@ public class SaleListItem
     public decimal PaidAmount { get; set; }
     public decimal Balance { get; set; }
     public DateTime SaleDate { get; set; }
+    public DateTime? FirstPaymentDate { get; set; }  // Fecha del primer cobro
     public string Status { get; set; } = string.Empty;
 
     // Resolved from catalogs
@@ -30,13 +31,18 @@ public class SaleListItem
     public string? ThumbnailPath { get; set; }
     public bool HasThumbnail { get; set; }
     
+    // Nuevos campos para tarjetas de venta
+    public string? ProductName { get; set; }
+    public string? SellerName { get; set; }
+    
     /// <summary>
     /// Factory method to create safe SaleListItem with all calculations pre-computed
     /// </summary>
     public static SaleListItem CreateSafe(int saleId, string customerName, decimal totalAmount,
         decimal paidAmount, decimal balance, DateTime saleDate, string status,
         string statusLabel, string statusColor, string? statusIcon, string paymentTerms,
-        string? thumbnailPath = null)
+        string? thumbnailPath = null, string? customerAddress = null, 
+        string? productName = null, string? sellerName = null, DateTime? firstPaymentDate = null)
     {
         // Pre-calculate PaymentProgress safely
         double progress = 0.0;
@@ -57,10 +63,12 @@ public class SaleListItem
         {
             SaleId = saleId,
             CustomerName = customerName ?? string.Empty,
+            CustomerAddress = customerAddress,
             TotalAmount = totalAmount,
             PaidAmount = paidAmount,
             Balance = balance,
             SaleDate = saleDate,
+            FirstPaymentDate = firstPaymentDate,
             Status = status ?? string.Empty,
             StatusLabel = statusLabel ?? string.Empty,
             StatusColor = statusColor ?? "#999999",
@@ -68,7 +76,9 @@ public class SaleListItem
             PaymentTerms = paymentTerms ?? string.Empty,
             PaymentProgressValue = progress,
             ThumbnailPath = thumbnailPath,
-            HasThumbnail = !string.IsNullOrEmpty(thumbnailPath) && File.Exists(thumbnailPath)
+            HasThumbnail = !string.IsNullOrEmpty(thumbnailPath) && File.Exists(thumbnailPath),
+            ProductName = productName,
+            SellerName = sellerName
         };
     }
 }
@@ -86,8 +96,16 @@ public class SaleFullDetail
     public decimal Balance { get; set; }
     public DateTime SaleDate { get; set; }
     public string Status { get; set; } = string.Empty;
-    public string? PaymentTerms { get; set; }
-    public string? Notes { get; set; }
+    
+    // Structured payment fields
+    public string? PaymentTerm { get; set; } // SEMANAL, QUINCENAL, MENSUAL, CONTADO
+    public string? CollectionDay { get; set; } // LUN, MAR, MIE, JUE, VIE, SAB, DOM
+    public DateTime? FirstCollectionDate { get; set; } // Fecha del primer cobro programado
+    public decimal DownPayment { get; set; } // Enganche/pago inicial
+    
+    // Legacy/Additional
+    public string? PaymentTerms { get; set; } // Legacy text field (e.g., "7 dias")
+    public string? Notes { get; set; } // Additional notes only
 
     // Customer info
     public int CustomerId { get; set; }

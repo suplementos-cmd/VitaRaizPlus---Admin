@@ -7,8 +7,17 @@ public class Sale
     public int SellerId { get; set; }
     public decimal TotalAmount { get; set; }
     public decimal PaidAmount { get; set; } = 0;
-    public string? PaymentTerms { get; set; }
+    
+    // Términos de pago estructurados
+    public string? PaymentTerm { get; set; } = "SEMANAL"; // SEMANAL, QUINCENAL, MENSUAL, CONTADO
+    public string? CollectionDay { get; set; } // LUN, MAR, MIE, JUE, VIE, SAB, DOM
+    public DateTime? FirstCollectionDate { get; set; } // Fecha del primer cobro programado
+    public decimal DownPayment { get; set; } = 0; // Enganche/pago inicial
+    
+    // Legacy/Complementarios
+    public string? PaymentTerms { get; set; } // Texto libre adicional
     public int? PaymentTermDays { get; set; }
+    
     public DateTime SaleDate { get; set; } = DateTime.Now;
     public string Status { get; set; } = "active";
     public int? AssignedCollectorId { get; set; }

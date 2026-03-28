@@ -16,40 +16,49 @@
     <Grid RowDefinitions="Auto,*,Auto">
 
         <!-- ═══ HEADER ═══ -->
-        <Border Grid.Row="0" StrokeThickness="0" BackgroundColor="#7B1FA2"
+        <Border Grid.Row="0" StrokeThickness="0" BackgroundColor="{DynamicResource ThemeColor}"
                 Shadow="{Shadow Brush='#44000000', Offset='0,3', Radius=6}">
-            <Grid Padding="14,12" ColumnDefinitions="*,Auto,Auto">
-                <Label Grid.Column="0" Text="  📋 VENTAS" FontSize="18" FontAttributes="Bold"
+            <Grid RowDefinitions="Auto,Auto" Padding="14,12" ColumnDefinitions="*,Auto,Auto,Auto">
+                <!-- Fila 1: Título y botones -->
+                <Label Grid.Row="0" Grid.Column="0" Text="  🗒 VENTAS" FontSize="18" FontAttributes="Bold"
                        TextColor="White" VerticalOptions="Center" />
-                <Label Grid.Column="1" Text="🔍" FontSize="20" TextColor="#CE93D8" VerticalOptions="Center"
-                       Padding="8,0">
+                <Label Grid.Row="0" Grid.Column="1" x:Name="SearchIcon" Text="🔍" FontSize="20" 
+                       TextColor="{DynamicResource ThemeColorLightHex}" VerticalOptions="Center"
+                       Padding="8,0" IsVisible="{Binding HasSales}">
                     <Label.GestureRecognizers>
                         <TapGestureRecognizer Tapped="OnSearchToggle" />
                     </Label.GestureRecognizers>
                 </Label>
-                <Label Grid.Column="2" Text="🔄" FontSize="20" TextColor="#CE93D8" VerticalOptions="Center"
+                <Label Grid.Row="0" Grid.Column="2" Text="↻" FontSize="20" TextColor="{DynamicResource ThemeColorLightHex}" VerticalOptions="Center"
                        Padding="8,0">
                     <Label.GestureRecognizers>
                         <TapGestureRecognizer Tapped="OnRefreshTapped" />
                     </Label.GestureRecognizers>
                 </Label>
+                <Label Grid.Row="0" Grid.Column="3" Text="⎋" FontSize="20" TextColor="{DynamicResource ThemeColorLightHex}" VerticalOptions="Center"
+                       Padding="8,0">
+                    <Label.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnLogoutTapped" />
+                    </Label.GestureRecognizers>
+                </Label>
+                
+                <!-- Fila 2: Búsqueda compacta (colapsable) -->
+                <Border Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="4" 
+                        x:Name="SearchBarCompact" IsVisible="False"
+                        BackgroundColor="White" StrokeThickness="0"
+                        Margin="0,6,0,0" Padding="6,2">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="6" /></Border.StrokeShape>
+                    <Entry Placeholder="Buscar..."
+                           Text="{Binding SearchText}"
+                           TextColor="#333" PlaceholderColor="#999"
+                           FontSize="12" 
+                           Completed="OnSearchCompleted" />
+                </Border>
             </Grid>
         </Border>
 
         <!-- ═══ CONTENT ═══ -->
         <Grid Grid.Row="1">
-
-            <!-- Search bar (toggleable) -->
-            <Border x:Name="SearchBar" IsVisible="False"
-                    BackgroundColor="White" StrokeThickness="1" Stroke="#E0E0E0"
-                    Margin="12,8,12,0" ZIndex="10" VerticalOptions="Start">
-                <Border.StrokeShape><RoundRectangle CornerRadius="8" /></Border.StrokeShape>
-                <Entry Placeholder="Buscar cliente..."
-                       Text="{Binding SearchText}"
-                       TextColor="#333" PlaceholderColor="#999"
-                       FontSize="14" Margin="10,0"
-                       Completed="OnSearchCompleted" />
-            </Border>
 
             <RefreshView IsRefreshing="{Binding IsRefreshing}"
                          Command="{Binding RefreshCommand}">
@@ -65,11 +74,11 @@
                                 <!-- GROUP HEADER -->
                                 <VerticalStackLayout Padding="14,10,14,2" IsVisible="{Binding IsHeader}">
                                     <HorizontalStackLayout Spacing="6">
-                                        <Label Text="⭐" FontSize="14" TextColor="#7B1FA2" VerticalOptions="Center" />
-                                        <Label Text="{Binding DateLabel}" FontSize="15" FontAttributes="Bold" TextColor="#7B1FA2" />
-                                        <Border StrokeThickness="0" BackgroundColor="#F3E5F5" Padding="6,1">
-                                            <Border.StrokeShape><RoundRectangle CornerRadius="8" /></Border.StrokeShape>
-                                            <Label Text="{Binding ItemCount}" FontSize="11" TextColor="#7B1FA2" FontAttributes="Bold" />
+                                        <Label Text="⭐" FontSize="14" TextColor="{DynamicResource ThemeColorHex}" VerticalOptions="Center" />
+                                        <Label Text="{Binding DateLabel}" FontSize="15" FontAttributes="Bold" TextColor="{DynamicResource ThemeColorHex}" />
+                                        <Border StrokeThickness="0" BackgroundColor="{DynamicResource ThemeColorLighterHex}" Padding="6,1">
+                                            <Border.StrokeShape><RoundRectangle CornerRadius="10" /></Border.StrokeShape>
+                                            <Label Text="{Binding ItemCount}" FontSize="11" TextColor="{DynamicResource ThemeColorHex}" FontAttributes="Bold" />
                                         </Border>
                                     </HorizontalStackLayout>
                                 </VerticalStackLayout>
@@ -79,22 +88,25 @@
                                         Shadow="{Shadow Brush='#18000000', Offset='0,2', Radius=6}"
                                         IsVisible="{Binding IsHeader, Converter={StaticResource InverseBoolConverter}}">
                                     <Border.StrokeShape><RoundRectangle CornerRadius="12" /></Border.StrokeShape>
-                                    <Grid Padding="10" ColumnDefinitions="65,*,Auto" ColumnSpacing="10" RowDefinitions="Auto,Auto,Auto">
+                                    <Grid Padding="10" ColumnDefinitions="65,*,Auto,Auto" ColumnSpacing="8" RowDefinitions="Auto,Auto,Auto">
                                         <Grid.GestureRecognizers>
                                             <TapGestureRecognizer
                                                 Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.OpenDetailCommand}"
                                                 CommandParameter="{Binding Sale.SaleId}" />
                                         </Grid.GestureRecognizers>
 
-                                        <!-- Imagen: fachada real o placeholder -->
+                                        <!-- Imagen: fachada real o placeholder con tap mejorado -->
                                         <Border Grid.Column="0" Grid.RowSpan="3" HeightRequest="65" WidthRequest="65"
                                                 StrokeThickness="0" BackgroundColor="#F3E5F5" VerticalOptions="Center">
                                             <Border.StrokeShape><RoundRectangle CornerRadius="10" /></Border.StrokeShape>
                                             <Grid>
-                                                <Image Source="{Binding Sale.ThumbnailPath, Converter={StaticResource FileToImageSource}}" Aspect="AspectFill"
+                                                <Image Source="{Binding Sale.ThumbnailPath, Converter={StaticResource FileToImageSource}}" 
+                                                       Aspect="AspectFill"
                                                        IsVisible="{Binding Sale.HasThumbnail}">
                                                     <Image.GestureRecognizers>
-                                                        <TapGestureRecognizer Tapped="OnImageTapped" CommandParameter="{Binding Sale.ThumbnailPath}" />
+                                                        <TapGestureRecognizer 
+                                                            Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.OpenImageCommand}"
+                                                            CommandParameter="{Binding Sale.ThumbnailPath}" />
                                                     </Image.GestureRecognizers>
                                                 </Image>
                                                 <Label Text="🏠" FontSize="28" HorizontalOptions="Center" VerticalOptions="Center"
@@ -104,7 +116,7 @@
 
                                         <!-- Row 0: Cliente + Estatus badge -->
                                         <HorizontalStackLayout Grid.Column="1" Grid.Row="0" Spacing="6">
-                                            <Label Text="👤" FontSize="11" TextColor="#7B1FA2" VerticalOptions="Center" />
+                                            <Label Text="👤" FontSize="11" TextColor="{DynamicResource ThemeColorHex}" VerticalOptions="Center" />
                                             <Label Text="{Binding Sale.CustomerName}" FontSize="14" FontAttributes="Bold"
                                                    TextColor="#333" LineBreakMode="TailTruncation" MaximumWidthRequest="160" />
                                         </HorizontalStackLayout>
@@ -114,23 +126,41 @@
                                             <Label Text="{Binding Sale.StatusLabel}" FontSize="9" TextColor="White" FontAttributes="Bold" />
                                         </Border>
 
-                                        <!-- Row 1: Forma pago + Monto -->
+                                        <!-- Row 1: Colonia | Producto | Vendedor -->
                                         <HorizontalStackLayout Grid.Column="1" Grid.Row="1" Spacing="4">
-                                            <Label Text="💳" FontSize="10" TextColor="#999" VerticalOptions="Center" />
-                                            <Label Text="{Binding Sale.PaymentTerms}" FontSize="11" TextColor="#888" VerticalOptions="Center" />
+                                            <Label Text="📍" FontSize="10" TextColor="#999" VerticalOptions="Center" />
+                                            <Label Text="{Binding Sale.CustomerAddress}" FontSize="10" TextColor="#666" 
+                                                   LineBreakMode="TailTruncation" MaximumWidthRequest="110" VerticalOptions="Center" />
+                                            <Label Text=" | " FontSize="10" TextColor="#CCC" VerticalOptions="Center" />
+                                            <Label Text="📦" FontSize="10" TextColor="#999" VerticalOptions="Center" />
+                                            <Label Text="{Binding Sale.ProductName}" FontSize="10" TextColor="#666" 
+                                                   LineBreakMode="TailTruncation" MaximumWidthRequest="90" VerticalOptions="Center" />
                                         </HorizontalStackLayout>
-                                        <Label Grid.Column="2" Grid.Row="1" Text="{Binding Sale.TotalAmount, StringFormat='${0:N0}'}"
-                                               FontSize="15" FontAttributes="Bold" TextColor="#7B1FA2"
-                                               HorizontalTextAlignment="End" VerticalOptions="Center" />
+                                        <HorizontalStackLayout Grid.Column="2" Grid.ColumnSpan="2" Grid.Row="1" Spacing="4" HorizontalOptions="End">
+                                            <Label Text="👤" FontSize="10" TextColor="#999" VerticalOptions="Center" />
+                                            <Label Text="{Binding Sale.SellerName}" FontSize="10" TextColor="#666" 
+                                                   LineBreakMode="TailTruncation" MaximumWidthRequest="80" VerticalOptions="Center" />
+                                            <Label Text=" • " FontSize="10" TextColor="#CCC" VerticalOptions="Center" />
+                                            <Label Text="{Binding Sale.TotalAmount, StringFormat='${0:N0}'}"
+                                                   FontSize="13" FontAttributes="Bold" TextColor="{DynamicResource ThemeColorHex}" VerticalOptions="Center" />
+                                        </HorizontalStackLayout>
 
-                                        <!-- Row 2: Fecha + Botones icono -->
+                                        <!-- Row 2: Fecha 1er Cobro | Estatus Cobro | Balance Restante -->
                                         <HorizontalStackLayout Grid.Column="1" Grid.Row="2" Spacing="4">
                                             <Label Text="📅" FontSize="10" TextColor="#999" VerticalOptions="Center" />
-                                            <Label Text="{Binding Sale.SaleDate, StringFormat='{0:dd/MM/yy}'}" FontSize="11" TextColor="#AAA" VerticalOptions="Center" />
+                                            <Label Text="{Binding Sale.FirstPaymentDate, StringFormat='{0:dd/MM/yy}'}" FontSize="11" TextColor="#AAA" VerticalOptions="Center" />
                                         </HorizontalStackLayout>
-                                        <HorizontalStackLayout Grid.Column="2" Grid.Row="2" Spacing="10" HorizontalOptions="End">
-                                            <Label Text="📍" FontSize="14" TextColor="#9C27B0" VerticalOptions="Center" />
-                                            <Label Text="✏️" FontSize="14" TextColor="#7B1FA2" VerticalOptions="Center" />
+                                        <HorizontalStackLayout Grid.Column="2" Grid.Row="2" Spacing="6" HorizontalOptions="End">
+                                            <Border StrokeThickness="0" Padding="4,2" BackgroundColor="{Binding Sale.RiskColor}">
+                                                <Border.StrokeShape><RoundRectangle CornerRadius="3" /></Border.StrokeShape>
+                                                <Label Text="{Binding Sale.PaymentProgressValue, StringFormat='✓ {0:P0}'}" 
+                                                       FontSize="9" TextColor="White" FontAttributes="Bold" />
+                                            </Border>
+                                        </HorizontalStackLayout>
+                                        <HorizontalStackLayout Grid.Column="3" Grid.Row="2" Spacing="4" HorizontalOptions="End">
+                                            <Label Text="Resta:" FontSize="10" TextColor="#999" VerticalOptions="Center" />
+                                            <Label Text="{Binding Sale.Balance, StringFormat='${0:N0}'}" 
+                                                   FontSize="11" FontAttributes="Bold" TextColor="#DC3545" VerticalOptions="Center" />
                                         </HorizontalStackLayout>
                                     </Grid>
                                 </Border>
@@ -152,7 +182,7 @@
             <!-- ═══ FAB: Agregar Venta ═══ -->
             <Button Text="＋"
                     Clicked="OnAddSaleTapped"
-                    BackgroundColor="#7B1FA2"
+                    BackgroundColor="{DynamicResource ThemeColor}"
                     TextColor="White"
                     FontSize="28"
                     FontAttributes="Bold"
@@ -161,7 +191,7 @@
                     HorizontalOptions="End"
                     VerticalOptions="End"
                     Margin="0,0,20,10"
-                    Shadow="{Shadow Brush='#447B1FA2', Offset='0,4', Radius=8}"
+                    Shadow="{Shadow Brush='#44000000', Offset='0,4', Radius=8}"
                     ZIndex="20" />
         </Grid>
 
@@ -170,25 +200,25 @@
                 Shadow="{Shadow Brush='#22000000', Offset='0,-2', Radius=4}">
             <Grid ColumnDefinitions="*,*,*,*" HeightRequest="58" Padding="0,6,0,4">
                 <VerticalStackLayout Grid.Column="0" Spacing="2" HorizontalOptions="Center" VerticalOptions="Center">
-                    <Label Text="🏠" FontSize="22" HorizontalOptions="Center" TextColor="#AAAAAA" />
+                    <Label Text="⌂" FontSize="24" HorizontalOptions="Center" TextColor="#AAAAAA" />
                     <Label Text="Inicio" FontSize="10" HorizontalOptions="Center" TextColor="#AAAAAA" />
                     <VerticalStackLayout.GestureRecognizers>
                         <TapGestureRecognizer Tapped="OnTabInicio" />
                     </VerticalStackLayout.GestureRecognizers>
                 </VerticalStackLayout>
                 <VerticalStackLayout Grid.Column="1" Spacing="2" HorizontalOptions="Center" VerticalOptions="Center">
-                    <Label Text="📋" FontSize="22" HorizontalOptions="Center" TextColor="#7B1FA2" />
-                    <Label Text="Ventas" FontSize="10" HorizontalOptions="Center" TextColor="#7B1FA2" FontAttributes="Bold" />
+                    <Label Text="🗒" FontSize="24" HorizontalOptions="Center" TextColor="{DynamicResource ThemeColor}" />
+                    <Label Text="Ventas" FontSize="10" HorizontalOptions="Center" TextColor="{DynamicResource ThemeColor}" FontAttributes="Bold" />
                 </VerticalStackLayout>
                 <VerticalStackLayout Grid.Column="2" Spacing="2" HorizontalOptions="Center" VerticalOptions="Center">
-                    <Label Text="💰" FontSize="22" HorizontalOptions="Center" TextColor="#AAAAAA" />
+                    <Label Text="💵" FontSize="24" HorizontalOptions="Center" TextColor="#AAAAAA" />
                     <Label Text="Cobranza" FontSize="10" HorizontalOptions="Center" TextColor="#AAAAAA" />
                     <VerticalStackLayout.GestureRecognizers>
                         <TapGestureRecognizer Tapped="OnTabCobranza" />
                     </VerticalStackLayout.GestureRecognizers>
                 </VerticalStackLayout>
                 <VerticalStackLayout Grid.Column="3" Spacing="2" HorizontalOptions="Center" VerticalOptions="Center">
-                    <Label Text="👥" FontSize="22" HorizontalOptions="Center" TextColor="#AAAAAA" />
+                    <Label Text="👤" FontSize="24" HorizontalOptions="Center" TextColor="#AAAAAA" />
                     <Label Text="Clientes" FontSize="10" HorizontalOptions="Center" TextColor="#AAAAAA" />
                     <VerticalStackLayout.GestureRecognizers>
                         <TapGestureRecognizer Tapped="OnTabClientes" />
@@ -197,30 +227,63 @@
             </Grid>
         </Border>
 
-        <!-- ═══ IMAGE VIEWER MODAL ═══ -->
-        <Grid Grid.Row="0" Grid.RowSpan="3" IsVisible="{Binding IsImageViewerVisible}" BackgroundColor="#E6000000" ZIndex="1000">
+        <!-- ═══ IMAGE VIEWER MODAL (Enhanced) ═══ -->
+        <Grid x:Name="ImageViewerModal" 
+              Grid.Row="0" Grid.RowSpan="3" 
+              IsVisible="{Binding IsImageViewerVisible}" 
+              BackgroundColor="#E6000000" 
+              ZIndex="1000"
+              Opacity="0">
             <Grid.GestureRecognizers>
                 <TapGestureRecognizer Tapped="OnCloseImageViewer" />
             </Grid.GestureRecognizers>
             
-            <Image Source="{Binding ExpandedImagePath}" 
-                   Aspect="AspectFit"
-                   Margin="20"
-                   HorizontalOptions="Fill"
-                   VerticalOptions="Fill" />
-            
-            <!-- Close button -->
-            <Border WidthRequest="50" HeightRequest="50" 
-                    BackgroundColor="#88FFFFFF"
+            <!-- Container con efecto de escala -->
+            <Border x:Name="ImageContainer"
+                    BackgroundColor="Transparent"
                     StrokeThickness="0"
+                    Margin="20"
+                    HorizontalOptions="Fill"
+                    VerticalOptions="Fill"
+                    Scale="0.8">
+                <Grid>
+                    <!-- Loading indicator -->
+                    <ActivityIndicator IsRunning="{Binding IsImageLoading}"
+                                       Color="White"
+                                       WidthRequest="50"
+                                       HeightRequest="50"
+                                       HorizontalOptions="Center"
+                                       VerticalOptions="Center" />
+                    
+                    <!-- Imagen con zoom habilitado -->
+                    <Image x:Name="ExpandedImage"
+                           Source="{Binding ExpandedImagePath, Converter={StaticResource FileToImageSource}}" 
+                           Aspect="AspectFit"
+                           HorizontalOptions="Fill"
+                           VerticalOptions="Fill"
+                           BackgroundColor="Transparent">
+                        <Image.GestureRecognizers>
+                            <!-- Previene que el tap cierre el modal al hacer zoom -->
+                            <TapGestureRecognizer NumberOfTapsRequired="2" />
+                        </Image.GestureRecognizers>
+                    </Image>
+                </Grid>
+            </Border>
+            
+            <!-- Botón de cerrar mejorado -->
+            <Border WidthRequest="46" HeightRequest="46" 
+                    BackgroundColor="#DDFFFFFF"
+                    StrokeThickness="2"
+                    Stroke="#66000000"
                     HorizontalOptions="End" 
                     VerticalOptions="Start" 
-                    Margin="20">
+                    Margin="24"
+                    Shadow="{Shadow Brush='#66000000', Offset='0,3', Radius=8}">
                 <Border.StrokeShape>
-                    <RoundRectangle CornerRadius="25" />
+                    <RoundRectangle CornerRadius="23" />
                 </Border.StrokeShape>
                 <Label Text="✕" 
-                       FontSize="24" 
+                       FontSize="26" 
                        FontAttributes="Bold"
                        TextColor="#333" 
                        HorizontalOptions="Center" 
@@ -229,6 +292,23 @@
                         <TapGestureRecognizer Tapped="OnCloseImageViewer" />
                     </Label.GestureRecognizers>
                 </Label>
+            </Border>
+            
+            <!-- Instrucciones de uso (opcional) -->
+            <Border BackgroundColor="#CC000000"
+                    StrokeThickness="0"
+                    Padding="16,8"
+                    HorizontalOptions="Center"
+                    VerticalOptions="End"
+                    Margin="0,0,0,40"
+                    Opacity="0.8">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="20" />
+                </Border.StrokeShape>
+                <Label Text="🖼 Toca fuera para cerrar" 
+                       FontSize="12" 
+                       TextColor="White"
+                       HorizontalOptions="Center" />
             </Border>
         </Grid>
 

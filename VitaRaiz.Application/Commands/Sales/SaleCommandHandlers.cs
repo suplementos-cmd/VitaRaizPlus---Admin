@@ -18,6 +18,10 @@ public class CreateSaleCommandHandler : IRequestHandler<CreateSaleCommand, int>
             request.CustomerId,
             request.SellerId,
             request.PaymentTermDays,
+            request.PaymentTerm,
+            request.CollectionDay,
+            request.FirstCollectionDate,
+            request.DownPayment,
             request.Notes,
             request.Details
         );

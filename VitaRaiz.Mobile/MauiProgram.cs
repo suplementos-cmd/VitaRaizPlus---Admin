@@ -34,6 +34,7 @@ public static class MauiProgram
 		builder.Services.AddSingleton<LocalDatabase>(s => new LocalDatabase(dbPath));
 		builder.Services.AddSingleton<ApiService>();
 		builder.Services.AddSingleton<CatalogService>();
+		builder.Services.AddSingleton<ThemeService>();
 		builder.Services.AddSingleton<SyncService>();
 		
 		// Registrar páginas con DI

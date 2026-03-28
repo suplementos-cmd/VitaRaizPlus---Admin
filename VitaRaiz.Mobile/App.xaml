@@ -9,6 +9,14 @@
                 <ResourceDictionary Source="Resources/Styles/Colors.xaml" />
                 <ResourceDictionary Source="Resources/Styles/Styles.xaml" />
             </ResourceDictionary.MergedDictionaries>
+            
+            <!-- Colores de tema dinámicos globales -->
+            <Color x:Key="ThemeColor">#28A745</Color>
+            <Color x:Key="ThemeColorLight">#C8E6C9</Color>
+            <Color x:Key="ThemeColorLighter">#E8F5E9</Color>
+            <x:String x:Key="ThemeColorHex">#28A745</x:String>
+            <x:String x:Key="ThemeColorLightHex">#C8E6C9</x:String>
+            <x:String x:Key="ThemeColorLighterHex">#E8F5E9</x:String>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

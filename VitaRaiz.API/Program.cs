@@ -182,6 +182,9 @@ else
     app.UseCors("AllowMobileApp");
 }
 
+// Usar middleware personalizado para normalizar tokens JWT (con o sin "Bearer")
+app.UseMiddleware<VitaRaiz.API.Middleware.JwtMiddleware>();
+
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

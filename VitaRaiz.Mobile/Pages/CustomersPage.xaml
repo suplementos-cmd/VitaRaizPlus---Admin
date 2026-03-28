@@ -3,32 +3,78 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="VitaRaiz.Mobile.Pages.CustomersPage"
              Title="Clientes"
+             Shell.NavBarIsVisible="False"
              Shell.TabBarIsVisible="False"
              BackgroundColor="#F0F4F8">
     
-    <Grid RowDefinitions="Auto,*,Auto" Padding="20,20,20,0" RowSpacing="15">
+    <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="0">
+
+        <!-- ═══ HEADER ═══ -->
+        <Border Grid.Row="0" StrokeThickness="0" BackgroundColor="{DynamicResource ThemeColor}"
+                Shadow="{Shadow Brush='#44000000', Offset='0,3', Radius=6}">
+            <Grid RowDefinitions="Auto,Auto" Padding="14,12" ColumnDefinitions="*,Auto,Auto,Auto">
+                <!-- Fila 1: Título y botones -->
+                <Label Grid.Row="0" Grid.Column="0" Text="  👤 CLIENTES" FontSize="18" FontAttributes="Bold"
+                       TextColor="White" VerticalOptions="Center" />
+                <Label Grid.Row="0" Grid.Column="1" x:Name="SearchIconLabel" Text="🔍" FontSize="20" 
+                       TextColor="{DynamicResource ThemeColorLightHex}" VerticalOptions="Center"
+                       Padding="8,0" IsEnabled="{Binding HasCustomers}" Opacity="{Binding SearchIconOpacity}">
+                    <Label.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnSearchToggle" />
+                    </Label.GestureRecognizers>
+                </Label>
+                <Label Grid.Row="0" Grid.Column="2" Text="↻" FontSize="20" TextColor="{DynamicResource ThemeColorLightHex}" VerticalOptions="Center"
+                       Padding="8,0">
+                    <Label.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnRefreshTapped" />
+                    </Label.GestureRecognizers>
+                </Label>
+                <Label Grid.Row="0" Grid.Column="3" Text="⎋" FontSize="20" TextColor="{DynamicResource ThemeColorLightHex}" VerticalOptions="Center"
+                       Padding="8,0">
+                    <Label.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnLogoutTapped" />
+                    </Label.GestureRecognizers>
+                </Label>
+                
+                <!-- Fila 2: Búsqueda compacta (colapsable) -->
+                <Border Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="4" 
+                        x:Name="SearchBarCompact" IsVisible="False"
+                        BackgroundColor="White" StrokeThickness="0"
+                        Margin="0,8,0,0" Padding="8,4">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="8" /></Border.StrokeShape>
+                    <Entry Placeholder="Buscar..."
+                           Text="{Binding SearchText}"
+                           TextColor="#333" PlaceholderColor="#999"
+                           FontSize="13" 
+                           Completed="OnSearchCompleted" />
+                </Border>
+            </Grid>
+        </Border>
         
-        <!-- Búsqueda -->
-        <Border Grid.Row="0"
+        <!-- Búsqueda (Toggleable) -->
+        <Border x:Name="SearchBar" Grid.Row="1" IsVisible="False"
                 BackgroundColor="White"
-                StrokeThickness="0"
-                Padding="15">
+                StrokeThickness="1"
+                Stroke="#E0E0E0"
+                Padding="15"
+                Margin="12,8,12,0">
             <Border.StrokeShape>
                 <RoundRectangle CornerRadius="12" />
             </Border.StrokeShape>
-            <SearchBar Placeholder="Buscar cliente..."
-                       Text="{Binding SearchText}"
-                       SearchCommand="{Binding SearchCommand}"
-                       PlaceholderColor="#999"
-                       TextColor="#333" />
+            <Entry Placeholder="Buscar cliente..."
+                   Text="{Binding SearchText}"
+                   Completed="OnSearchCompleted"
+                   PlaceholderColor="#999"
+                   TextColor="#333" />
         </Border>
         
         <!-- Lista de clientes -->
-        <CollectionView Grid.Row="1"
+        <CollectionView Grid.Row="2"
                         ItemsSource="{Binding Customers}"
                         SelectionMode="Single"
                         SelectedItem="{Binding SelectedCustomer}"
-                        SelectionChangedCommand="{Binding ViewCustomerDetailCommand}">
+                        SelectionChangedCommand="{Binding ViewCustomerDetailCommand}"
+                        Margin="20,15,20,0">
             <CollectionView.ItemTemplate>
                 <DataTemplate>
                     <Border BackgroundColor="White"
@@ -113,33 +159,33 @@
         </CollectionView>
 
         <!-- ═══ BOTTOM NAV BAR ═══ -->
-        <Border Grid.Row="2" StrokeThickness="0" BackgroundColor="White"
-                Shadow="{Shadow Brush='#22000000', Offset='0,-2', Radius=4}" Margin="-20,0,-20,0">
+        <Border Grid.Row="3" StrokeThickness="0" BackgroundColor="White"
+                Shadow="{Shadow Brush='#22000000', Offset='0,-2', Radius=4}">
             <Grid ColumnDefinitions="*,*,*,*" HeightRequest="58" Padding="0,6,0,4">
                 <VerticalStackLayout Grid.Column="0" Spacing="2" HorizontalOptions="Center" VerticalOptions="Center">
-                    <Label Text="🏠" FontSize="22" HorizontalOptions="Center" TextColor="#AAAAAA" />
+                    <Label Text="⌂" FontSize="24" HorizontalOptions="Center" TextColor="#AAAAAA" />
                     <Label Text="Inicio" FontSize="10" HorizontalOptions="Center" TextColor="#AAAAAA" />
                     <VerticalStackLayout.GestureRecognizers>
                         <TapGestureRecognizer Tapped="OnTabInicio" />
                     </VerticalStackLayout.GestureRecognizers>
                 </VerticalStackLayout>
                 <VerticalStackLayout Grid.Column="1" Spacing="2" HorizontalOptions="Center" VerticalOptions="Center">
-                    <Label Text="📋" FontSize="22" HorizontalOptions="Center" TextColor="#AAAAAA" />
+                    <Label Text="�" FontSize="24" HorizontalOptions="Center" TextColor="#AAAAAA" />
                     <Label Text="Ventas" FontSize="10" HorizontalOptions="Center" TextColor="#AAAAAA" />
                     <VerticalStackLayout.GestureRecognizers>
                         <TapGestureRecognizer Tapped="OnTabVentas" />
                     </VerticalStackLayout.GestureRecognizers>
                 </VerticalStackLayout>
                 <VerticalStackLayout Grid.Column="2" Spacing="2" HorizontalOptions="Center" VerticalOptions="Center">
-                    <Label Text="💰" FontSize="22" HorizontalOptions="Center" TextColor="#AAAAAA" />
+                    <Label Text="�" FontSize="24" HorizontalOptions="Center" TextColor="#AAAAAA" />
                     <Label Text="Cobranza" FontSize="10" HorizontalOptions="Center" TextColor="#AAAAAA" />
                     <VerticalStackLayout.GestureRecognizers>
                         <TapGestureRecognizer Tapped="OnTabCobranza" />
                     </VerticalStackLayout.GestureRecognizers>
                 </VerticalStackLayout>
                 <VerticalStackLayout Grid.Column="3" Spacing="2" HorizontalOptions="Center" VerticalOptions="Center">
-                    <Label Text="👥" FontSize="22" HorizontalOptions="Center" TextColor="#7B1FA2" />
-                    <Label Text="Clientes" FontSize="10" HorizontalOptions="Center" TextColor="#7B1FA2" FontAttributes="Bold" />
+                    <Label Text="👤" FontSize="24" HorizontalOptions="Center" TextColor="{DynamicResource ThemeColor}" />
+                    <Label Text="Clientes" FontSize="10" HorizontalOptions="Center" TextColor="{DynamicResource ThemeColor}" FontAttributes="Bold" />
                 </VerticalStackLayout>
             </Grid>
         </Border>

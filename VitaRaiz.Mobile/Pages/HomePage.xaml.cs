@@ -11,6 +11,7 @@ public partial class HomePage : ContentPage
     private int _todaySales;
     private decimal _pendingAmount;
     private int _todayVisits;
+    private string _searchText = string.Empty;
 
     public HomePage()
     {
@@ -35,6 +36,10 @@ public partial class HomePage : ContentPage
         }
     }
 
+    // ══════════════════════════════════════════════════════════════════
+    // PROPERTIES
+    // ══════════════════════════════════════════════════════════════════
+    
     public string Username
     {
         get => _username;
@@ -62,6 +67,7 @@ public partial class HomePage : ContentPage
         {
             _todayPayments = value;
             OnPropertyChanged();
+            OnPropertyChanged(nameof(HasSearchableData));
         }
     }
 
@@ -72,6 +78,7 @@ public partial class HomePage : ContentPage
         {
             _todaySales = value;
             OnPropertyChanged();
+            OnPropertyChanged(nameof(HasSearchableData));
         }
     }
 
@@ -92,8 +99,26 @@ public partial class HomePage : ContentPage
         {
             _todayVisits = value;
             OnPropertyChanged();
+            OnPropertyChanged(nameof(HasSearchableData));
         }
     }
+
+    public string SearchText
+    {
+        get => _searchText;
+        set
+        {
+            _searchText = value;
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>
+    /// Habilita el botón de búsqueda solo cuando hay datos para buscar
+    /// </summary>
+    public bool HasSearchableData => TodaySales > 0 || TodayVisits > 0 || TodayPayments > 0;
+    
+    public double SearchIconOpacity => HasSearchableData ? 1.0 : 0.5;
 
     private async Task LoadDataAsync()
     {
@@ -150,6 +175,11 @@ public partial class HomePage : ContentPage
             var activeSales = await _apiService.GetAsync<List<VitaRaiz.Mobile.Services.SaleDto>>("api/sales/active", activeSalesParams);
             PendingAmount = activeSales?.Sum(s => s.Balance) ?? 0;
             
+            // ══════════════════════════════════════════════════════════════════
+            // LOAD DYNAMIC THEME FROM API/Profile
+            // ══════════════════════════════════════════════════════════════════
+            await LoadUserThemeAsync(userId, Role);
+            
             System.Diagnostics.Debug.WriteLine($"HomePage: Monto pendiente: {PendingAmount}");
             System.Diagnostics.Debug.WriteLine("HomePage: Datos cargados correctamente");
         }
@@ -162,6 +192,102 @@ public partial class HomePage : ContentPage
             TodaySales = 0;
             PendingAmount = 0;
             TodayVisits = 0;
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    // LOAD DYNAMIC THEME - Aplicar globalmente a todas las páginas
+    // ══════════════════════════════════════════════════════════════════
+    private async Task LoadUserThemeAsync(int userId, string role)
+    {
+        try
+        {
+            System.Diagnostics.Debug.WriteLine($"[LoadUserTheme] Cargando tema para usuario {userId}, rol {role}...");
+            
+            string themeColor;
+            string themeColorLight;
+            string themeColorLighter;
+            
+            // Intentar cargar configuración de tema desde la API
+            try
+            {
+                var userSettings = await _apiService.GetAsync<UserSettingsDto>($"api/users/{userId}/settings");
+                
+                if (userSettings != null && !string.IsNullOrEmpty(userSettings.ThemeColor))
+                {
+                    themeColor = userSettings.ThemeColor;
+                    themeColorLight = userSettings.ThemeColorLight ?? LightenColor(themeColor, 0.3);
+                    themeColorLighter = userSettings.ThemeColorLighter ?? LightenColor(themeColor, 0.6);
+                    
+                    System.Diagnostics.Debug.WriteLine($"[LoadUserTheme] Tema cargado desde API: {themeColor}");
+                }
+                else
+                {
+                    // Tema por defecto según rol
+                    themeColor = GetThemeByRole(role);
+                    themeColorLight = LightenColor(themeColor, 0.3);
+                    themeColorLighter = LightenColor(themeColor, 0.6);
+                    
+                    System.Diagnostics.Debug.WriteLine($"[LoadUserTheme] Tema por defecto según rol: {themeColor}");
+                }
+            }
+            catch
+            {
+                // En caso de error, usar tema por defecto
+                themeColor = GetThemeByRole(role);
+                themeColorLight = LightenColor(themeColor, 0.3);
+                themeColorLighter = LightenColor(themeColor, 0.6);
+            }
+            
+            // Aplicar tema GLOBALMENTE para todas las páginas
+            App.UpdateThemeColors(themeColor, themeColorLight, themeColorLighter);
+            
+            System.Diagnostics.Debug.WriteLine($"[LoadUserTheme] Tema aplicado globalmente: {themeColor}");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[LoadUserTheme] Error: {ex.Message}");
+        }
+    }
+
+    private string GetThemeByRole(string role)
+    {
+        return role.ToLower() switch
+        {
+            var r when r.Contains("admin") => "#E91E63", // Rosa para admin
+            var r when r.Contains("supervisor") => "#FF9800", // Naranja para supervisor
+            var r when r.Contains("vendedor") => "#2196F3", // Azul para vendedor
+            var r when r.Contains("cobrador") => "#28A745", // Verde para cobrador
+            _ => "#28A745" // Verde por defecto
+        };
+    }
+
+    /// <summary>
+    /// Aclara un color hex agregando transparencia o mezclando con blanco
+    /// </summary>
+    private string LightenColor(string hexColor, double factor)
+    {
+        try
+        {
+            // Remover el # si existe
+            hexColor = hexColor.TrimStart('#');
+            
+            // Convertir a RGB
+            int r = Convert.ToInt32(hexColor.Substring(0, 2), 16);
+            int g = Convert.ToInt32(hexColor.Substring(2, 2), 16);
+            int b = Convert.ToInt32(hexColor.Substring(4, 2), 16);
+            
+            // Aclarar mezclando con blanco
+            r = (int)(r + (255 - r) * factor);
+            g = (int)(g + (255 - g) * factor);
+            b = (int)(b + (255 - b) * factor);
+            
+            // Retornar color aclarado
+            return $"#{r:X2}{g:X2}{b:X2}";
+        }
+        catch
+        {
+            return hexColor;
         }
     }
 
@@ -251,6 +377,9 @@ public partial class HomePage : ContentPage
             
             System.Diagnostics.Debug.WriteLine("=== Cerrando sesión ===");
             
+            // IMPORTANTE: Resetear tema ANTES de limpiar storage
+            App.ResetThemeToDefault();
+            
             // Limpiar credenciales almacenadas
             SecureStorage.Remove("auth_token");
             SecureStorage.Remove("username");
@@ -270,6 +399,37 @@ public partial class HomePage : ContentPage
             System.Diagnostics.Debug.WriteLine($"ERROR en OnLogoutTapped: {ex.Message}");
             System.Diagnostics.Debug.WriteLine($"StackTrace: {ex.StackTrace}");
             await DisplayAlert("Error", "No se pudo cerrar la sesión", "OK");
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    // HEADER ACTIONS
+    // ══════════════════════════════════════════════════════════════════
+    private void OnSearchToggle(object? sender, EventArgs e)
+    {
+        if (!HasSearchableData)
+        {
+            System.Diagnostics.Debug.WriteLine("[OnSearchToggle] No hay datos para buscar");
+            return;
+        }
+        
+        // Toggle la barra de búsqueda compacta dentro del header
+        SearchBarCompact.IsVisible = !SearchBarCompact.IsVisible;
+        System.Diagnostics.Debug.WriteLine($"[OnSearchToggle] SearchBar visible: {SearchBarCompact.IsVisible}");
+    }
+
+    private async void OnRefreshTapped(object? sender, EventArgs e)
+    {
+        try
+        {
+            System.Diagnostics.Debug.WriteLine("=== Actualizando datos de HomePage ===");
+            await LoadDataAsync();
+            await DisplayAlert("Actualizado", "Los datos se han actualizado correctamente", "OK");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"ERROR en OnRefreshTapped: {ex.Message}");
+            await DisplayAlert("Error", "No se pudo actualizar los datos", "OK");
         }
     }
 }

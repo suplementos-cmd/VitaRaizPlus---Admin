@@ -165,7 +165,7 @@ public class SalesController : ControllerBase
     /// Crear una nueva venta con detalles
     /// </summary>
     [HttpPost]
-    [Authorize(Roles = "Vendedor,Supervisor,AdminFull,Admin")]
+    [Authorize] // TEMPORAL: Permite cualquier usuario autenticado crear ventas
     public async Task<IActionResult> CreateSale([FromBody] CreateSaleCommand command)
     {
         try

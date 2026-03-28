@@ -149,9 +149,18 @@ public class VitaRaizDbContext : DbContext
                 .HasColumnType("NUMBER(10)");
             entity.Property(e => e.TotalAmount).HasColumnName("TOTAL_AMOUNT").HasPrecision(10, 2);
             entity.Ignore(e => e.PaidAmount); // Columna NO existe - se calcula desde PAYMENTS
+            
+            // Términos de pago estructurados
+            entity.Property(e => e.PaymentTerm).HasColumnName("PAYMENT_TERM").HasMaxLength(20);
+            entity.Property(e => e.CollectionDay).HasColumnName("COLLECTION_DAY").HasMaxLength(10);
+            entity.Property(e => e.FirstCollectionDate).HasColumnName("FIRST_COLLECTION_DATE");
+            entity.Property(e => e.DownPayment).HasColumnName("DOWN_PAYMENT").HasPrecision(10, 2);
+            
+            // Legacy/Complementarios
             entity.Property(e => e.PaymentTerms).HasColumnName("PAYMENT_TERMS");
             entity.Property(e => e.PaymentTermDays).HasColumnName("NUMBER_OF_PAYMENTS")
                 .HasColumnType("NUMBER(10)");
+            
             entity.Property(e => e.SaleDate).HasColumnName("SALE_DATE");
             entity.Property(e => e.Status).HasColumnName("STATUS").HasMaxLength(50);
             entity.Property(e => e.AssignedCollectorId).HasColumnName("ASSIGNED_COLLECTOR_ID")

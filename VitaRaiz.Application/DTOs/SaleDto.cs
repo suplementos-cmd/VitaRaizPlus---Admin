@@ -4,12 +4,16 @@ public class SaleDto
 {
     public int SaleId { get; set; }
     public string CustomerName { get; set; } = string.Empty;
+    public string? CustomerAddress { get; set; }  // Colonia/Dirección
     public decimal TotalAmount { get; set; }
     public decimal PaidAmount { get; set; }
     public decimal Balance { get; set; }
     public DateTime SaleDate { get; set; }
+    public DateTime? FirstPaymentDate { get; set; }  // Fecha del primer cobro aprobado
     public string Status { get; set; } = string.Empty;
     public string? PaymentTerms { get; set; }
+    public string? ProductName { get; set; }  // Primer producto de la venta
+    public string? SellerName { get; set; }   // Nombre del vendedor
 }
 
 /// <summary>
@@ -25,8 +29,16 @@ public class SaleFullDto
     public decimal Balance { get; set; }
     public DateTime SaleDate { get; set; }
     public string Status { get; set; } = string.Empty;
-    public string? PaymentTerms { get; set; }
-    public string? Notes { get; set; }
+    
+    // Payment terms (structured fields)
+    public string? PaymentTerm { get; set; } // SEMANAL, QUINCENAL, MENSUAL, CONTADO
+    public string? CollectionDay { get; set; } // LUN, MAR, MIE, JUE, VIE, SAB, DOM
+    public DateTime? FirstCollectionDate { get; set; } // Fecha del primer cobro programado
+    public decimal DownPayment { get; set; } // Enganche/pago inicial
+    
+    // Legacy/Additional
+    public string? PaymentTerms { get; set; } // Legacy text field (e.g., "7 dias")
+    public string? Notes { get; set; } // Additional notes only
 
     // Customer info
     public int CustomerId { get; set; }
