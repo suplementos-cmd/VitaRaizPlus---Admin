@@ -17,6 +17,26 @@
             <x:String x:Key="ThemeColorHex">#28A745</x:String>
             <x:String x:Key="ThemeColorLightHex">#C8E6C9</x:String>
             <x:String x:Key="ThemeColorLighterHex">#E8F5E9</x:String>
+
+            <!-- ─── Page Backgrounds (theme-derived) ─── -->
+            <Color x:Key="PageBackground">#F2F6F3</Color>
+            <Color x:Key="PageBackgroundNeutral">#FAFAFA</Color>
+
+            <!-- ─── Semantic Functional Colors ─── -->
+            <Color x:Key="DangerColor">#DC3545</Color>
+            <Color x:Key="NeutralActionColor">#6C757D</Color>
+            <Color x:Key="ThemeColorDark">#2E7D32</Color>
+
+            <!-- ─── Text Colors ─── -->
+            <Color x:Key="TextBodyDark">#1A2E1F</Color>
+            <Color x:Key="TextPrimary">#1F2937</Color>
+            <Color x:Key="TextSecondary">#6B7280</Color>
+            <Color x:Key="TextMuted">#9CA3AF</Color>
+
+            <!-- ─── UI Structure Colors ─── -->
+            <Color x:Key="DividerColor">#F0E6FA</Color>
+            <Color x:Key="BorderColorLight">#E5E7EB</Color>
+            <Color x:Key="BorderColorMedium">#E0E0E0</Color>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

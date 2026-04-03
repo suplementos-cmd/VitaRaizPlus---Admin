@@ -1,257 +1,221 @@
-<?xml version="1.0" encoding="utf-8" ?>
+﻿<?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:controls="clr-namespace:VitaRaiz.Mobile.Controls"
              x:Class="VitaRaiz.Mobile.Pages.HomePage"
              Title="Inicio"
              Shell.NavBarIsVisible="False"
              Shell.TabBarIsVisible="False"
-             BackgroundColor="#F0F4F8">
+             BackgroundColor="{DynamicResource PageBackground}">
 
-    <Grid RowDefinitions="Auto,*,Auto">
+    <controls:PageFrame Title="Inicio"
+                        ShowBottomNav="True" ActiveTab="Home"
+                        CanSearch="{Binding HasSearchableData}"
+                        SearchText="{Binding SearchText, Mode=TwoWay}"
+                        RefreshClicked="OnRefreshTapped"
+                        LogoutClicked="OnLogoutTapped">
 
-        <!-- ═══ HEADER ═══ -->
-        <Border Grid.Row="0" StrokeThickness="0" BackgroundColor="{DynamicResource ThemeColor}"
-                Shadow="{Shadow Brush='#44000000', Offset='0,3', Radius=6}">
-            <Grid RowDefinitions="Auto,Auto" Padding="14,12" ColumnDefinitions="*,Auto,Auto,Auto">
-                <!-- Fila 1: Título y botones -->
-                <Label Grid.Row="0" Grid.Column="0" Text="  ⌂ INICIO" FontSize="18" FontAttributes="Bold"
-                       TextColor="White" VerticalOptions="Center" />
-                <Label Grid.Row="0" Grid.Column="1" x:Name="SearchIcon" Text="🔍" FontSize="20" 
-                       TextColor="{DynamicResource ThemeColorLightHex}" VerticalOptions="Center"
-                       Padding="8,0" IsEnabled="{Binding HasSearchableData}" Opacity="{Binding SearchIconOpacity}">
-                    <Label.GestureRecognizers>
-                        <TapGestureRecognizer Tapped="OnSearchToggle" />
-                    </Label.GestureRecognizers>
-                </Label>
-                <Label Grid.Row="0" Grid.Column="2" Text="↻" FontSize="20" TextColor="{DynamicResource ThemeColorLightHex}" VerticalOptions="Center"
-                       Padding="8,0">
-                    <Label.GestureRecognizers>
-                        <TapGestureRecognizer Tapped="OnRefreshTapped" />
-                    </Label.GestureRecognizers>
-                </Label>
-                <Label Grid.Row="0" Grid.Column="3" Text="⎋" FontSize="20" TextColor="{DynamicResource ThemeColorLightHex}" VerticalOptions="Center"
-                       Padding="8,0">
-                    <Label.GestureRecognizers>
-                        <TapGestureRecognizer Tapped="OnLogoutTapped" />
-                    </Label.GestureRecognizers>
-                </Label>
-                
-                <!-- Fila 2: Búsqueda compacta (colapsable) -->
-                <Border Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="4" 
-                        x:Name="SearchBarCompact" IsVisible="False"
-                        BackgroundColor="White" StrokeThickness="0"
-                        Margin="0,8,0,0" Padding="8,4">
-                    <Border.StrokeShape><RoundRectangle CornerRadius="8" /></Border.StrokeShape>
-                    <Entry Placeholder="Buscar..."
-                           Text="{Binding SearchText}"
-                           TextColor="#333" PlaceholderColor="#999"
-                           FontSize="13" />
-                </Border>
-            </Grid>
-        </Border>
-    
-    <ScrollView Grid.Row="1">
-        <VerticalStackLayout Padding="20" Spacing="20">
-            
-            <!-- Información de usuario -->
-            <Border BackgroundColor="{DynamicResource ThemeColor}"
-                    StrokeThickness="0"
-                    Padding="15">
-                <Border.StrokeShape>
-                    <RoundRectangle CornerRadius="12" />
-                </Border.StrokeShape>
-                <VerticalStackLayout Spacing="3">
-                    <Label Text="¡Bienvenido!"
-                           FontSize="20"
-                           FontAttributes="Bold"
-                           TextColor="White" />
-                    <Label Text="{Binding Username}"
-                           FontSize="16"
-                           TextColor="{DynamicResource ThemeColorLighterHex}" />
-                    <Label Text="{Binding Role}"
-                           FontSize="12"
-                           TextColor="{DynamicResource ThemeColorLightHex}" />
-                </VerticalStackLayout>
+    <controls:PageFrame.Body>
+    <ScrollView>
+        <VerticalStackLayout Padding="14,14" Spacing="14">
+
+            <!-- HERO CARD -->
+            <Border StrokeThickness="0" Padding="0"
+                    Shadow="{Shadow Brush='#25000000', Offset='0,3', Radius=10}">
+                <Border.StrokeShape><RoundRectangle CornerRadius="16" /></Border.StrokeShape>
+                <Grid RowDefinitions="Auto,5">
+                    <Grid Grid.Row="0" Padding="16,14">
+                        <Grid.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                <GradientStop Color="{DynamicResource ThemeColor}" Offset="0" />
+                                <GradientStop Color="{DynamicResource ThemeColorDark}" Offset="1" />
+                            </LinearGradientBrush>
+                        </Grid.Background>
+                        <Ellipse WidthRequest="90" HeightRequest="90"
+                                 HorizontalOptions="End" VerticalOptions="Start"
+                                 Margin="0,-20,-20,0" Fill="#18FFFFFF" InputTransparent="True" />
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                            <Border Grid.Column="0"
+                                    WidthRequest="48" HeightRequest="48"
+                                    BackgroundColor="#33FFFFFF" StrokeThickness="0" VerticalOptions="Center">
+                                <Border.StrokeShape><RoundRectangle CornerRadius="24" /></Border.StrokeShape>
+                                <Label Text="{Binding UserInitials}"
+                                       FontSize="17" FontAttributes="Bold" TextColor="White"
+                                       HorizontalOptions="Center" VerticalOptions="Center" />
+                            </Border>
+                            <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+                                <Label Text="{Binding GreetingText}"
+                                       FontSize="12" TextColor="#DDFFFFFF" />
+                                <Label Text="{Binding Username}"
+                                       FontSize="16" FontAttributes="Bold" TextColor="White"
+                                       LineBreakMode="TailTruncation" />
+                                <Border BackgroundColor="#33FFFFFF" StrokeThickness="0"
+                                        Padding="8,3" HorizontalOptions="Start">
+                                    <Border.StrokeShape><RoundRectangle CornerRadius="10" /></Border.StrokeShape>
+                                    <Label Text="{Binding RoleDisplayName}"
+                                           FontSize="10" FontAttributes="Bold" TextColor="White" />
+                                </Border>
+                            </VerticalStackLayout>
+                        </Grid>
+                    </Grid>
+                    <BoxView Grid.Row="1" Color="{DynamicResource ThemeColorDark}" />
+                </Grid>
             </Border>
-            
-            <!-- Estadísticas del día -->
-            <Label Text="Resumen de Hoy"
-                   FontSize="20"
-                   FontAttributes="Bold"
-                   TextColor="#333" />
-            
-            <Grid RowDefinitions="Auto,Auto" 
-                  ColumnDefinitions="*,*"
-                  RowSpacing="15"
-                  ColumnSpacing="15">
-                
-                <!-- Cobros Hoy -->
+
+            <!-- RESUMEN DEL DIA -->
+            <Label Text="Resumen del dia"
+                   FontSize="13" FontAttributes="Bold"
+                   TextColor="{DynamicResource ThemeColorHex}"
+                   Margin="2,4,0,0" />
+
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="10"
+                  RowDefinitions="Auto,Auto" RowSpacing="10">
+
                 <Border Grid.Row="0" Grid.Column="0"
-                        BackgroundColor="White"
-                        StrokeThickness="0"
-                        Padding="15">
-                    <Border.StrokeShape>
-                        <RoundRectangle CornerRadius="12" />
-                    </Border.StrokeShape>
-                    <VerticalStackLayout Spacing="5">
-                        <Label Text="�"
-                               FontSize="32"
-                               HorizontalOptions="Center" />
-                        <Label Text="Cobros"
-                               FontSize="12"
-                               TextColor="#666"
-                               HorizontalOptions="Center" />
-                        <Label Text="{Binding TodayPayments, StringFormat='${0:N2}'}"
-                               FontSize="18"
-                               FontAttributes="Bold"
-                               TextColor="{DynamicResource ThemeColorHex}"
-                               HorizontalOptions="Center" />
-                    </VerticalStackLayout>
+                        IsVisible="{Binding CanSeePaymentsStats}"
+                        BackgroundColor="White" StrokeThickness="0" Padding="0"
+                        Shadow="{Shadow Brush='#14000000', Offset='0,2', Radius=5}">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="12" /></Border.StrokeShape>
+                    <Grid RowDefinitions="3,Auto">
+                        <BoxView Grid.Row="0" Color="{DynamicResource ThemeColor}" />
+                        <VerticalStackLayout Grid.Row="1" Spacing="3" Padding="10,10">
+                            <Label Text="&#x1F4B3;" FontSize="22" HorizontalOptions="Center" />
+                            <Label Text="Cobros hoy" FontSize="10" TextColor="#999" HorizontalOptions="Center" />
+                            <Label Text="{Binding TodayPayments, StringFormat='${0:N0}'}"
+                                   FontSize="17" FontAttributes="Bold"
+                                   TextColor="{DynamicResource ThemeColorHex}" HorizontalOptions="Center" />
+                        </VerticalStackLayout>
+                    </Grid>
                 </Border>
-                
-                <!-- Ventas Hoy -->
+
                 <Border Grid.Row="0" Grid.Column="1"
-                        BackgroundColor="White"
-                        StrokeThickness="0"
-                        Padding="15">
-                    <Border.StrokeShape>
-                        <RoundRectangle CornerRadius="12" />
-                    </Border.StrokeShape>
-                    <VerticalStackLayout Spacing="5">
-                        <Label Text="🛒"
-                               FontSize="28"
-                               HorizontalOptions="Center" />
-                        <Label Text="Ventas"
-                               FontSize="12"
-                               TextColor="#666"
-                               HorizontalOptions="Center" />
-                        <Label Text="{Binding TodaySales}"
-                               FontSize="18"
-                               FontAttributes="Bold"
-                               TextColor="#2196F3"
-                               HorizontalOptions="Center" />
-                    </VerticalStackLayout>
+                        IsVisible="{Binding IsVendedorOrAbove}"
+                        BackgroundColor="White" StrokeThickness="0" Padding="0"
+                        Shadow="{Shadow Brush='#14000000', Offset='0,2', Radius=5}">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="12" /></Border.StrokeShape>
+                    <Grid RowDefinitions="3,Auto">
+                        <BoxView Grid.Row="0" Color="#2196F3" />
+                        <VerticalStackLayout Grid.Row="1" Spacing="3" Padding="10,10">
+                            <Label Text="&#x1F6D2;" FontSize="22" HorizontalOptions="Center" />
+                            <Label Text="Ventas hoy" FontSize="10" TextColor="#999" HorizontalOptions="Center" />
+                            <Label Text="{Binding TodaySales}"
+                                   FontSize="17" FontAttributes="Bold"
+                                   TextColor="#2196F3" HorizontalOptions="Center" />
+                        </VerticalStackLayout>
+                    </Grid>
                 </Border>
-                
-                <!-- Pendiente -->
+
                 <Border Grid.Row="1" Grid.Column="0"
-                        BackgroundColor="White"
-                        StrokeThickness="0"
-                        Padding="15">
-                    <Border.StrokeShape>
-                        <RoundRectangle CornerRadius="12" />
-                    </Border.StrokeShape>
-                    <VerticalStackLayout Spacing="5">
-                        <Label Text="⏰"
-                               FontSize="28"
-                               HorizontalOptions="Center" />
-                        <Label Text="Pendiente"
-                               FontSize="12"
-                               TextColor="#666"
-                               HorizontalOptions="Center" />
-                        <Label Text="{Binding PendingAmount, StringFormat='${0:N2}'}"
-                               FontSize="18"
-                               FontAttributes="Bold"
-                               TextColor="#FF9800"
-                               HorizontalOptions="Center" />
-                    </VerticalStackLayout>
+                        IsVisible="{Binding IsCobradorOrAdmin}"
+                        BackgroundColor="White" StrokeThickness="0" Padding="0"
+                        Shadow="{Shadow Brush='#14000000', Offset='0,2', Radius=5}">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="12" /></Border.StrokeShape>
+                    <Grid RowDefinitions="3,Auto">
+                        <BoxView Grid.Row="0" Color="#FF9800" />
+                        <VerticalStackLayout Grid.Row="1" Spacing="3" Padding="10,10">
+                            <Label Text="&#x23F0;" FontSize="22" HorizontalOptions="Center" />
+                            <Label Text="Pendiente" FontSize="10" TextColor="#999" HorizontalOptions="Center" />
+                            <Label Text="{Binding PendingAmount, StringFormat='${0:N0}'}"
+                                   FontSize="17" FontAttributes="Bold"
+                                   TextColor="#FF9800" HorizontalOptions="Center" />
+                        </VerticalStackLayout>
+                    </Grid>
                 </Border>
-                
-                <!-- Clientes Visitados -->
+
                 <Border Grid.Row="1" Grid.Column="1"
-                        BackgroundColor="White"
-                        StrokeThickness="0"
-                        Padding="15">
-                    <Border.StrokeShape>
-                        <RoundRectangle CornerRadius="12" />
-                    </Border.StrokeShape>
-                    <VerticalStackLayout Spacing="5">
-                        <Label Text="👥"
-                               FontSize="28"
-                                HorizontalOptions="Center" />
-                        <Label Text="Visitas"
-                               FontSize="12"
-                               TextColor="#666"
-                               HorizontalOptions="Center" />
-                        <Label Text="{Binding TodayVisits}"
-                               FontSize="18"
-                               FontAttributes="Bold"
-                               TextColor="#9C27B0"
-                               HorizontalOptions="Center" />
-                    </VerticalStackLayout>
+                        BackgroundColor="White" StrokeThickness="0" Padding="0"
+                        Shadow="{Shadow Brush='#14000000', Offset='0,2', Radius=5}">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="12" /></Border.StrokeShape>
+                    <Grid RowDefinitions="3,Auto">
+                        <BoxView Grid.Row="0" Color="#9C27B0" />
+                        <VerticalStackLayout Grid.Row="1" Spacing="3" Padding="10,10">
+                            <Label Text="&#x1F465;" FontSize="22" HorizontalOptions="Center" />
+                            <Label Text="Visitas" FontSize="10" TextColor="#999" HorizontalOptions="Center" />
+                            <Label Text="{Binding TodayVisits}"
+                                   FontSize="17" FontAttributes="Bold"
+                                   TextColor="#9C27B0" HorizontalOptions="Center" />
+                        </VerticalStackLayout>
+                    </Grid>
                 </Border>
+
             </Grid>
-            
-            <!-- Accesos rápidos -->
-            <Label Text="Accesos Rápidos"
-                   FontSize="20"
-                   FontAttributes="Bold"
-                   TextColor="#333"
-                   Margin="0,20,0,0" />
-            
-            <Button x:Name="PaymentsButton"
-                    Text="� Registrar Pago"
-                    Clicked="OnPaymentsClicked"
-                    BackgroundColor="{DynamicResource ThemeColor}"
-                    TextColor="White"
-                    FontAttributes="Bold"
-                    HeightRequest="60"
-                    CornerRadius="12"
-                    FontSize="16" />
-            
-            <Button x:Name="SalesButton"
-                    Text="🗒 Ver Mis Ventas"
-                    Clicked="OnSalesClicked"
-                    BackgroundColor="#2196F3"
-                    TextColor="White"
-                    FontAttributes="Bold"
-                    HeightRequest="60"
-                    CornerRadius="12"
-                    FontSize="16" />
-            
-            <Button x:Name="CustomersButton"
-                    Text="👤 Ver Clientes"
-                    Clicked="OnCustomersClicked"
-                    BackgroundColor="#9C27B0"
-                    TextColor="White"
-                    FontAttributes="Bold"
-                    HeightRequest="60"
-                    CornerRadius="12"
-                    FontSize="16" />
-            
+
+            <!-- ACCESOS RAPIDOS -->
+            <Label Text="Accesos rapidos"
+                   FontSize="13" FontAttributes="Bold"
+                   TextColor="{DynamicResource ThemeColorHex}"
+                   Margin="2,4,0,0" />
+
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+
+                <Border x:Name="SalesButton" Grid.Column="0"
+                        IsVisible="{Binding CanSeeSalesButton}"
+                        BackgroundColor="White" StrokeThickness="0" Padding="0"
+                        Shadow="{Shadow Brush='#14000000', Offset='0,2', Radius=5}">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="12" /></Border.StrokeShape>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnSalesClicked" />
+                    </Border.GestureRecognizers>
+                    <Grid RowDefinitions="3,Auto">
+                        <BoxView Grid.Row="0" Color="#2196F3" />
+                        <VerticalStackLayout Grid.Row="1" Spacing="4" Padding="10,12">
+                            <Label Text="&#x1F4CB;" FontSize="24" HorizontalOptions="Center" />
+                            <Label Text="Mis ventas" FontSize="12" FontAttributes="Bold"
+                                   TextColor="#333" HorizontalOptions="Center" />
+                            <Label Text="Ver historial" FontSize="10" TextColor="#AAA"
+                                   HorizontalOptions="Center" />
+                        </VerticalStackLayout>
+                    </Grid>
+                </Border>
+
+                <Border x:Name="CustomersButton" Grid.Column="1"
+                        IsVisible="{Binding CanSeeCustomersButton}"
+                        BackgroundColor="White" StrokeThickness="0" Padding="0"
+                        Shadow="{Shadow Brush='#14000000', Offset='0,2', Radius=5}">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="12" /></Border.StrokeShape>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnCustomersClicked" />
+                    </Border.GestureRecognizers>
+                    <Grid RowDefinitions="3,Auto">
+                        <BoxView Grid.Row="0" Color="#9C27B0" />
+                        <VerticalStackLayout Grid.Row="1" Spacing="4" Padding="10,12">
+                            <Label Text="&#x1F464;" FontSize="24" HorizontalOptions="Center" />
+                            <Label Text="Clientes" FontSize="12" FontAttributes="Bold"
+                                   TextColor="#333" HorizontalOptions="Center" />
+                            <Label Text="Ver directorio" FontSize="10" TextColor="#AAA"
+                                   HorizontalOptions="Center" />
+                        </VerticalStackLayout>
+                    </Grid>
+                </Border>
+
+            </Grid>
+
+            <!-- Nueva Venta - ancho completo (solo vendedor / admin) -->
+            <Border IsVisible="{Binding CanCreateSaleButton}"
+                    BackgroundColor="White" StrokeThickness="0" Padding="0"
+                    Shadow="{Shadow Brush='#14000000', Offset='0,2', Radius=5}">
+                <Border.StrokeShape><RoundRectangle CornerRadius="12" /></Border.StrokeShape>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnNuevaVentaClicked" />
+                </Border.GestureRecognizers>
+                <Grid ColumnDefinitions="5,*,Auto" ColumnSpacing="12" Padding="0,14,16,14">
+                    <BoxView Grid.Column="0" BackgroundColor="{DynamicResource ThemeColor}" />
+                    <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+                        <Label Text="+ Nueva venta" FontSize="14" FontAttributes="Bold"
+                               TextColor="{DynamicResource ThemeColorHex}" />
+                        <Label Text="Registrar venta a credito"
+                               FontSize="11" TextColor="#AAA" />
+                    </VerticalStackLayout>
+                    <Label Grid.Column="2" Text=">" FontSize="24" TextColor="#CCC"
+                           VerticalOptions="Center" />
+                </Grid>
+            </Border>
+
+            <BoxView HeightRequest="20" Color="Transparent" />
+
         </VerticalStackLayout>
     </ScrollView>
+    </controls:PageFrame.Body>
 
-    <!-- ═══ BOTTOM NAV BAR ═══ -->
-    <Border Grid.Row="2" StrokeThickness="0" BackgroundColor="White"
-            Shadow="{Shadow Brush='#22000000', Offset='0,-2', Radius=4}">
-        <Grid ColumnDefinitions="*,*,*,*" HeightRequest="58" Padding="0,6,0,4">
-            <VerticalStackLayout Grid.Column="0" Spacing="2" HorizontalOptions="Center" VerticalOptions="Center">
-                <Label Text="⌂" FontSize="24" HorizontalOptions="Center" TextColor="{DynamicResource ThemeColor}" />
-                <Label Text="Inicio" FontSize="10" HorizontalOptions="Center" TextColor="{DynamicResource ThemeColor}" FontAttributes="Bold" />
-            </VerticalStackLayout>
-            <VerticalStackLayout Grid.Column="1" Spacing="2" HorizontalOptions="Center" VerticalOptions="Center">
-                <Label Text="🗒" FontSize="24" HorizontalOptions="Center" TextColor="#AAAAAA" />
-                <Label Text="Ventas" FontSize="10" HorizontalOptions="Center" TextColor="#AAAAAA" />
-                <VerticalStackLayout.GestureRecognizers>
-                    <TapGestureRecognizer Tapped="OnTabVentas" />
-                </VerticalStackLayout.GestureRecognizers>
-            </VerticalStackLayout>
-            <VerticalStackLayout Grid.Column="2" Spacing="2" HorizontalOptions="Center" VerticalOptions="Center">
-                <Label Text="💵" FontSize="24" HorizontalOptions="Center" TextColor="#AAAAAA" />
-                <Label Text="Cobranza" FontSize="10" HorizontalOptions="Center" TextColor="#AAAAAA" />
-                <VerticalStackLayout.GestureRecognizers>
-                    <TapGestureRecognizer Tapped="OnTabCobranza" />
-                </VerticalStackLayout.GestureRecognizers>
-            </VerticalStackLayout>
-            <VerticalStackLayout Grid.Column="3" Spacing="2" HorizontalOptions="Center" VerticalOptions="Center">
-                <Label Text="👤" FontSize="24" HorizontalOptions="Center" TextColor="#AAAAAA" />
-                <Label Text="Clientes" FontSize="10" HorizontalOptions="Center" TextColor="#AAAAAA" />
-                <VerticalStackLayout.GestureRecognizers>
-                    <TapGestureRecognizer Tapped="OnTabClientes" />
-                </VerticalStackLayout.GestureRecognizers>
-            </VerticalStackLayout>
-        </Grid>
-    </Border>
-    </Grid>
+    </controls:PageFrame>
 </ContentPage>

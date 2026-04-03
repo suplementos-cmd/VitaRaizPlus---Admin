@@ -186,6 +186,16 @@ INSERT INTO CATALOG_APP_SETTINGS (SETTING_KEY, SETTING_VALUE, SETTING_TYPE, DESC
 VALUES ('WHATSAPP_REMINDER_TEMPLATE', 'PAYMENT_REMINDER', 'STRING', 'Template por defecto para recordatorios', 'NOTIFICACIONES', 0);
 
 -- ========================================================================
+-- MIGRACION: Agregar campo COLLECTION_ACTION_CODE a tabla PAYMENTS
+-- Fecha: 2026-03-25  |  Sin romper módulos existentes (nullable + DEFAULT NULL)
+-- ========================================================================
+ALTER TABLE PAYMENTS ADD (
+    COLLECTION_ACTION_CODE VARCHAR2(50) DEFAULT NULL,
+    CONSTRAINT fk_payment_action FOREIGN KEY (COLLECTION_ACTION_CODE)
+        REFERENCES CATALOG_VISIT_ACTIONS (ACTION_CODE)
+);
+
+-- ========================================================================
 -- DATOS INICIALES - Plantillas de notificaciones
 -- ========================================================================
 INSERT INTO CATALOG_NOTIFICATION_TEMPLATES (TEMPLATE_CODE, TEMPLATE_NAME, TEMPLATE_TYPE, SUBJECT, MESSAGE_BODY, VARIABLES) 

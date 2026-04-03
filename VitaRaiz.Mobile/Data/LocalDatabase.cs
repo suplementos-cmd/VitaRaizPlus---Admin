@@ -245,6 +245,19 @@ public class LocalDatabase
     }
 
     /// <summary>
+    /// Obtiene todas las fotos de múltiples ventas en una sola consulta SQL (evita el problema N+1).
+    /// </summary>
+    public Task<List<LocalSalePhoto>> GetSalePhotosBatchAsync(IEnumerable<int> saleIds)
+    {
+        var ids = string.Join(",", saleIds);
+        if (string.IsNullOrEmpty(ids))
+            return Task.FromResult(new List<LocalSalePhoto>());
+
+        return _database.QueryAsync<LocalSalePhoto>(
+            $"SELECT * FROM LocalSalePhotos WHERE SaleId IN ({ids})");
+    }
+
+    /// <summary>
     /// Gets the best photo for a sale (priority: Fachada > Cliente > Contrato > Adicional)
     /// </summary>
     public async Task<string?> GetSaleThumbnailAsync(int saleId)

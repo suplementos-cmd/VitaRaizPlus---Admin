@@ -9,6 +9,10 @@ public interface ISaleRepository
         string? paymentTerm, string? collectionDay, DateTime? firstCollectionDate, decimal downPayment,
         string? notes, List<SaleDetailDto> details);
     
+    Task<bool> UpdateSaleAsync(int saleId, string? paymentTerm, string? collectionDay,
+        DateTime? firstCollectionDate, decimal downPayment, string? notes, string? status,
+        DateTime saleDate);
+    
     Task<bool> CancelSaleAsync(int saleId, string? reason);
     
     Task<List<SaleDto>> GetSalesAsync(int? customerId, int? sellerId, 

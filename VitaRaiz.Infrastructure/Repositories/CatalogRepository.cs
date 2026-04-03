@@ -65,12 +65,15 @@ public class CatalogRepository : BaseOracleRepository, ICatalogRepository
         {
             statuses.Add(new CatalogPaymentStatus
             {
-                StatusCode = reader.GetString("statusCode"),
-                StatusName = reader.GetString("statusName"),
-                Description = reader.IsDBNull("description") ? null : reader.GetString("description"),
-                DisplayOrder = reader.GetInt32("displayOrder"),
-                ColorHex = reader.IsDBNull("colorHex") ? null : reader.GetString("colorHex"),
-                Icon = reader.IsDBNull("icon") ? null : reader.GetString("icon")
+                StatusId      = reader.GetInt32("statusId"),
+                StatusCode    = reader.GetString("statusCode"),
+                StatusName    = reader.GetString("statusName"),
+                Description   = reader.IsDBNull("description") ? null : reader.GetString("description"),
+                DisplayOrder  = reader.GetInt32("displayOrder"),
+                ColorHex      = reader.IsDBNull("colorHex")     ? null : reader.GetString("colorHex"),
+                Icon          = reader.IsDBNull("icon")         ? null : reader.GetString("icon"),
+                RequiresNote  = reader.GetInt32("requiresNote")  == 1,
+                RequiresPhoto = reader.GetInt32("requiresPhoto") == 1
             });
         }
         
@@ -231,14 +234,16 @@ public class CatalogRepository : BaseOracleRepository, ICatalogRepository
         {
             actions.Add(new CatalogVisitAction
             {
-                ActionCode = reader.GetString("actionCode"),
-                ActionName = reader.GetString("actionName"),
-                Description = reader.IsDBNull("description") ? null : reader.GetString("description"),
-                Icon = reader.IsDBNull("icon") ? null : reader.GetString("icon"),
-                ColorHex = reader.IsDBNull("colorHex") ? null : reader.GetString("colorHex"),
-                RequiresNote = reader.GetInt32("requiresNote") == 1,
-                RequiresPhoto = reader.GetInt32("requiresPhoto") == 1,
-                DisplayOrder = reader.GetInt32("displayOrder")
+                StatusId         = reader.GetInt32("statusId"),
+                ActionCode       = reader.GetString("actionCode"),
+                ActionName       = reader.GetString("actionName"),
+                Description      = reader.IsDBNull("description") ? null : reader.GetString("description"),
+                Icon             = reader.IsDBNull("icon") ? null : reader.GetString("icon"),
+                ColorHex         = reader.IsDBNull("colorHex") ? null : reader.GetString("colorHex"),
+                RequiresNote     = reader.GetInt32("requiresNote") == 1,
+                RequiresPhoto    = reader.GetInt32("requiresPhoto") == 1,
+                DisplayOrder     = reader.GetInt32("displayOrder"),
+                ParentStatusId   = reader.IsDBNull("parentActionId") ? (int?)null : reader.GetInt32("parentActionId")
             });
         }
         
@@ -260,5 +265,42 @@ public class CatalogRepository : BaseOracleRepository, ICatalogRepository
             return null;
             
         return resultValue.ToString();
+    }
+
+    public async Task<ProfileTheme?> GetThemeByRoleAsync(int roleId)
+    {
+        var connection = await GetOpenConnectionAsync();
+        using var command = CreatePackageProcedureCommand(connection, "sp_get_theme_by_role");
+
+        AddInputParameter(command, "p_role_id", roleId);
+
+        var cursorParam = new OracleParameter("p_cursor", OracleDbType.RefCursor)
+        {
+            Direction = ParameterDirection.Output
+        };
+        command.Parameters.Add(cursorParam);
+
+        await command.ExecuteNonQueryAsync();
+
+        using var reader = ((OracleRefCursor)cursorParam.Value).GetDataReader();
+
+        if (await reader.ReadAsync())
+        {
+            return new ProfileTheme
+            {
+                ThemeId      = reader.IsDBNull("themeId")   ? 0    : reader.GetInt32("themeId"),
+                RoleId       = reader.IsDBNull("roleId")    ? 0    : reader.GetInt32("roleId"),
+                ThemeName    = reader.IsDBNull("themeName") ? ""   : reader.GetString("themeName"),
+                RoleName     = reader.IsDBNull("roleName")  ? null : reader.GetString("roleName"),
+                PrimaryColor = reader.GetString("primaryColor"),
+                SecondaryColor  = reader.IsDBNull("secondaryColor")  ? null : reader.GetString("secondaryColor"),
+                AccentColor     = reader.IsDBNull("accentColor")     ? null : reader.GetString("accentColor"),
+                BackgroundColor = reader.IsDBNull("backgroundColor") ? null : reader.GetString("backgroundColor"),
+                TextColor       = reader.IsDBNull("textColor")       ? null : reader.GetString("textColor"),
+                IconName        = reader.IsDBNull("iconName")        ? null : reader.GetString("iconName")
+            };
+        }
+
+        return null;
     }
 }

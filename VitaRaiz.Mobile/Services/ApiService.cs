@@ -10,6 +10,13 @@ public class ApiService
     private readonly Logger _logger = AppLogger.Get();
     private readonly HttpClient _httpClient;
     private readonly JsonSerializerOptions _jsonOptions;
+
+    // ── In-memory token cache — avoids SecureStorage round-trip on every API call ──
+    private static volatile string? _cachedToken;
+    /// <summary>Set immediately after successful login. Shared across all ApiService instances.</summary>
+    public static void SetCachedToken(string token) => _cachedToken = token;
+    /// <summary>Call on logout to invalidate the session token from memory.</summary>
+    public static void ClearCachedToken() => _cachedToken = null;
     
     // URL de la API - En desarrollo usa dotnet run (http) profile
 #if WINDOWS
@@ -45,21 +52,23 @@ public class ApiService
         try
         {
 #if IOS || MACCATALYST || ANDROID || WINDOWS
-            // Llamada a SecureStorage solo compilada en plataformas que la soportan.
-            var token = await SecureStorage.GetAsync("auth_token");
-            _logger.Debug("[SetAuthorizationHeaderAsync] Token retrieved from storage: {HasToken}", !string.IsNullOrEmpty(token));
-            System.Diagnostics.Debug.WriteLine($"[ApiService] Token from storage: {(string.IsNullOrEmpty(token) ? "NULL/EMPTY" : token.Substring(0, Math.Min(50, token.Length)))}...");
-            
+            // Use in-memory cache first — avoids slow SecureStorage round-trip on every request.
+            var token = _cachedToken;
+            if (string.IsNullOrEmpty(token))
+            {
+                token = await SecureStorage.GetAsync("auth_token");
+                if (!string.IsNullOrEmpty(token))
+                    _cachedToken = token; // warm cache for subsequent calls
+            }
+
             if (!string.IsNullOrEmpty(token))
             {
                 _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-                _logger.Debug("[SetAuthorizationHeaderAsync] Authorization header set successfully");
-                System.Diagnostics.Debug.WriteLine($"[ApiService] Authorization header set successfully");
             }
             else
             {
-                _logger.Warn("[SetAuthorizationHeaderAsync] No token found in SecureStorage");
-                System.Diagnostics.Debug.WriteLine($"[ApiService] WARNING: No token found in SecureStorage!");
+                _logger.Warn("[SetAuthorizationHeaderAsync] No token available");
+                System.Diagnostics.Debug.WriteLine($"[ApiService] WARNING: No token found!");
             }
 #else
             // En plataformas que no soportan SecureStorage, omitir la lectura del token.
@@ -175,10 +184,20 @@ public class ApiService
             var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
             
             var response = await _httpClient.PostAsync(endpoint, content);
+            var responseContent = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.Warn("[PostAsync] {Endpoint} failed: {Status} - {Body}",
+                    endpoint, (int)response.StatusCode, responseContent);
+                Console.WriteLine($"[ApiService] POST {endpoint} FAILED: {(int)response.StatusCode} - {responseContent}");
+            }
+
             return response.IsSuccessStatusCode;
         }
         catch (Exception ex)
         {
+            _logger.Error(ex, "[PostAsync] {Endpoint} exception", endpoint);
             Console.WriteLine($"Error en POST {endpoint}: {ex.Message}");
             return false;
         }

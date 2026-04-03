@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="VitaRaiz.Mobile.Controls.BottomNavBar">
+
+    <!--
+        BottomNavBar — compact rectangular dock (app-style)
+        Full-width flat bar. Active indicator: 3px top accent + soft themed pill background.
+    -->
+    <Grid RowDefinitions="Auto,Auto">
+
+        <!-- Top separator: gradient from muted to transparent -->
+        <BoxView Grid.Row="0" HeightRequest="1">
+            <BoxView.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                    <GradientStop Color="#00000000" Offset="0" />
+                    <GradientStop Color="{DynamicResource ThemeColor}" Offset="0.5" />
+                    <GradientStop Color="#00000000" Offset="1" />
+                </LinearGradientBrush>
+            </BoxView.Background>
+        </BoxView>
+
+        <!-- Main bar -->
+        <Grid Grid.Row="1" ColumnDefinitions="*,*,*"
+              HeightRequest="50"
+              Padding="0">
+            <!-- Subtle gradient background -->
+            <Grid.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                    <GradientStop Color="#FFFFFF" Offset="0" />
+                    <GradientStop Color="#F7F7FA" Offset="1" />
+                </LinearGradientBrush>
+            </Grid.Background>
+
+            <!-- ── INICIO ── -->
+            <Grid x:Name="TabInicio" Grid.Column="0">
+                <!-- themed pill background for active tab -->
+                <Border x:Name="PillBgInicio"
+                        Margin="6,3" StrokeThickness="0"
+                        BackgroundColor="{DynamicResource ThemeColorLighter}"
+                        IsVisible="False">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="10" /></Border.StrokeShape>
+                </Border>
+                <!-- 3px top accent bar -->
+                <BoxView x:Name="PillInicio"
+                         HeightRequest="3" VerticalOptions="Start"
+                         Color="{DynamicResource ThemeColor}"
+                         IsVisible="False" />
+                <VerticalStackLayout Spacing="1" HorizontalOptions="Center" VerticalOptions="Center" Margin="0,3,0,0">
+                    <Label x:Name="IconInicio" Text="🏠" FontSize="15"
+                           HorizontalOptions="Center" TextColor="{DynamicResource TextMuted}" />
+                    <Label x:Name="TextInicio" Text="Inicio" FontSize="9"
+                           HorizontalOptions="Center" TextColor="{DynamicResource TextMuted}" />
+                </VerticalStackLayout>
+                <Grid.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnTabInicio" />
+                </Grid.GestureRecognizers>
+            </Grid>
+
+            <!-- ── VENTAS ── -->
+            <Grid x:Name="TabVentas" Grid.Column="1">
+                <Border x:Name="PillBgVentas"
+                        Margin="6,3" StrokeThickness="0"
+                        BackgroundColor="{DynamicResource ThemeColorLighter}"
+                        IsVisible="False">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="10" /></Border.StrokeShape>
+                </Border>
+                <BoxView x:Name="PillVentas"
+                         HeightRequest="3" VerticalOptions="Start"
+                         Color="{DynamicResource ThemeColor}"
+                         IsVisible="False" />
+                <VerticalStackLayout Spacing="1" HorizontalOptions="Center" VerticalOptions="Center" Margin="0,3,0,0">
+                    <Label x:Name="IconVentas" Text="📑" FontSize="15"
+                           HorizontalOptions="Center" TextColor="{DynamicResource TextMuted}" />
+                    <Label x:Name="TextVentas" Text="Ventas" FontSize="9"
+                           HorizontalOptions="Center" TextColor="{DynamicResource TextMuted}" />
+                </VerticalStackLayout>
+                <Grid.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnTabVentas" />
+                </Grid.GestureRecognizers>
+            </Grid>
+
+            <!-- ── CLIENTES ── -->
+            <Grid x:Name="TabClientes" Grid.Column="2">
+                <Border x:Name="PillBgClientes"
+                        Margin="6,3" StrokeThickness="0"
+                        BackgroundColor="{DynamicResource ThemeColorLighter}"
+                        IsVisible="False">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="10" /></Border.StrokeShape>
+                </Border>
+                <BoxView x:Name="PillClientes"
+                         HeightRequest="3" VerticalOptions="Start"
+                         Color="{DynamicResource ThemeColor}"
+                         IsVisible="False" />
+                <VerticalStackLayout Spacing="1" HorizontalOptions="Center" VerticalOptions="Center" Margin="0,3,0,0">
+                    <Label x:Name="IconClientes" Text="👥" FontSize="15"
+                           HorizontalOptions="Center" TextColor="{DynamicResource TextMuted}" />
+                    <Label x:Name="TextClientes" Text="Clientes" FontSize="9"
+                           HorizontalOptions="Center" TextColor="{DynamicResource TextMuted}" />
+                </VerticalStackLayout>
+                <Grid.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnTabClientes" />
+                </Grid.GestureRecognizers>
+            </Grid>
+
+        </Grid>
+    </Grid>
+</ContentView>
+

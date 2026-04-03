@@ -9,6 +9,7 @@ public partial class CustomersPage : ContentPage
 {
     private readonly Logger _logger = AppLogger.Get();
     private readonly ApiService _apiService;
+    private readonly PermissionsService _permissionsService;
     private string _searchText = string.Empty;
     private List<CustomerDto> _allCustomers = new();
 
@@ -22,6 +23,8 @@ public partial class CustomersPage : ContentPage
             BindingContext = this;
             
             _apiService = new ApiService();
+            _permissionsService = Application.Current?.Handler?.MauiContext?.Services
+                .GetService<PermissionsService>() ?? new PermissionsService(_apiService);
             
             SearchCommand = new Command(OnSearch);
             ViewCustomerDetailCommand = new Command(OnViewCustomerDetail);
@@ -56,6 +59,10 @@ public partial class CustomersPage : ContentPage
     
     public double SearchIconOpacity => HasCustomers ? 1.0 : 0.5;
 
+    // ── Permission-based UI visibility ──────────────────────────────
+    public bool CanCreateCustomer => _permissionsService is null || !_permissionsService.IsLoaded || _permissionsService.CanCreateCustomer;
+    public bool CanEditCustomer   => _permissionsService is null || !_permissionsService.IsLoaded || _permissionsService.CanEditCustomer;
+
     public ICommand SearchCommand { get; }
     public ICommand ViewCustomerDetailCommand { get; }
 
@@ -63,10 +70,24 @@ public partial class CustomersPage : ContentPage
     {
         try
         {
+            // Asegurar permisos cargados
+            await _permissionsService.LoadAsync();
+            OnPropertyChanged(nameof(CanCreateCustomer));
+            OnPropertyChanged(nameof(CanEditCustomer));
+
             _logger.Info("[LoadCustomersAsync] INICIO - Cargando clientes desde API...");
             
-            // Cargar clientes desde la API
-            var customersData = await _apiService.GetAsync<List<CustomerDto>>("api/customers");
+            // Cargar clientes desde la API (o desde el prefetch del login si está disponible)
+            var customersData = Services.PageDataCache.PrefetchedCustomers as List<CustomerDto>;
+            if (customersData != null)
+            {
+                Services.PageDataCache.PrefetchedCustomers = null;
+                _logger.Info("[LoadCustomersAsync] Using prefetched data ({Count} clientes)", customersData.Count);
+            }
+            else
+            {
+                customersData = await _apiService.GetAsync<List<CustomerDto>>("api/customers");
+            }
             
             _logger.Info("[LoadCustomersAsync] API Response recibida: Count={Count}, IsNull={IsNull}", 
                 customersData?.Count ?? 0, customersData == null);
@@ -180,25 +201,6 @@ public partial class CustomersPage : ContentPage
     // ══════════════════════════════════════════════════════════════════
     // HEADER ACTIONS
     // ══════════════════════════════════════════════════════════════════
-    private void OnSearchToggle(object? sender, EventArgs e)
-    {
-        try
-        {
-            if (!HasCustomers)
-            {
-                _logger.Info("[OnSearchToggle] No hay clientes para buscar");
-                return;
-            }
-            
-            // Toggle la barra de búsqueda compacta dentro del header
-            SearchBarCompact.IsVisible = !SearchBarCompact.IsVisible;
-            _logger.Info("[OnSearchToggle] SearchBarCompact visible: {IsVisible}", SearchBarCompact.IsVisible);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogException(ex, "Error al toggle SearchBar");
-        }
-    }
 
     private void OnSearchCompleted(object? sender, EventArgs e)
     {
@@ -237,6 +239,13 @@ public partial class CustomersPage : ContentPage
             
             // IMPORTANTE: Resetear tema ANTES de limpiar storage
             App.ResetThemeToDefault();
+            ApiService.ClearCachedToken();
+            Services.PageDataCache.PrefetchedSales     = null;
+            Services.PageDataCache.PrefetchedCustomers = null;
+
+            // Limpiar permisos cacheados
+            var permSvc = IPlatformApplication.Current?.Services.GetService<PermissionsService>();
+            permSvc?.Clear();
             
             // Limpiar credenciales almacenadas
             SecureStorage.Remove("auth_token");
@@ -257,10 +266,6 @@ public partial class CustomersPage : ContentPage
         }
     }
 
-    // ═══ Bottom Tab Navigation ═══
-    private async void OnTabInicio(object? s, EventArgs e) => await Shell.Current.GoToAsync("//HomePage");
-    private async void OnTabVentas(object? s, EventArgs e) => await Shell.Current.GoToAsync("//SalesPage");
-    private async void OnTabCobranza(object? s, EventArgs e) => await Shell.Current.GoToAsync("//PaymentPage");
 }
 
 public class CustomerItemDto

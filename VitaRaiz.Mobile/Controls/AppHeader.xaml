@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="VitaRaiz.Mobile.Controls.AppHeader"
+             x:Name="Root">
+
+    <!--
+        AppHeader — modern compact bar  height=50px
+        ───────────────────────────────────────────
+        Layers (bottom → top):
+          1. ThemeColor solid fill
+          2. Left→right gradient shimmer
+          3. 1px top highlight line
+          4. Two decorative circles (right overflow + top-left)
+          5. 2px bottom shadow
+          6. Functional overlay: NavPill | Title | ActionsContainer
+        Row 1: collapsible search bar
+    -->
+    <Grid RowDefinitions="50,Auto" IsClippedToBounds="True">
+
+        <!-- 1. Solid base -->
+        <BoxView Grid.Row="0"
+                 Color="{DynamicResource ThemeColor}"
+                 VerticalOptions="Fill" />
+
+        <!-- 2. Left-bright → right-dark shimmer -->
+        <BoxView Grid.Row="0"
+                 VerticalOptions="Fill" InputTransparent="True">
+            <BoxView.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                    <GradientStop Color="#35FFFFFF" Offset="0.0" />
+                    <GradientStop Color="#08FFFFFF" Offset="0.55" />
+                    <GradientStop Color="#1A000000" Offset="1.0" />
+                </LinearGradientBrush>
+            </BoxView.Background>
+        </BoxView>
+
+        <!-- 3. 1px highlight line at very top -->
+        <BoxView Grid.Row="0"
+                 HeightRequest="1.5" VerticalOptions="Start"
+                 InputTransparent="True">
+            <BoxView.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                    <GradientStop Color="#00FFFFFF" Offset="0" />
+                    <GradientStop Color="#55FFFFFF" Offset="0.4" />
+                    <GradientStop Color="#55FFFFFF" Offset="0.6" />
+                    <GradientStop Color="#00FFFFFF" Offset="1" />
+                </LinearGradientBrush>
+            </BoxView.Background>
+        </BoxView>
+
+        <!-- 4a. Large decorative circle — bleeds off right edge -->
+        <Ellipse Grid.Row="0"
+                 WidthRequest="80" HeightRequest="80"
+                 HorizontalOptions="End" VerticalOptions="Center"
+                 Margin="0,8,-30,0"
+                 Fill="#1AFFFFFF"
+                 InputTransparent="True" />
+        <!-- 4b. Small circle — top-left, half hidden -->
+        <Ellipse Grid.Row="0"
+                 WidthRequest="32" HeightRequest="32"
+                 HorizontalOptions="Start" VerticalOptions="Start"
+                 Margin="-12,-12,0,0"
+                 Fill="#12FFFFFF"
+                 InputTransparent="True" />
+
+        <!-- 5. Bottom shadow -->
+        <BoxView Grid.Row="0"
+                 HeightRequest="2" VerticalOptions="End"
+                 Color="#30000000" InputTransparent="True" />
+
+        <!-- ═══ ROW 0: main bar ═══ -->
+        <Grid Grid.Row="0" Padding="10,0">
+
+            <!-- CENTER: Title + optional subtitle -->
+            <VerticalStackLayout Spacing="1"
+                                 HorizontalOptions="Fill" VerticalOptions="Center"
+                                 Margin="50,0">
+                <Label Text="{Binding Title, Source={x:Reference Root}}"
+                       FontSize="15" FontAttributes="Bold"
+                       TextColor="White"
+                       HorizontalTextAlignment="Center"
+                       LineBreakMode="TailTruncation" />
+                <Label x:Name="SubtitleLabel"
+                       Text="{Binding Subtitle, Source={x:Reference Root}}"
+                       FontSize="9" TextColor="#CCffffff"
+                       IsVisible="False"
+                       HorizontalTextAlignment="Center"
+                       LineBreakMode="TailTruncation" />
+            </VerticalStackLayout>
+
+            <!-- LEFT: back / forward arrows (bare, no pill wrapper) -->
+            <HorizontalStackLayout x:Name="NavPill"
+                    HorizontalOptions="Start" VerticalOptions="Center"
+                    Spacing="0"
+                    IsVisible="False">
+
+                <Grid x:Name="BackButtonContainer" WidthRequest="36" HeightRequest="36" IsVisible="False">
+                    <Label Text="←" FontSize="18" TextColor="White" FontAttributes="Bold"
+                           HorizontalOptions="Center" VerticalOptions="Center" Padding="0">
+                        <Label.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnBackIconTapped" />
+                        </Label.GestureRecognizers>
+                    </Label>
+                </Grid>
+
+                <BoxView x:Name="NavPillDivider"
+                         WidthRequest="1" HeightRequest="14"
+                         Color="#55FFFFFF" VerticalOptions="Center" IsVisible="False" />
+
+                <Grid x:Name="ForwardButtonContainer" WidthRequest="36" HeightRequest="36" IsVisible="False">
+                    <Label Text="→" FontSize="18" TextColor="White" FontAttributes="Bold"
+                           HorizontalOptions="Center" VerticalOptions="Center" Padding="0">
+                        <Label.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnForwardIconTapped" />
+                        </Label.GestureRecognizers>
+                    </Label>
+                </Grid>
+
+            </HorizontalStackLayout>
+
+            <!-- RIGHT: action icons inside a frosted pill -->
+            <Border x:Name="ActionsContainer"
+                    HorizontalOptions="End" VerticalOptions="Center"
+                    StrokeThickness="0" BackgroundColor="#28FFFFFF"
+                    HeightRequest="30" Padding="0"
+                    IsVisible="True">
+                <Border.StrokeShape><RoundRectangle CornerRadius="15" /></Border.StrokeShape>
+                <HorizontalStackLayout Spacing="0" Padding="2,0">
+
+                    <!-- Extra icon (page-specific action) -->
+                    <Grid x:Name="ExtraIconLabel" WidthRequest="32" HeightRequest="30" IsVisible="False">
+                        <Label Text="{Binding ExtraIcon, Source={x:Reference Root}}"
+                               FontSize="15" TextColor="White"
+                               HorizontalOptions="Center" VerticalOptions="Center">
+                            <Label.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="OnExtraIconTapped" />
+                            </Label.GestureRecognizers>
+                        </Label>
+                    </Grid>
+
+                    <!-- Search -->
+                    <Grid x:Name="SearchIconLabel" WidthRequest="32" HeightRequest="30">
+                        <Label x:Name="SearchIconInnerLabel" Text="&#x1F50D;" FontSize="13"
+                               TextColor="#E8FFFFFF"
+                               HorizontalOptions="Center" VerticalOptions="Center">
+                            <Label.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="OnSearchIconTapped" />
+                            </Label.GestureRecognizers>
+                        </Label>
+                    </Grid>
+
+                    <!-- Refresh -->
+                    <Grid x:Name="RefreshIconLabel" WidthRequest="32" HeightRequest="30">
+                        <Label Text="↻" FontSize="15"
+                               TextColor="#E8FFFFFF"
+                               HorizontalOptions="Center" VerticalOptions="Center">
+                            <Label.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="OnRefreshIconTapped" />
+                            </Label.GestureRecognizers>
+                        </Label>
+                    </Grid>
+
+                    <!-- Logout -->
+                    <Grid x:Name="LogoutIconLabel" WidthRequest="32" HeightRequest="30">
+                        <Label Text="⎋" FontSize="15"
+                               TextColor="#E8FFFFFF"
+                               HorizontalOptions="Center" VerticalOptions="Center">
+                            <Label.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="OnLogoutIconTapped" />
+                            </Label.GestureRecognizers>
+                        </Label>
+                    </Grid>
+
+                </HorizontalStackLayout>
+            </Border>
+
+        </Grid>
+
+        <!-- ═══ ROW 1: collapsible search bar ═══ -->
+        <Border x:Name="SearchBarCompact"
+                Grid.Row="1"
+                IsVisible="False"
+                BackgroundColor="#EEFFFFFF"
+                StrokeThickness="0"
+                Margin="12,0,12,10" Padding="12,0">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="10" />
+            </Border.StrokeShape>
+            <Entry x:Name="SearchEntry"
+                   Placeholder="Buscar..."
+                   Text="{Binding SearchText, Source={x:Reference Root}, Mode=TwoWay}"
+                   TextColor="#1A2E1F" PlaceholderColor="#88000000"
+                   FontSize="13"
+                   Completed="OnSearchEntryCompleted" />
+        </Border>
+
+    </Grid>
+</ContentView>

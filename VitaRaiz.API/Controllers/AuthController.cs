@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using VitaRaiz.Infrastructure.Data;
 using VitaRaiz.API.Services;
 using VitaRaiz.Infrastructure.Configuration;
+using VitaRaiz.Application.Interfaces;
 using Oracle.ManagedDataAccess.Client;
 using Oracle.ManagedDataAccess.Types;
 using System.Data;
@@ -19,12 +20,15 @@ public class AuthController : ControllerBase
     private readonly VitaRaizDbContext _context;
     private readonly JwtTokenService _jwtService;
     private readonly ILogger<AuthController> _logger;
+    private readonly IPermissionsRepository _permissionsRepository;
 
-    public AuthController(VitaRaizDbContext context, JwtTokenService jwtService, ILogger<AuthController> logger)
+    public AuthController(VitaRaizDbContext context, JwtTokenService jwtService,
+        ILogger<AuthController> logger, IPermissionsRepository permissionsRepository)
     {
         _context = context;
         _jwtService = jwtService;
         _logger = logger;
+        _permissionsRepository = permissionsRepository;
     }
 
     [HttpPost("login")]
@@ -104,9 +108,12 @@ public class AuthController : ControllerBase
 
             string username = usernameParam.Value.ToString() ?? request.Username;
             string roleName = roleNameParam.Value?.ToString() ?? "Usuario";
+            int roleId = 0;
+            if (roleIdParam.Value != null && roleIdParam.Value != DBNull.Value)
+                roleId = Convert.ToInt32(((Oracle.ManagedDataAccess.Types.OracleDecimal)roleIdParam.Value).Value);
 
-            // Generar token JWT
-            var token = _jwtService.GenerateToken(userId, username, roleName);
+            // Generar token JWT con roleId embebido para tema contextual
+            var token = _jwtService.GenerateToken(userId, username, roleName, roleId);
 
             return Ok(new
             {
@@ -114,6 +121,7 @@ public class AuthController : ControllerBase
                 userId,
                 username,
                 role = roleName,
+                roleId,
                 expiresIn = 480 * 60 // en segundos
             });
         }
@@ -179,6 +187,35 @@ public class AuthController : ControllerBase
         catch (Exception ex)
         {
             return StatusCode(500, new { error = "Error al obtener información del usuario", details = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Retorna la lista de permisos (permission codes) asignados al rol del usuario autenticado.
+    /// GET /api/auth/permissions
+    /// </summary>
+    [HttpGet("permissions")]
+    [Authorize]
+    public async Task<ActionResult> GetMyPermissions()
+    {
+        try
+        {
+            var userIdStr = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
+                         ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userIdStr) || !int.TryParse(userIdStr, out int userId))
+                return Unauthorized(new { error = "Token inválido o expirado" });
+
+            _logger.LogInformation("[AuthController] GetMyPermissions for userId={UserId}", userId);
+
+            var permissions = await _permissionsRepository.GetUserPermissionsAsync(userId);
+
+            return Ok(new { permissions });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[AuthController] Error getting permissions");
+            return StatusCode(500, new { error = "Error al obtener permisos", details = ex.Message });
         }
     }
 }

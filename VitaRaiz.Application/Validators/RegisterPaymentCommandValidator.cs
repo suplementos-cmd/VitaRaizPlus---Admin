@@ -16,8 +16,8 @@ public class RegisterPaymentCommandValidator : AbstractValidator<RegisterPayment
             .WithMessage("El ID del cobrador debe ser mayor a 0");
 
         RuleFor(x => x.Amount)
-            .GreaterThan(0)
-            .WithMessage("El monto debe ser mayor a 0");
+            .GreaterThanOrEqualTo(0)
+            .WithMessage("El monto no puede ser negativo");
 
         RuleFor(x => x.GpsLatitude)
             .InclusiveBetween(-90, 90)

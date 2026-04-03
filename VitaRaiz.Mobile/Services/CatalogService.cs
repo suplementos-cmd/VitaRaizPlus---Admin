@@ -31,13 +31,15 @@ public class CatalogService
     public CatalogAppTheme? Theme => _theme;
     public bool IsLoaded => _loaded;
 
-    public async Task LoadAsync()
+    public async Task LoadAsync(bool forceReload = false)
     {
-        if (_loaded)
+        if (_loaded && !forceReload)
         {
             _logger.Debug("[LoadAsync] Catalogs already loaded, skipping");
             return;
         }
+
+        _loaded = false; // reset so we can reload
             
         _logger.Info("[LoadAsync] Loading catalogs from API...");
         try

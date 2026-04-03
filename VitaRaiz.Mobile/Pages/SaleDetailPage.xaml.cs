@@ -6,6 +6,16 @@ using VitaRaiz.Mobile.Services;
 
 namespace VitaRaiz.Mobile.Pages;
 
+// ── Photo Info Model ──
+public class PhotoInfo
+{
+    public string? PhotoPath { get; set; }
+    public string PhotoType { get; set; } = "";
+    public string DisplayName { get; set; } = "";
+    public string Icon { get; set; } = "🖼️";
+    public bool IsAvailable => !string.IsNullOrEmpty(PhotoPath) && File.Exists(PhotoPath);
+}
+
 [QueryProperty(nameof(SaleId), "saleId")]
 public partial class SaleDetailPage : ContentPage
 {
@@ -23,6 +33,9 @@ public partial class SaleDetailPage : ContentPage
         WhatsAppCommand = new Command(async () => await OpenWhatsApp());
         OpenPaymentDetailCommand = new Command<int>(OnOpenPaymentDetail);
         OpenPhotoCommand = new Command<string>(OnOpenPhoto);
+        NextPageCommand = new Command(() => { _currentPage++; ApplyPage(); }, () => CanGoNext);
+        PrevPageCommand = new Command(() => { _currentPage--; ApplyPage(); }, () => CanGoPrev);
+        OpenRegistrarCobroCommand = new Command(OnOpenRegistrarCobro);
 
         BindingContext = this;
     }
@@ -45,6 +58,7 @@ public partial class SaleDetailPage : ContentPage
             _sale = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(ZoneName));
+            OnPropertyChanged(nameof(CustomerName));
             OnPropertyChanged(nameof(CollectionDay));
             OnPropertyChanged(nameof(HasPayments));
         }
@@ -59,6 +73,32 @@ public partial class SaleDetailPage : ContentPage
 
     public ObservableCollection<SaleItemDetail> Items { get; } = new();
     public ObservableCollection<PaymentDetail> Payments { get; } = new();
+    public ObservableCollection<PaymentDetail> PagedPayments { get; } = new();
+    public ObservableCollection<PhotoInfo> AvailablePhotos { get; } = new();
+
+    // ── Paginación historial ──
+    private const int PageSize = 10;
+    private int _currentPage = 0;
+    public int TotalPages => Math.Max(1, (int)Math.Ceiling(Payments.Count / (double)PageSize));
+    public bool CanGoPrev => _currentPage > 0;
+    public bool CanGoNext => _currentPage < TotalPages - 1;
+    public bool HasMultiplePages => TotalPages > 1;
+    public string PageLabel => $"{_currentPage + 1} / {TotalPages}";
+    public ICommand NextPageCommand { get; }
+    public ICommand PrevPageCommand { get; }
+
+    private void ApplyPage()
+    {
+        var page = Payments.Skip(_currentPage * PageSize).Take(PageSize).ToList();
+        PagedPayments.Clear();
+        foreach (var p in page) PagedPayments.Add(p);
+        OnPropertyChanged(nameof(CanGoPrev));
+        OnPropertyChanged(nameof(CanGoNext));
+        OnPropertyChanged(nameof(HasMultiplePages));
+        OnPropertyChanged(nameof(PageLabel));
+        ((Command)NextPageCommand).ChangeCanExecute();
+        ((Command)PrevPageCommand).ChangeCanExecute();
+    }
 
     private string? _bannerPhotoPath;
     public string? BannerPhotoPath
@@ -108,6 +148,7 @@ public partial class SaleDetailPage : ContentPage
     public bool HasAdicionalPhoto => !string.IsNullOrEmpty(AdicionalPhotoPath) && File.Exists(AdicionalPhotoPath);
 
     public string ZoneName => Sale?.ZoneName ?? "—";
+    public string CustomerName => Sale?.CustomerName is { Length: > 0 } n ? n : "Detalle de Venta";
     public string CollectionDay
     {
         get
@@ -125,63 +166,68 @@ public partial class SaleDetailPage : ContentPage
     }
     public bool HasPayments => Payments.Count > 0;
 
-    private List<string> _paymentStatuses = new();
-    public List<string> PaymentStatuses
-    {
-        get => _paymentStatuses;
-        set
-        {
-            _paymentStatuses = value;
-            OnPropertyChanged();
-        }
-    }
-
     public ICommand CallClientCommand { get; }
     public ICommand WhatsAppCommand { get; }
     public ICommand OpenPaymentDetailCommand { get; }
     public ICommand OpenPhotoCommand { get; }
+    public ICommand OpenRegistrarCobroCommand { get; }
 
     // ── Lifecycle ──
     protected override async void OnAppearing()
     {
         base.OnAppearing();
         await _catalogService.LoadAsync();
-        LoadPaymentStatuses();
         await CheckRoleAsync();
-        await LoadSaleDetail();
-    }
 
-    private void LoadPaymentStatuses()
-    {
-        // Load payment statuses from catalog service
-        if (_catalogService.PaymentStatuses.Count > 0)
+        // If the edit form just saved this sale, use the cached refresh data (no API call → no blink)
+        var refreshed = Services.PageDataCache.RefreshedSaleDetail;
+        if (refreshed != null && refreshed.SaleId == SaleId)
         {
-            PaymentStatuses = _catalogService.PaymentStatuses
-                .Where(ps => ps.IsActive)
-                .OrderBy(ps => ps.DisplayOrder)
-                .Select(ps => ps.StatusName)
-                .ToList();
-            
-            System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] Loaded {PaymentStatuses.Count} payment statuses from catalog");
+            Services.PageDataCache.RefreshedSaleDetail = null; // consume
+            System.Diagnostics.Debug.WriteLine("[SaleDetailPage] ⚡ Using RefreshedSaleDetail from cache — skipping API call");
+            ApplySaleData(refreshed);
+            await LoadSalePhotosAsync();
+            return;
         }
-        else
-        {
-            // Fallback to default statuses
-            PaymentStatuses = new List<string> { "COBRADO", "NO ESTABA", "PRÓXIMA SEMANA" };
-            System.Diagnostics.Debug.WriteLine("[SaleDetailPage] Using default payment statuses");
-        }
+
+        await LoadSaleDetail();
     }
 
     private async Task CheckRoleAsync()
     {
-        var role = await SecureStorage.GetAsync("role");
-        _isCobrador = role != null && role.Equals("Cobrador", StringComparison.OrdinalIgnoreCase);
-
+        var role = await SecureStorage.GetAsync("role") ?? "";
+        var normalizedRole = role.Trim();
+        
+        // Role classifications
+        var isCobrador = normalizedRole.Equals("Cobrador", StringComparison.OrdinalIgnoreCase);
+        var isSupervisorCobro = normalizedRole.Equals("Supervisor de cobro", StringComparison.OrdinalIgnoreCase);
+        var isVendedora = normalizedRole.Equals("Vendedora", StringComparison.OrdinalIgnoreCase);
+        var isSupervisora = normalizedRole.Equals("Supervisora", StringComparison.OrdinalIgnoreCase) || 
+                           normalizedRole.Equals("Supervisora ventas", StringComparison.OrdinalIgnoreCase);
+        var isAdmin = normalizedRole.Equals("Administrador", StringComparison.OrdinalIgnoreCase) || 
+                      normalizedRole.Equals("Admin", StringComparison.OrdinalIgnoreCase) ||
+                      normalizedRole.Equals("AdminFull", StringComparison.OrdinalIgnoreCase);
+        
+        // View assignments:
+        // 1. Cobrador, Supervisor de cobro → Historial + acciones + formulario
+        // 2. Vendedora → Nada
+        // 3. Supervisora, Administradores → Tabla
+        
+        var showHistorialConAcciones = isCobrador || isSupervisorCobro;
+        var showTabla = isSupervisora || isAdmin;
+        
         // Show/hide sections based on role
-        CobradorActionSection.IsVisible = _isCobrador;
-        AbonosSection.IsVisible = _isCobrador;
-        HeaderActions.IsVisible = _isCobrador;
-        VendedoraAbonosSection.IsVisible = !_isCobrador;
+        VendedoraAbonosSection.IsVisible = showHistorialConAcciones;  // Historial + botón ➕
+        AbonosSection.IsVisible = showTabla;                          // Tabla (solo Supervisora/Admin)
+        HeaderActions.IsVisible = showHistorialConAcciones || showTabla;
+
+        // FAB editar: solo perfil ventas y supervisión ventas
+        EditFab.IsVisible = isVendedora || isSupervisora;
+
+        // FAB cobro: cobrador y supervisor de cobro
+        AddCobroFab.IsVisible = isCobrador || isSupervisorCobro;
+
+        _isCobrador = isCobrador; // Keep for backward compatibility
     }
 
     private async Task LoadSaleDetail()
@@ -198,43 +244,7 @@ public partial class SaleDetailPage : ContentPage
                 return;
             }
 
-            // Resolve sale status from catalogs
-            var (sLabel, sColor, sIcon) = _catalogService.ResolveSaleStatus(dto.Status);
-            dto.StatusLabel = sLabel;
-            dto.StatusColor = sColor;
-
-            foreach (var p in dto.Payments)
-            {
-                var (pLabel, pColor, _) = _catalogService.ResolvePaymentStatus(p.Status);
-                p.StatusLabel = pLabel;
-                p.StatusColor = pColor;
-            }
-
-            Sale = dto;
-
-            // Prepare payment data with pending amounts
-            decimal runningPaid = 0;
-            foreach (var p in dto.Payments.OrderBy(p => p.PaymentDate))
-            {
-                runningPaid += p.Amount;
-                p.PendingAmount = dto.TotalAmount - runningPaid;
-            }
-            
-            var sortedPayments = dto.Payments.OrderByDescending(p => p.PaymentDate).ToList();
-            
-            // CRITICAL: Modify ObservableCollection only on UI thread to prevent crash 0xc000027b
-            MainThread.BeginInvokeOnMainThread(() =>
-            {
-                Items.Clear();
-                foreach (var item in dto.Items)
-                    Items.Add(item);
-
-                Payments.Clear();
-                foreach (var p in sortedPayments)
-                    Payments.Add(p);
-
-                OnPropertyChanged(nameof(HasPayments));
-            });
+            ApplySaleData(dto);
 
             // Load photos from server
             await LoadSalePhotosAsync();
@@ -250,6 +260,50 @@ public partial class SaleDetailPage : ContentPage
         }
     }
 
+    // ── Populate UI from a SaleFullDetail (shared by LoadSaleDetail and cache path) ──
+    private void ApplySaleData(SaleFullDetail dto)
+    {
+        // Resolve sale status from catalogs
+        var (sLabel, sColor, _) = _catalogService.ResolveSaleStatus(dto.Status);
+        dto.StatusLabel = sLabel;
+        dto.StatusColor = sColor;
+
+        foreach (var p in dto.Payments)
+        {
+            var (pLabel, pColor, _) = _catalogService.ResolvePaymentStatus(p.Status);
+            p.StatusLabel = pLabel;
+            p.StatusColor = pColor;
+        }
+
+        Sale = dto;
+
+        // Prepare payment data with running pending amounts
+        decimal runningPaid = 0;
+        foreach (var p in dto.Payments.OrderBy(p => p.PaymentDate))
+        {
+            runningPaid += p.Amount;
+            p.PendingAmount = dto.TotalAmount - runningPaid;
+        }
+
+        var sortedPayments = dto.Payments.OrderByDescending(p => p.PaymentDate).ToList();
+
+        // CRITICAL: Modify ObservableCollection only on UI thread to prevent crash 0xc000027b
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            Items.Clear();
+            foreach (var item in dto.Items)
+                Items.Add(item);
+
+            Payments.Clear();
+            foreach (var p in sortedPayments)
+                Payments.Add(p);
+
+            OnPropertyChanged(nameof(HasPayments));
+            _currentPage = 0;
+            ApplyPage();
+        });
+    }
+
     // ── Load photos from server ──
     private async Task LoadSalePhotosAsync()
     {
@@ -257,86 +311,99 @@ public partial class SaleDetailPage : ContentPage
         {
             System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] LoadSalePhotosAsync START for saleId={SaleId}");
             
+            // First, try to load photos from local database (these are the uploaded photos)
+            await LoadPhotosFromLocalDbAsync();
+            
+            // If we found photos locally, we're done
+            if (AvailablePhotos.Count > 0)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] Using {AvailablePhotos.Count} photos from local DB");
+                return;
+            }
+            
+            // If no local photos, try server (though server paths usually don't work on client)
             var photos = await _apiService.GetAsync<List<SalePhotoDto>>($"api/sales/{SaleId}/photos");
             
             if (photos != null && photos.Count > 0)
             {
-                System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] Loaded {photos.Count} photos from server");
+                System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] Loaded {photos.Count} photos from server, checking if accessible...");
                 
                 // Find photos by type
-                var fachadaPhoto = photos.FirstOrDefault(p => p.PhotoType == "FACHADA");
-                var clientePhoto = photos.FirstOrDefault(p => p.PhotoType == "CLIENTE");
-                var contratoPhoto = photos.FirstOrDefault(p => p.PhotoType == "CONTRATO");
-                var adicionalPhoto = photos.FirstOrDefault(p => p.PhotoType == "ADICIONAL");
+                var fachadaPhoto = photos.FirstOrDefault(p => p.PhotoType.Contains("FACHADA"));
+                var clientePhoto = photos.FirstOrDefault(p => p.PhotoType.Contains("CLIENTE"));
+                var contratoPhoto = photos.FirstOrDefault(p => p.PhotoType.Contains("CONTRATO"));
+                var adicionalPhoto = photos.FirstOrDefault(p => p.PhotoType.Contains("ADICIONAL"));
 
-                // Set individual photo paths
+                // Try to use server photos (will only work if paths are accessible locally)
                 MainThread.BeginInvokeOnMainThread(() =>
                 {
+                    AvailablePhotos.Clear();
+                    
                     if (fachadaPhoto != null && File.Exists(fachadaPhoto.FilePath))
+                    {
                         FachadaPhotoPath = fachadaPhoto.FilePath;
+                        AvailablePhotos.Add(new PhotoInfo 
+                        { 
+                            PhotoPath = fachadaPhoto.FilePath, 
+                            PhotoType = "FACHADA", 
+                            DisplayName = "Fachada",
+                            Icon = "🏠"
+                        });
+                    }
                     
                     if (clientePhoto != null && File.Exists(clientePhoto.FilePath))
+                    {
                         ClientePhotoPath = clientePhoto.FilePath;
+                        AvailablePhotos.Add(new PhotoInfo 
+                        { 
+                            PhotoPath = clientePhoto.FilePath, 
+                            PhotoType = "CLIENTE", 
+                            DisplayName = "Cliente",
+                            Icon = "👤"
+                        });
+                    }
                     
                     if (contratoPhoto != null && File.Exists(contratoPhoto.FilePath))
+                    {
                         ContratoPhotoPath = contratoPhoto.FilePath;
+                        AvailablePhotos.Add(new PhotoInfo 
+                        { 
+                            PhotoPath = contratoPhoto.FilePath, 
+                            PhotoType = "CONTRATO", 
+                            DisplayName = "Contrato",
+                            Icon = "📄"
+                        });
+                    }
                     
                     if (adicionalPhoto != null && File.Exists(adicionalPhoto.FilePath))
+                    {
                         AdicionalPhotoPath = adicionalPhoto.FilePath;
+                        AvailablePhotos.Add(new PhotoInfo 
+                        { 
+                            PhotoPath = adicionalPhoto.FilePath, 
+                            PhotoType = "ADICIONAL", 
+                            DisplayName = "Adicional",
+                            Icon = "🖼️"
+                        });
+                    }
+                    
+                    System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] AvailablePhotos populated with {AvailablePhotos.Count} accessible server photos");
+                    
+                    // Set banner photo
+                    if (AvailablePhotos.Count > 0)
+                    {
+                        BannerPhotoPath = AvailablePhotos[0].PhotoPath;
+                    }
                 });
-
-                // Select banner photo with priority: Fachada > Cliente > Contrato
-                string? selectedPhotoPath = null;
-                if (fachadaPhoto != null && File.Exists(fachadaPhoto.FilePath))
-                {
-                    selectedPhotoPath = fachadaPhoto.FilePath;
-                    System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] Banner: Using Fachada photo");
-                }
-                else if (clientePhoto != null && File.Exists(clientePhoto.FilePath))
-                {
-                    selectedPhotoPath = clientePhoto.FilePath;
-                    System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] Banner: Using Cliente photo (Fachada not found)");
-                }
-                else if (contratoPhoto != null && File.Exists(contratoPhoto.FilePath))
-                {
-                    selectedPhotoPath = contratoPhoto.FilePath;
-                    System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] Banner: Using Contrato photo (Fachada/Cliente not found)");
-                }
-                else
-                {
-                    System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] Banner: No valid photo files found, checking local DB");
-                    // Fallback: Try to load from local SQLite DB
-                    await LoadPhotosFromLocalDbAsync();
-                    return;
-                }
-
-                // Set banner photo on UI thread
-                MainThread.BeginInvokeOnMainThread(() =>
-                {
-                    BannerPhotoPath = selectedPhotoPath;
-                });
-
-                // Log all photos for debugging
-                if (fachadaPhoto != null)
-                    System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] Fachada photo: {fachadaPhoto.FilePath}");
-                if (clientePhoto != null)
-                    System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] Cliente photo: {clientePhoto.FilePath}");
-                if (contratoPhoto != null)
-                    System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] Contrato photo: {contratoPhoto.FilePath}");
-                if (adicionalPhoto != null)
-                    System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] Adicional photo: {adicionalPhoto.FilePath}");
             }
             else
             {
-                System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] No photos from server, checking local DB");
-                await LoadPhotosFromLocalDbAsync();
+                System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] No photos from server");
             }
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] Error loading photos from server: {ex.Message}");
-            // Fallback to local DB
-            await LoadPhotosFromLocalDbAsync();
+            System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] LoadSalePhotosAsync ERROR: {ex.Message}");
         }
     }
 
@@ -361,31 +428,73 @@ public partial class SaleDetailPage : ContentPage
             {
                 System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] Found {localPhotos.Count} photos in local DB");
 
-                // Priority: Fachada > Cliente > Contrato
+                // Priority: Fachada > Cliente > Contrato > Adicional
                 var fachadaPhoto = localPhotos.FirstOrDefault(p => p.PhotoType == "Fachada");
                 var clientePhoto = localPhotos.FirstOrDefault(p => p.PhotoType == "Cliente");
                 var contratoPhoto = localPhotos.FirstOrDefault(p => p.PhotoType == "Contrato");
-
-                string? selectedPhotoPath = null;
-                if (fachadaPhoto != null && File.Exists(fachadaPhoto.LocalPath))
-                {
-                    selectedPhotoPath = fachadaPhoto.LocalPath;
-                    System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] Banner (Local): Using Fachada");
-                }
-                else if (clientePhoto != null && File.Exists(clientePhoto.LocalPath))
-                {
-                    selectedPhotoPath = clientePhoto.LocalPath;
-                    System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] Banner (Local): Using Cliente");
-                }
-                else if (contratoPhoto != null && File.Exists(contratoPhoto.LocalPath))
-                {
-                    selectedPhotoPath = contratoPhoto.LocalPath;
-                    System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] Banner (Local): Using Contrato");
-                }
+                var adicionalPhoto = localPhotos.FirstOrDefault(p => p.PhotoType == "Adicional");
 
                 MainThread.BeginInvokeOnMainThread(() =>
                 {
-                    BannerPhotoPath = selectedPhotoPath;
+                    // Clear and populate available photos collection
+                    AvailablePhotos.Clear();
+                    
+                    if (fachadaPhoto != null && File.Exists(fachadaPhoto.LocalPath))
+                    {
+                        FachadaPhotoPath = fachadaPhoto.LocalPath;
+                        AvailablePhotos.Add(new PhotoInfo 
+                        { 
+                            PhotoPath = fachadaPhoto.LocalPath, 
+                            PhotoType = "FACHADA", 
+                            DisplayName = "Fachada",
+                            Icon = "🏠"
+                        });
+                    }
+                    
+                    if (clientePhoto != null && File.Exists(clientePhoto.LocalPath))
+                    {
+                        ClientePhotoPath = clientePhoto.LocalPath;
+                        AvailablePhotos.Add(new PhotoInfo 
+                        { 
+                            PhotoPath = clientePhoto.LocalPath, 
+                            PhotoType = "CLIENTE", 
+                            DisplayName = "Cliente",
+                            Icon = "👤"
+                        });
+                    }
+                    
+                    if (contratoPhoto != null && File.Exists(contratoPhoto.LocalPath))
+                    {
+                        ContratoPhotoPath = contratoPhoto.LocalPath;
+                        AvailablePhotos.Add(new PhotoInfo 
+                        { 
+                            PhotoPath = contratoPhoto.LocalPath, 
+                            PhotoType = "CONTRATO", 
+                            DisplayName = "Contrato",
+                            Icon = "📄"
+                        });
+                    }
+                    
+                    if (adicionalPhoto != null && File.Exists(adicionalPhoto.LocalPath))
+                    {
+                        AdicionalPhotoPath = adicionalPhoto.LocalPath;
+                        AvailablePhotos.Add(new PhotoInfo 
+                        { 
+                            PhotoPath = adicionalPhoto.LocalPath, 
+                            PhotoType = "ADICIONAL", 
+                            DisplayName = "Adicional",
+                            Icon = "🖼️"
+                        });
+                    }
+                    
+                    System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] AvailablePhotos populated with {AvailablePhotos.Count} photos from local DB");
+                    
+                    // Set banner photo (prioritize first available)
+                    if (AvailablePhotos.Count > 0)
+                    {
+                        BannerPhotoPath = AvailablePhotos[0].PhotoPath;
+                        System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] Banner (Local): Using {AvailablePhotos[0].DisplayName}");
+                    }
                 });
             }
             else
@@ -414,11 +523,13 @@ public partial class SaleDetailPage : ContentPage
     {
         if (Sale == null) return;
         
-        // ⚡ OPTIMIZATION: Pass sale data directly to avoid API reload
-        var saleJson = JsonSerializer.Serialize(Sale);
-        var encodedJson = Uri.EscapeDataString(saleJson);
-        await Shell.Current.GoToAsync($"CreateSalePage?saleId={Sale.SaleId}&saleData={encodedJson}");
+        // ⚡ Pass object directly via in-memory cache — zero serialization cost
+        Services.PageDataCache.PendingEditSale = Sale;
+        await Shell.Current.GoToAsync($"CreateSalePage?saleId={Sale.SaleId}");
     }
+
+    private async void OnRegistrarCobroTapped(object? sender, EventArgs e)
+        => OnOpenRegistrarCobro();
 
     // ── Phone / WhatsApp ──
     private async Task CallClient()
@@ -463,20 +574,28 @@ public partial class SaleDetailPage : ContentPage
         catch { await DisplayAlert("Error", "No se pudo abrir el mapa.", "OK"); }
     }
 
-    // ── Cobrador actions ──
-    private async void OnPasarDespues(object? sender, EventArgs e)
+    // ── Navegar a RegistrarCobroPage ──
+    private async void OnOpenRegistrarCobro()
     {
-        await DisplayAlert("Acción", "Marcado: Pasar después", "OK");
-    }
+        if (Sale == null) return;
 
-    private async void OnPasarMasTarde(object? sender, EventArgs e)
-    {
-        await DisplayAlert("Acción", "Marcado: Pasar más tarde", "OK");
-    }
+        // Último abono (primero en la lista porque están ordenados desc)
+        var lastPayment = Payments.FirstOrDefault();
 
-    private async void OnProximaSemana(object? sender, EventArgs e)
-    {
-        await DisplayAlert("Acción", "Marcado: Próxima semana", "OK");
+        var ctx = new CobroContext
+        {
+            CustomerName        = Sale.CustomerName,
+            ProductName         = Sale.Items?.FirstOrDefault()?.ProductName ?? "",
+            ZoneName            = Sale.ZoneName ?? "",
+            SaleDate            = Sale.SaleDate,
+            FirstCollectionDate = Sale.FirstCollectionDate,
+            LastPaymentDate     = lastPayment?.PaymentDate,
+            Balance             = Sale.Balance,
+            TotalAmount         = Sale.TotalAmount
+        };
+
+        var json = Uri.EscapeDataString(System.Text.Json.JsonSerializer.Serialize(ctx));
+        await Shell.Current.GoToAsync($"RegistrarCobroPage?saleId={SaleId}&contextJson={json}");
     }
 
     private void UpdatePhotoLabel(Label label, string? path)
@@ -582,64 +701,6 @@ public partial class SaleDetailPage : ContentPage
         {
             System.Diagnostics.Debug.WriteLine($"[SaleDetail] Upload error: {ex.Message}");
             await DisplayAlert("Error", $"Error al seleccionar foto: {ex.Message}", "OK");
-        }
-    }
-
-    // ── Registrar abono ──
-    private async void OnRegistrarAbono(object? sender, EventArgs e)
-    {
-        if (!decimal.TryParse(EntryAbono.Text, out decimal monto) || monto <= 0)
-        {
-            await DisplayAlert("Validación", "Ingresa un importe válido", "OK");
-            return;
-        }
-        if (PickerEstatusAbono.SelectedIndex < 0)
-        {
-            await DisplayAlert("Validación", "Selecciona un estatus", "OK");
-            return;
-        }
-
-        try
-        {
-            var estatus = PickerEstatusAbono.SelectedItem?.ToString() ?? "";
-            var userIdStr = await SecureStorage.GetAsync("user_id");
-            int.TryParse(userIdStr, out int userId);
-
-            // Get GPS for abono
-            double lat = 0, lng = 0;
-            try
-            {
-                var loc = await Geolocation.GetLocationAsync(
-                    new GeolocationRequest(GeolocationAccuracy.Medium, TimeSpan.FromSeconds(5)));
-                if (loc != null) { lat = loc.Latitude; lng = loc.Longitude; }
-            }
-            catch { /* GPS optional for abono */ }
-
-            var payload = new
-            {
-                saleId = SaleId,
-                amount = monto,
-                paymentMethod = "EFECTIVO",
-                collectorId = userId > 0 ? userId : 1,
-                notes = $"{estatus} | GPS: {lat:F6},{lng:F6} | {EditorNotaCobrador.Text?.Trim()}"
-            };
-
-            var success = await _apiService.PostAsync<object>("api/payments", payload);
-            if (success)
-            {
-                await DisplayAlert("✅", $"Abono de ${monto:N2} registrado", "OK");
-                EntryAbono.Text = "";
-                EditorNotaCobrador.Text = "";
-                await LoadSaleDetail(); // Refresh
-            }
-            else
-            {
-                await DisplayAlert("Error", "No se pudo registrar el abono", "OK");
-            }
-        }
-        catch (Exception ex)
-        {
-            await DisplayAlert("Error", $"Error: {ex.Message}", "OK");
         }
     }
 
@@ -750,5 +811,26 @@ public partial class SaleDetailPage : ContentPage
         {
             IsImageViewerVisible = false;
         }
+    }
+
+    // ═══ Cobrador Action Bar ═══
+    private async void OnPasarDespues(object? sender, EventArgs e)
+    {
+        await DisplayAlert("Programado", "Se registró: pasar después", "OK");
+    }
+
+    private async void OnPasarMasTarde(object? sender, EventArgs e)
+    {
+        await DisplayAlert("Programado", "Se registró: pasar más tarde", "OK");
+    }
+
+    private async void OnProximaSemana(object? sender, EventArgs e)
+    {
+        await DisplayAlert("Programado", "Se registró: pasar próxima semana", "OK");
+    }
+
+    private async void OnRegistrarAbono(object? sender, EventArgs e)
+    {
+        await DisplayAlert("Abono", "Función de registro de abono pendiente de implementar", "OK");
     }
 }

@@ -23,8 +23,10 @@ public class RegisterPaymentCommandHandler : IRequestHandler<RegisterPaymentComm
             GpsLatitude = request.GpsLatitude,
             GpsLongitude = request.GpsLongitude,
             Notes = request.Notes,
+            CollectionActionId = request.CollectionActionId,
+            CollectionSubId = request.CollectionSubId,
             PaymentDate = DateTime.Now,
-            Status = "pending"
+            StatusId = 1
         };
 
         var paymentId = await _paymentRepository.RegisterPaymentAsync(payment);

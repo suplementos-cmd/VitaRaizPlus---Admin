@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:controls="clr-namespace:VitaRaiz.Mobile.Controls"
+             x:Class="VitaRaiz.Mobile.Controls.PageFrame"
+             x:Name="Root">
+
+    <!--
+        PageFrame - master layout wrapper.
+        Places AppHeader (top) + Body content (middle) + optional BottomNavBar (bottom)
+        so that every page shares the same chrome without repeating it.
+
+        Usage example:
+            controls:PageFrame Title="My Page"
+                               ShowBottomNav="True" ActiveTab="Home"
+                               RefreshClicked="OnRefresh"
+            followed by the body view as inner content.
+    -->
+
+    <Grid x:Name="RootGrid" RowDefinitions="Auto,*,Auto">
+
+        <!-- ═══ HEADER ═══ -->
+        <controls:AppHeader x:Name="PageHeader"
+                            Grid.Row="0"
+                            Title="{Binding Title,         Source={x:Reference Root}}"
+                            Subtitle="{Binding Subtitle,   Source={x:Reference Root}}"
+                            CanGoBack="{Binding CanGoBack,      Source={x:Reference Root}}"
+                            CanGoForward="{Binding CanGoForward, Source={x:Reference Root}}"
+                            ShowActions="{Binding ShowActions,   Source={x:Reference Root}}"
+                            CanSearch="{Binding CanSearch,     Source={x:Reference Root}}"
+                            SearchText="{Binding SearchText,   Source={x:Reference Root}, Mode=TwoWay}"
+                            ExtraIcon="{Binding ExtraIcon,     Source={x:Reference Root}}"
+                            ExtraIconVisible="{Binding ExtraIconVisible, Source={x:Reference Root}}"
+                            BackClicked="OnHeaderBackClicked"
+                            ForwardClicked="OnHeaderForwardClicked"
+                            RefreshClicked="OnHeaderRefreshClicked"
+                            LogoutClicked="OnHeaderLogoutClicked"
+                            SearchCompleted="OnHeaderSearchCompleted"
+                            ExtraIconClicked="OnHeaderExtraIconClicked" />
+
+        <!-- ═══ BODY SLOT ═══ -->
+        <ContentView x:Name="BodySlot" Grid.Row="1" />
+
+        <!-- ═══ BOTTOM NAV ═══ (hidden when ShowBottomNav=False) -->
+        <controls:BottomNavBar x:Name="NavBar"
+                               Grid.Row="2"
+                               ActiveTab="{Binding ActiveTab, Source={x:Reference Root}}"
+                               IsVisible="{Binding ShowBottomNav, Source={x:Reference Root}}" />
+
+    </Grid>
+</ContentView>

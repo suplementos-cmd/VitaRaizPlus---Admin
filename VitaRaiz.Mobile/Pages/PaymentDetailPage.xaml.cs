@@ -215,14 +215,14 @@ public partial class PaymentDetailPage : ContentPage
             {
                 paymentId = Payment.PaymentId,
                 amount = newAmount,
-                paymentDate = DatePayment.Date,
+                paymentDate = Payment.PaymentDate,        // fecha no editable — usar valor original
                 status = SelectedPaymentStatus.StatusCode,
-                notes = EditorNotes.Text?.Trim() ?? ""
+                notes = Payment.Notes ?? ""               // notas no editables — preservar valor
             };
 
-            var result = await _apiService.PutAsync<object, object>($"api/payments/{PaymentId}", payload);
+            var saved = await _apiService.PutAsync<object>($"api/payments/{PaymentId}", payload);
 
-            if (result != null)
+            if (saved)
             {
                 await DisplayAlert("✅", "Cambios guardados correctamente", "OK");
                 IsEditMode = false;

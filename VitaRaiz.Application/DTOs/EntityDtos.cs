@@ -53,3 +53,20 @@ public class SaleDetailDto
     public decimal UnitPrice { get; set; }
     public decimal Subtotal { get; set; }
 }
+
+/// <summary>
+/// Tema resuelto para un perfil/rol específico. Devuelto por GET /api/catalogs/theme/role/{roleId}
+/// </summary>
+public class ProfileThemeDto
+{
+    public int ThemeId { get; set; }
+    public int RoleId { get; set; }
+    public string ThemeName { get; set; } = string.Empty;
+    public string? RoleName { get; set; }
+    public string PrimaryColor { get; set; } = string.Empty;
+    public string? SecondaryColor { get; set; }
+    public string? AccentColor { get; set; }
+    public string? BackgroundColor { get; set; }
+    public string? TextColor { get; set; }
+    public string? IconName { get; set; }
+}

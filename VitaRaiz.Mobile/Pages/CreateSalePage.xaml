@@ -1,329 +1,964 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:controls="clr-namespace:VitaRaiz.Mobile.Controls"
              x:Class="VitaRaiz.Mobile.Pages.CreateSalePage"
              Shell.NavBarIsVisible="False"
              Shell.TabBarIsVisible="False"
-             BackgroundColor="#F8F4FC">
+             BackgroundColor="{AppThemeBinding Light=#F6F8F7, Dark=#101513}">
 
     <ContentPage.Resources>
-        <Style x:Key="LblField" TargetType="Label">
-            <Setter Property="FontSize" Value="11" />
-            <Setter Property="TextColor" Value="{DynamicResource ThemeColor}" />
-            <Setter Property="FontAttributes" Value="Bold" />
-            <Setter Property="Margin" Value="0,0,0,2" />
-        </Style>
-        <Style x:Key="FieldBorder" TargetType="Border">
-            <Setter Property="BackgroundColor" Value="White" />
+
+        <Style x:Key="SectionCard" TargetType="Border">
+            <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=White, Dark=#171E1B}" />
+            <Setter Property="Stroke" Value="{AppThemeBinding Light=#E4EBE7, Dark=#27312C}" />
             <Setter Property="StrokeThickness" Value="1" />
-            <Setter Property="Stroke" Value="{DynamicResource ThemeColorLighterHex}" />
-            <Setter Property="Padding" Value="10,4" />
+            <Setter Property="Padding" Value="10" />
             <Setter Property="StrokeShape">
-                <Setter.Value><RoundRectangle CornerRadius="8" /></Setter.Value>
+                <Setter.Value>
+                    <RoundRectangle CornerRadius="14" />
+                </Setter.Value>
             </Setter>
         </Style>
+
+        <Style x:Key="SectionTitle" TargetType="Label">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontAttributes" Value="Bold" />
+            <Setter Property="TextColor" Value="{AppThemeBinding Light=#111111, Dark=#F3F7F4}" />
+            <Setter Property="Margin" Value="0,0,0,1" />
+        </Style>
+
+        <Style x:Key="LblField" TargetType="Label">
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="FontAttributes" Value="Bold" />
+            <Setter Property="TextColor" Value="{AppThemeBinding Light=#3D3D3D, Dark=#93A39A}" />
+            <Setter Property="Margin" Value="1,0,0,2" />
+        </Style>
+
+        <Style x:Key="LblError" TargetType="Label">
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="TextColor" Value="#C62828" />
+            <Setter Property="Margin" Value="2,3,0,0" />
+            <Setter Property="IsVisible" Value="False" />
+        </Style>
+
+        <Style x:Key="FieldBox" TargetType="Border">
+            <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=#F3F6F4, Dark=#1D2622}" />
+            <Setter Property="Stroke" Value="{AppThemeBinding Light=#C8D4CC, Dark=#2A3430}" />
+            <Setter Property="StrokeThickness" Value="1" />
+            <Setter Property="Padding" Value="10,2" />
+            <Setter Property="MinimumHeightRequest" Value="46" />
+            <Setter Property="StrokeShape">
+                <Setter.Value>
+                    <RoundRectangle CornerRadius="12" />
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PickerBox" TargetType="Border" BasedOn="{StaticResource FieldBox}">
+            <Setter Property="Padding" Value="10,4" />
+            <Setter Property="MinimumHeightRequest" Value="52" />
+        </Style>
+
+        <Style x:Key="ReadOnlyBox" TargetType="Border">
+            <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=#EEF2F0, Dark=#1A211E}" />
+            <Setter Property="Stroke" Value="{AppThemeBinding Light=#E6ECE8, Dark=#29322E}" />
+            <Setter Property="StrokeThickness" Value="1" />
+            <Setter Property="Padding" Value="10,2" />
+            <Setter Property="MinimumHeightRequest" Value="46" />
+            <Setter Property="StrokeShape">
+                <Setter.Value>
+                    <RoundRectangle CornerRadius="12" />
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="FieldEntry" TargetType="Entry">
+            <Setter Property="BackgroundColor" Value="Transparent" />
+            <Setter Property="TextColor" Value="{AppThemeBinding Light=#111111, Dark=#F3F7F4}" />
+            <Setter Property="PlaceholderColor" Value="{AppThemeBinding Light=#97A79F, Dark=#778880}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="HeightRequest" Value="34" />
+            <Setter Property="MinimumHeightRequest" Value="0" />
+            <Setter Property="ClearButtonVisibility" Value="WhileEditing" />
+            <Setter Property="VerticalOptions" Value="Center" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="VisualStateManager.VisualStateGroups">
+                <VisualStateGroupList>
+                    <VisualStateGroup x:Name="CommonStates">
+                        <VisualState x:Name="Normal" />
+                        <VisualState x:Name="Disabled">
+                            <VisualState.Setters>
+                                <Setter Property="TextColor" Value="{AppThemeBinding Light=#AFBBB5, Dark=#64716B}" />
+                            </VisualState.Setters>
+                        </VisualState>
+                    </VisualStateGroup>
+                </VisualStateGroupList>
+            </Setter>
+        </Style>
+
+        <Style x:Key="FieldPicker" TargetType="Picker">
+            <Setter Property="BackgroundColor" Value="Transparent" />
+            <Setter Property="TextColor" Value="{AppThemeBinding Light=#111111, Dark=#F3F7F4}" />
+            <Setter Property="TitleColor" Value="{AppThemeBinding Light=#97A79F, Dark=#778880}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="HeightRequest" Value="40" />
+            <Setter Property="MinimumHeightRequest" Value="0" />
+            <Setter Property="VerticalOptions" Value="Center" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="VisualStateManager.VisualStateGroups">
+                <VisualStateGroupList>
+                    <VisualStateGroup x:Name="CommonStates">
+                        <VisualState x:Name="Normal" />
+                        <VisualState x:Name="Disabled">
+                            <VisualState.Setters>
+                                <Setter Property="TextColor" Value="{AppThemeBinding Light=#AFBBB5, Dark=#64716B}" />
+                                <Setter Property="TitleColor" Value="{AppThemeBinding Light=#AFBBB5, Dark=#64716B}" />
+                            </VisualState.Setters>
+                        </VisualState>
+                    </VisualStateGroup>
+                </VisualStateGroupList>
+            </Setter>
+        </Style>
+
+        <Style x:Key="FieldDatePicker" TargetType="DatePicker">
+            <Setter Property="BackgroundColor" Value="Transparent" />
+            <Setter Property="TextColor" Value="{AppThemeBinding Light=#111111, Dark=#F3F7F4}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="HeightRequest" Value="40" />
+            <Setter Property="MinimumHeightRequest" Value="0" />
+            <Setter Property="VerticalOptions" Value="Center" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="VisualStateManager.VisualStateGroups">
+                <VisualStateGroupList>
+                    <VisualStateGroup x:Name="CommonStates">
+                        <VisualState x:Name="Normal" />
+                        <VisualState x:Name="Disabled">
+                            <VisualState.Setters>
+                                <Setter Property="TextColor" Value="{AppThemeBinding Light=#AFBBB5, Dark=#64716B}" />
+                            </VisualState.Setters>
+                        </VisualState>
+                    </VisualStateGroup>
+                </VisualStateGroupList>
+            </Setter>
+        </Style>
+
+        <Style x:Key="FieldEditor" TargetType="Editor">
+            <Setter Property="BackgroundColor" Value="Transparent" />
+            <Setter Property="TextColor" Value="{AppThemeBinding Light=#111111, Dark=#F3F7F4}" />
+            <Setter Property="PlaceholderColor" Value="{AppThemeBinding Light=#97A79F, Dark=#778880}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="AutoSize" Value="TextChanges" />
+            <Setter Property="MinimumHeightRequest" Value="0" />
+            <Setter Property="Margin" Value="0" />
+        </Style>
+
+        <Style x:Key="PriceBadge" TargetType="Border">
+            <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=#EEF7F1, Dark=#1E2A24}" />
+            <Setter Property="StrokeThickness" Value="0" />
+            <Setter Property="Padding" Value="10,8" />
+            <Setter Property="StrokeShape">
+                <Setter.Value>
+                    <RoundRectangle CornerRadius="12" />
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PhotoTile" TargetType="Border">
+            <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=White, Dark=#171E1B}" />
+            <Setter Property="Stroke" Value="{AppThemeBinding Light=#E6ECE8, Dark=#27312C}" />
+            <Setter Property="StrokeThickness" Value="1" />
+            <Setter Property="Padding" Value="10" />
+            <Setter Property="StrokeShape">
+                <Setter.Value>
+                    <RoundRectangle CornerRadius="14" />
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PhotoPreview" TargetType="Border">
+            <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=#F1F5F3, Dark=#1F2824}" />
+            <Setter Property="StrokeThickness" Value="0" />
+            <Setter Property="HeightRequest" Value="84" />
+            <Setter Property="StrokeShape">
+                <Setter.Value>
+                    <RoundRectangle CornerRadius="10" />
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PhotoTitle" TargetType="Label">
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="FontAttributes" Value="Bold" />
+            <Setter Property="HorizontalOptions" Value="Center" />
+            <Setter Property="TextColor" Value="{AppThemeBinding Light=#203028, Dark=#E6F0EA}" />
+        </Style>
+
+        <Style x:Key="PhotoState" TargetType="Label">
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="HorizontalOptions" Value="Center" />
+            <Setter Property="VerticalOptions" Value="Center" />
+            <Setter Property="TextColor" Value="{AppThemeBinding Light=#9CACA4, Dark=#72837B}" />
+        </Style>
+
+        <Style x:Key="PhotoBtn" TargetType="Button">
+            <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=#EDF4F0, Dark=#212C27}" />
+            <Setter Property="TextColor" Value="{DynamicResource ThemeColor}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontAttributes" Value="Bold" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="HeightRequest" Value="34" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="BorderWidth" Value="0" />
+        </Style>
+
+        <Style x:Key="PrimaryFooterButton" TargetType="Button">
+            <Setter Property="BackgroundColor" Value="{DynamicResource ThemeColor}" />
+            <Setter Property="TextColor" Value="White" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontAttributes" Value="Bold" />
+            <Setter Property="CornerRadius" Value="14" />
+            <Setter Property="HeightRequest" Value="46" />
+            <Setter Property="Padding" Value="14,0" />
+        </Style>
+
+        <Style x:Key="SecondaryFooterButton" TargetType="Button">
+            <Setter Property="BackgroundColor" Value="Transparent" />
+            <Setter Property="TextColor" Value="{AppThemeBinding Light=#4F6158, Dark=#A7B7AF}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontAttributes" Value="Bold" />
+            <Setter Property="CornerRadius" Value="14" />
+            <Setter Property="HeightRequest" Value="46" />
+            <Setter Property="Padding" Value="14,0" />
+            <Setter Property="BorderWidth" Value="1" />
+            <Setter Property="BorderColor" Value="{AppThemeBinding Light=#DDE6E1, Dark=#2B3530}" />
+        </Style>
+
     </ContentPage.Resources>
 
-    <Grid RowDefinitions="Auto,*,Auto">
+    <controls:PageFrame x:Name="PageHeader"
+                        Title="Alta Venta"
+                        CanGoBack="True"
+                        ShowActions="False"
+                        BackClicked="OnBackTapped">
 
-        <!-- ═══ HEADER ═══ -->
-        <Border Grid.Row="0" StrokeThickness="0" BackgroundColor="{DynamicResource ThemeColor}"
-                Shadow="{Shadow Brush='#44000000', Offset='0,3', Radius=8}">
-            <Grid Padding="14,16" ColumnDefinitions="Auto,*,Auto">
-                <Label Grid.Column="0" Text="✕" FontSize="22" TextColor="White" VerticalOptions="Center" Padding="6,0" FontAttributes="Bold">
-                    <Label.GestureRecognizers>
-                        <TapGestureRecognizer Tapped="OnBackTapped" />
-                    </Label.GestureRecognizers>
-                </Label>
-                <Label Grid.Column="1" x:Name="LblPageTitle" Text="  ✏ Alta Venta" FontSize="18" FontAttributes="Bold"
-                       TextColor="White" VerticalOptions="Center" />
-                <Label Grid.Column="2" Text="📍" FontSize="18" TextColor="{DynamicResource ThemeColorLightHex}" VerticalOptions="Center">
-                    <Label.FormattedText>
-                        <FormattedString>
-                            <Span Text="📍 " FontSize="14" />
-                            <Span x:Name="LblGpsShort" Text="..." FontSize="11" TextColor="{DynamicResource ThemeColorLightHex}" />
-                        </FormattedString>
-                    </Label.FormattedText>
-                </Label>
-            </Grid>
-        </Border>
+        <controls:PageFrame.Body>
+            <Grid RowDefinitions="*,Auto">
 
-        <!-- ═══ FORM ═══ -->
-        <ScrollView Grid.Row="1" Padding="14,10">
-            <VerticalStackLayout Spacing="10">
+                <Label x:Name="LblGpsShort" IsVisible="False" />
 
-                <!-- ROW 1: FECHA VENTA | FECHA PRIMER COBRO -->
-                <Grid ColumnDefinitions="*,8,*">
-                    <VerticalStackLayout Grid.Column="0" Spacing="2">
-                        <Label Text="📅 FECHA VENTA" Style="{StaticResource LblField}" />
-                        <Border Style="{StaticResource FieldBorder}" Padding="6,2">
-                            <DatePicker x:Name="DpFechaVenta" Format="dd/MM/yyyy" TextColor="#333" FontSize="13" />
+                <ScrollView x:Name="MainScrollView"
+                            Grid.Row="0"
+                            VerticalScrollBarVisibility="Never">
+                    <VerticalStackLayout Padding="12,10,12,12"
+                                         Spacing="6">
+
+                        <Border Style="{StaticResource SectionCard}">
+                            <VerticalStackLayout Spacing="8">
+                                <Label Text="Datos de la venta"
+                                       Style="{StaticResource SectionTitle}" />
+
+                                <Grid ColumnDefinitions="*,6,*"
+                                      ColumnSpacing="6">
+                                    <VerticalStackLayout Grid.Column="0" Spacing="3">
+                                        <Label Text="Fecha de venta" Style="{StaticResource LblField}" />
+                                        <Border Style="{StaticResource PickerBox}">
+                                            <DatePicker x:Name="DpFechaVenta"
+                                                        Format="dd/MM/yyyy"
+                                                        Style="{StaticResource FieldDatePicker}" />
+                                        </Border>
+                                    </VerticalStackLayout>
+
+                                    <VerticalStackLayout Grid.Column="2" Spacing="3">
+                                        <Label Text="Fecha primer abono" Style="{StaticResource LblField}" />
+                                        <Border Style="{StaticResource PickerBox}">
+                                            <DatePicker x:Name="DpPrimerCobro"
+                                                        Format="dd/MM/yyyy"
+                                                        Style="{StaticResource FieldDatePicker}" />
+                                        </Border>
+                                    </VerticalStackLayout>
+                                </Grid>
+
+                                <VerticalStackLayout Spacing="6">
+
+                                    <!-- Forma de pago – chip selector -->
+                                    <VerticalStackLayout Spacing="4">
+                                        <Label Text="Forma de pago" Style="{StaticResource LblField}" />
+
+                                        <!-- Hidden picker – preserves code-behind API -->
+                                        <Picker x:Name="PickerFormaPago"
+                                                IsVisible="False"
+                                                HeightRequest="0"
+                                                MinimumHeightRequest="0"
+                                                SelectedIndexChanged="OnFormaPago_SelectedIndexChanged">
+                                            <Picker.ItemsSource>
+                                                <x:Array Type="{x:Type x:String}">
+                                                    <x:String>SEMANAL</x:String> 
+                                                    <x:String>CONTADO</x:String>
+                                                </x:Array>
+                                            </Picker.ItemsSource>
+                                        </Picker>
+
+                                        <!-- Chip container card -->
+                                        <Border BackgroundColor="Transparent"
+                                                Stroke="Transparent"
+                                                StrokeThickness="0"
+                                                Padding="0,2">
+                                            <Border.StrokeShape>
+                                                <RoundRectangle CornerRadius="13" />
+                                            </Border.StrokeShape>
+                                            <Grid ColumnDefinitions="*,*" ColumnSpacing="4">
+
+                                                <!-- SEMANAL -->
+                                                <Border x:Name="ChipSemanal" Grid.Column="0"
+                                                        BackgroundColor="{AppThemeBinding Light=#DDE6E0, Dark=#222B27}"
+                                                        StrokeThickness="0" Padding="0,9">
+                                                    <Border.StrokeShape>
+                                                        <RoundRectangle CornerRadius="50" />
+                                                    </Border.StrokeShape>
+                                                    <Border.GestureRecognizers>
+                                                        <TapGestureRecognizer Tapped="OnFormaPagoChipTapped" CommandParameter="0" />
+                                                    </Border.GestureRecognizers>
+                                                    <Label x:Name="LblChipSemanal" Text="Semanal"
+                                                           FontSize="9" FontAttributes="Bold"
+                                                           TextColor="{AppThemeBinding Light=#6E7D75, Dark=#8A9A92}"
+                                                           HorizontalOptions="Center" VerticalOptions="Center" Margin="0" />
+                                                </Border>
+                                                <!-- CONTADO -->
+                                                <Border x:Name="ChipContado" Grid.Column="3"
+                                                        BackgroundColor="{AppThemeBinding Light=#DDE6E0, Dark=#222B27}"
+                                                        StrokeThickness="0" Padding="0,9">
+                                                    <Border.StrokeShape>
+                                                        <RoundRectangle CornerRadius="50" />
+                                                    </Border.StrokeShape>
+                                                    <Border.GestureRecognizers>
+                                                        <TapGestureRecognizer Tapped="OnFormaPagoChipTapped" CommandParameter="3" />
+                                                    </Border.GestureRecognizers>
+                                                    <Label x:Name="LblChipContado" Text="Contado"
+                                                           FontSize="9" FontAttributes="Bold"
+                                                           TextColor="{AppThemeBinding Light=#6E7D75, Dark=#8A9A92}"
+                                                           HorizontalOptions="Center" VerticalOptions="Center" Margin="0" />
+                                                </Border>
+
+                                            </Grid>
+                                        </Border>
+
+                                        <Label x:Name="ErrFormaPago"
+                                               Text="⚠ Campo obligatorio"
+                                               Style="{StaticResource LblError}" />
+                                    </VerticalStackLayout>
+
+                                    <!-- Día de abono – chip selector -->
+                                    <VerticalStackLayout Spacing="4">
+                                        <Label Text="Día de abono" Style="{StaticResource LblField}" />
+
+                                        <!-- Hidden picker – preserves code-behind SelectedIndex/SelectedItem/Items API -->
+                                        <Picker x:Name="PickerDiaCobro"
+                                                IsVisible="False"
+                                                HeightRequest="0"
+                                                MinimumHeightRequest="0"
+                                                SelectedIndexChanged="OnDiaCobro_SelectedIndexChanged">
+                                            <Picker.ItemsSource>
+                                                <x:Array Type="{x:Type x:String}">
+                                                    <x:String>LUN</x:String>
+                                                    <x:String>MAR</x:String>
+                                                    <x:String>MIE</x:String>
+                                                    <x:String>JUE</x:String>
+                                                    <x:String>VIE</x:String> 
+                                                </x:Array>
+                                            </Picker.ItemsSource>
+                                        </Picker>
+
+                                        <!-- Chip container card -->
+                                        <Border BackgroundColor="Transparent"
+                                                Stroke="Transparent"
+                                                StrokeThickness="0"
+                                                Padding="0,2">
+                                            <Border.StrokeShape>
+                                                <RoundRectangle CornerRadius="13" />
+                                            </Border.StrokeShape>
+                                            <Grid ColumnDefinitions="*,*,*,*,*" ColumnSpacing="4">
+
+                                                <!-- LUN -->
+                                                <Border x:Name="ChipLun" Grid.Column="0"
+                                                        BackgroundColor="{AppThemeBinding Light=#DDE6E0, Dark=#222B27}"
+                                                        StrokeThickness="0" Padding="0,9">
+                                                    <Border.StrokeShape>
+                                                        <RoundRectangle CornerRadius="50" />
+                                                    </Border.StrokeShape>
+                                                    <Border.GestureRecognizers>
+                                                        <TapGestureRecognizer Tapped="OnDayChipTapped" CommandParameter="0" />
+                                                    </Border.GestureRecognizers>
+                                                    <Label x:Name="LblChipLun" Text="LUN"
+                                                           FontSize="9" FontAttributes="Bold"
+                                                           TextColor="{AppThemeBinding Light=#6E7D75, Dark=#8A9A92}"
+                                                           HorizontalOptions="Center" VerticalOptions="Center" Margin="0" />
+                                                </Border>
+
+                                                <!-- MAR -->
+                                                <Border x:Name="ChipMar" Grid.Column="1"
+                                                        BackgroundColor="{AppThemeBinding Light=#DDE6E0, Dark=#222B27}"
+                                                        StrokeThickness="0" Padding="0,9">
+                                                    <Border.StrokeShape>
+                                                        <RoundRectangle CornerRadius="50" />
+                                                    </Border.StrokeShape>
+                                                    <Border.GestureRecognizers>
+                                                        <TapGestureRecognizer Tapped="OnDayChipTapped" CommandParameter="1" />
+                                                    </Border.GestureRecognizers>
+                                                    <Label x:Name="LblChipMar" Text="MAR"
+                                                           FontSize="9" FontAttributes="Bold"
+                                                           TextColor="{AppThemeBinding Light=#6E7D75, Dark=#8A9A92}"
+                                                           HorizontalOptions="Center" VerticalOptions="Center" Margin="0" />
+                                                </Border>
+
+                                                <!-- MIE -->
+                                                <Border x:Name="ChipMie" Grid.Column="2"
+                                                        BackgroundColor="{AppThemeBinding Light=#DDE6E0, Dark=#222B27}"
+                                                        StrokeThickness="0" Padding="0,9">
+                                                    <Border.StrokeShape>
+                                                        <RoundRectangle CornerRadius="50" />
+                                                    </Border.StrokeShape>
+                                                    <Border.GestureRecognizers>
+                                                        <TapGestureRecognizer Tapped="OnDayChipTapped" CommandParameter="2" />
+                                                    </Border.GestureRecognizers>
+                                                    <Label x:Name="LblChipMie" Text="MIE"
+                                                           FontSize="9" FontAttributes="Bold"
+                                                           TextColor="{AppThemeBinding Light=#6E7D75, Dark=#8A9A92}"
+                                                           HorizontalOptions="Center" VerticalOptions="Center" Margin="0" />
+                                                </Border>
+
+                                                <!-- JUE -->
+                                                <Border x:Name="ChipJue" Grid.Column="3"
+                                                        BackgroundColor="{AppThemeBinding Light=#DDE6E0, Dark=#222B27}"
+                                                        StrokeThickness="0" Padding="0,9">
+                                                    <Border.StrokeShape>
+                                                        <RoundRectangle CornerRadius="50" />
+                                                    </Border.StrokeShape>
+                                                    <Border.GestureRecognizers>
+                                                        <TapGestureRecognizer Tapped="OnDayChipTapped" CommandParameter="3" />
+                                                    </Border.GestureRecognizers>
+                                                    <Label x:Name="LblChipJue" Text="JUE"
+                                                           FontSize="9" FontAttributes="Bold"
+                                                           TextColor="{AppThemeBinding Light=#6E7D75, Dark=#8A9A92}"
+                                                           HorizontalOptions="Center" VerticalOptions="Center" Margin="0" />
+                                                </Border>
+
+                                                <!-- VIE -->
+                                                <Border x:Name="ChipVie" Grid.Column="4"
+                                                        BackgroundColor="{AppThemeBinding Light=#DDE6E0, Dark=#222B27}"
+                                                        StrokeThickness="0" Padding="0,9">
+                                                    <Border.StrokeShape>
+                                                        <RoundRectangle CornerRadius="50" />
+                                                    </Border.StrokeShape>
+                                                    <Border.GestureRecognizers>
+                                                        <TapGestureRecognizer Tapped="OnDayChipTapped" CommandParameter="4" />
+                                                    </Border.GestureRecognizers>
+                                                    <Label x:Name="LblChipVie" Text="VIE"
+                                                           FontSize="9" FontAttributes="Bold"
+                                                           TextColor="{AppThemeBinding Light=#6E7D75, Dark=#8A9A92}"
+                                                           HorizontalOptions="Center" VerticalOptions="Center" Margin="0" />
+                                                </Border> 
+                                            </Grid>
+                                        </Border>
+
+                                        <Label x:Name="ErrDiaCobro"
+                                               Text="⚠ Selecciona día de abono"
+                                               Style="{StaticResource LblError}" />
+                                    </VerticalStackLayout>
+
+                                </VerticalStackLayout>
+
+                                
+
+                                <VerticalStackLayout Spacing="3">
+                                    <Label Text="Estatus de Venta" Style="{StaticResource LblField}" />
+                                    <Border Style="{StaticResource PickerBox}">
+                                        <Picker x:Name="PickerEstatus" 
+                                                ItemsSource="{Binding SaleStatuses}"
+                                                ItemDisplayBinding="{Binding StatusName}"
+                                                SelectedItem="{Binding SelectedSaleStatus}"
+                                                Style="{StaticResource FieldPicker}" />
+                                    </Border>
+                                </VerticalStackLayout>
+                            </VerticalStackLayout>
+                        </Border>
+
+                        <Border Style="{StaticResource SectionCard}">
+                            <VerticalStackLayout Spacing="8">
+                                <Label Text="Datos del Cliente"
+                                       Style="{StaticResource SectionTitle}" />
+
+                                <VerticalStackLayout Spacing="3">
+                                    <Label Text="Nombre" Style="{StaticResource LblField}" />
+                                    <Border x:Name="BorderNombre" Style="{StaticResource FieldBox}">
+                                        <Entry x:Name="EntryNombre"
+                                               Placeholder="Nombre del cliente"
+                                               Keyboard="Text"
+                                               IsTextPredictionEnabled="True"
+                                               IsSpellCheckEnabled="True"
+                                               TextTransform="Uppercase"
+                                               TextChanged="OnNombreTextChanged"
+                                               Focused="OnEntryFocused"
+                                               Unfocused="OnEntryUnfocused"
+                                               Style="{StaticResource FieldEntry}" />
+                                    </Border>
+                                    <Label x:Name="ErrNombre"
+                                           Text="⚠ Nombre obligatorio"
+                                           Style="{StaticResource LblError}" />
+                                </VerticalStackLayout>
+
+                                <VerticalStackLayout Spacing="3">
+                                    <Label Text="Telefono Cliente" Style="{StaticResource LblField}" />
+                                     <Border x:Name="BorderCelular" Style="{StaticResource FieldBox}">
+                                        <Entry x:Name="EntryCelular"
+                                               Placeholder="Celular"
+                                               Keyboard="Telephone"
+                                               MaxLength="10"
+                                               TextChanged="OnCelularTextChanged"
+                                               Focused="OnEntryFocused"
+                                               Unfocused="OnEntryUnfocused"
+                                               Style="{StaticResource FieldEntry}" />
+                                    </Border>
+                                    <Label x:Name="ErrCelular"
+                                           Text="⚠ Celular obligatorio (10 dígitos)"
+                                           Style="{StaticResource LblError}" />
+                                </VerticalStackLayout>
+                            </VerticalStackLayout>
+                        </Border>
+
+                        <Border Style="{StaticResource SectionCard}">
+                            <VerticalStackLayout Spacing="8">
+                                <Label Text="Domicilio"
+                                       Style="{StaticResource SectionTitle}" />
+
+                                <VerticalStackLayout Spacing="3">
+                                    <Label Text="Zona/Colonia" Style="{StaticResource LblField}" />
+                                    <Border Style="{StaticResource PickerBox}">
+                                        <Picker x:Name="PickerZone" 
+                                                ItemDisplayBinding="{Binding ZoneName}"
+                                                SelectedIndexChanged="OnZoneSelected"
+                                                Style="{StaticResource FieldPicker}" />
+                                    </Border>
+                                    <Label x:Name="ErrZona"
+                                           Text="⚠ Selecciona una zona"
+                                           Style="{StaticResource LblError}" />
+                                </VerticalStackLayout>
+
+                                <VerticalStackLayout Spacing="3">
+                                    <Label Text="Datos de calle #" Style="{StaticResource LblField}" />
+                                    <Border Style="{StaticResource FieldBox}">
+                                        <Entry x:Name="EntryCalle"
+                                               Placeholder="Calle y número exterior"
+                                               Focused="OnEntryFocused"
+                                               Unfocused="OnEntryUnfocused"
+                                               Style="{StaticResource FieldEntry}" />
+                                    </Border>
+                                </VerticalStackLayout>
+
+                                <VerticalStackLayout Spacing="3">
+                                    <Label Text="Entre las calles" Style="{StaticResource LblField}" />
+                                    <Grid ColumnDefinitions="*,22,*"
+                                          ColumnSpacing="6">
+                                        <Border Grid.Column="0" Style="{StaticResource FieldBox}">
+                                            <Entry x:Name="EntryEntreCalle1"
+                                                   Placeholder="Calle A"
+                                                   Focused="OnEntryFocused"
+                                                   Unfocused="OnEntryUnfocused"
+                                                   Style="{StaticResource FieldEntry}" />
+                                        </Border>
+
+                                        <Label Grid.Column="1"
+                                               Text="y"
+                                               FontSize="12"
+                                               TextColor="{AppThemeBinding Light=#90A097, Dark=#7D8D85}"
+                                               HorizontalOptions="Center"
+                                               VerticalOptions="Center" />
+
+                                        <Border Grid.Column="2" Style="{StaticResource FieldBox}">
+                                            <Entry x:Name="EntryEntreCalle2"
+                                                   Placeholder="Calle B"
+                                                   Focused="OnEntryFocused"
+                                                   Unfocused="OnEntryUnfocused"
+                                                   Style="{StaticResource FieldEntry}" />
+                                        </Border>
+                                    </Grid>
+                                </VerticalStackLayout>
+
+                                <VerticalStackLayout Spacing="3">
+                                   <Border Style="{StaticResource FieldBox}">
+                                        <Entry x:Name="EntryReferencia"
+                                               Placeholder="Referencia Domicilio, Color, Pisos, Casa A lado en frente"
+                                               Focused="OnEntryFocused"
+                                               Unfocused="OnEntryUnfocused"
+                                               Style="{StaticResource FieldEntry}" />
+                                    </Border>
+                                </VerticalStackLayout>
+
+                                <VerticalStackLayout Spacing="3">
+                                    <Label Text="Coordenadas" Style="{StaticResource LblField}" />
+                                    <Border Style="{StaticResource ReadOnlyBox}">
+                                        <Grid ColumnDefinitions="Auto,*"
+                                              ColumnSpacing="6">
+                                            <Label Grid.Column="0"
+                                                   Text="📍"
+                                                   FontSize="12"
+                                                   TextColor="{AppThemeBinding Light=#AAB7B0, Dark=#78857F}"
+                                                   VerticalOptions="Center" />
+                                            <Entry x:Name="EntryCoords"
+                                                   Grid.Column="1"
+                                                   IsReadOnly="True"
+                                                   Placeholder="Obteniendo ubicación..."
+                                                   PlaceholderColor="{AppThemeBinding Light=#AAB7B0, Dark=#78857F}"
+                                                   TextColor="{AppThemeBinding Light=#8A9891, Dark=#89968F}"
+                                                   FontSize="12"
+                                                   FontAttributes="Italic"
+                                                   BackgroundColor="Transparent"
+                                                   VerticalOptions="Center" />
+                                        </Grid>
+                                    </Border>
+                                </VerticalStackLayout>
+                            </VerticalStackLayout>
+                        </Border>
+
+                        <Border Style="{StaticResource SectionCard}">
+                            <VerticalStackLayout Spacing="8">
+                                <Label Text="Producto"
+                                       Style="{StaticResource SectionTitle}" />
+
+                                <VerticalStackLayout Spacing="3">
+                                    <Label Text="Producto D-Mundo" Style="{StaticResource LblField}" />
+                                    <Border Style="{StaticResource PickerBox}">
+                                        <Picker x:Name="PickerProduct" 
+                                                ItemDisplayBinding="{Binding ProductDisplay}"
+                                                SelectedIndexChanged="OnProductSelected"
+                                                Style="{StaticResource FieldPicker}" />
+                                    </Border>
+                                    <Label x:Name="ErrProducto"
+                                           Text="⚠ Selecciona un producto"
+                                           Style="{StaticResource LblError}" />
+                                </VerticalStackLayout>
+
+                                <Label x:Name="LblPrice"
+                                       Text=""
+                                       IsVisible="False"
+                                       HeightRequest="0"
+                                       Opacity="0" />
+
+                                <Label Text="Importe enganche" Style="{StaticResource LblField}" />
+                                <Border Style="{StaticResource FieldBox}">
+                                <Entry x:Name="EntryEnganche"
+                                       Placeholder="Importe de enganche"
+                                       Keyboard="Numeric"
+                                       TextChanged="OnEngancheTextChanged"
+                                       Focused="OnEntryFocused"
+                                       Unfocused="OnEntryUnfocused"
+                                       Style="{StaticResource FieldEntry}" />
+                                </Border>
+                                
+                            </VerticalStackLayout>
+                            
+                            
+                        </Border>
+                        
+
+                        <Border Style="{StaticResource SectionCard}">
+                            <VerticalStackLayout Spacing="8">
+                                <Label Text="Fotos"
+                                       Style="{StaticResource SectionTitle}" />
+
+                                <Grid ColumnDefinitions="*,8,*"
+                                      RowDefinitions="Auto,Auto"
+                                      ColumnSpacing="8"
+                                      RowSpacing="8">
+
+                                    <Border Grid.Row="0" Grid.Column="0" Style="{StaticResource PhotoTile}">
+                                        <VerticalStackLayout Spacing="7">
+                                            <Label Text="FACHADA *" Style="{StaticResource PhotoTitle}" />
+                                            <Border Style="{StaticResource PhotoPreview}">
+                                                <Grid>
+                                                    <Image x:Name="ImgFachada"
+                                                           Aspect="AspectFill"
+                                                           IsVisible="False">
+                                                        <Image.Clip>
+                                                            <RoundRectangleGeometry Rect="0,0,400,84" CornerRadius="10" />
+                                                        </Image.Clip>
+                                                    </Image>
+                                                    <Label x:Name="LblFotoFachada"
+                                                           Text="Sin foto"
+                                                           Style="{StaticResource PhotoState}"
+                                                           IsVisible="True" />
+                                                    <Border x:Name="BtnClearFachada" IsVisible="False"
+                                                            BackgroundColor="#CC1A1A1A"
+                                                            StrokeThickness="0"
+                                                            HeightRequest="24" WidthRequest="24"
+                                                            HorizontalOptions="End" VerticalOptions="Start"
+                                                            Margin="0,5,5,0">
+                                                        <Border.StrokeShape>
+                                                            <RoundRectangle CornerRadius="12" />
+                                                        </Border.StrokeShape>
+                                                        <Border.GestureRecognizers>
+                                                            <TapGestureRecognizer Tapped="OnClearFoto" CommandParameter="fachada" />
+                                                        </Border.GestureRecognizers>
+                                                        <Label Text="✕" FontSize="11" FontAttributes="Bold" TextColor="White"
+                                                               HorizontalOptions="Center" VerticalOptions="Center" Margin="0" />
+                                                    </Border>
+                                                </Grid>
+                                            </Border>
+                                            <Grid ColumnDefinitions="*,6,*" ColumnSpacing="6">
+                                                <Button Grid.Column="0"
+                                                        Text="📷"
+                                                        Style="{StaticResource PhotoBtn}"
+                                                        Clicked="OnCameraFachada" />
+                                                <Button Grid.Column="2"
+                                                        Text="📂"
+                                                        Style="{StaticResource PhotoBtn}"
+                                                        Clicked="OnUploadFachada" />
+                                            </Grid>
+                                        </VerticalStackLayout>
+                                    </Border>
+
+                                    <Border Grid.Row="0" Grid.Column="2" Style="{StaticResource PhotoTile}">
+                                        <VerticalStackLayout Spacing="7">
+                                            <Label Text="CLIENTE" Style="{StaticResource PhotoTitle}" />
+                                            <Border Style="{StaticResource PhotoPreview}">
+                                                <Grid>
+                                                    <Image x:Name="ImgCliente"
+                                                           Aspect="AspectFill"
+                                                           IsVisible="False">
+                                                        <Image.Clip>
+                                                            <RoundRectangleGeometry Rect="0,0,400,84" CornerRadius="10" />
+                                                        </Image.Clip>
+                                                    </Image>
+                                                    <Label x:Name="LblFotoCliente"
+                                                           Text="Sin foto"
+                                                           Style="{StaticResource PhotoState}"
+                                                           IsVisible="True" />
+                                                    <Border x:Name="BtnClearCliente" IsVisible="False"
+                                                            BackgroundColor="#CC1A1A1A"
+                                                            StrokeThickness="0"
+                                                            HeightRequest="24" WidthRequest="24"
+                                                            HorizontalOptions="End" VerticalOptions="Start"
+                                                            Margin="0,5,5,0">
+                                                        <Border.StrokeShape>
+                                                            <RoundRectangle CornerRadius="12" />
+                                                        </Border.StrokeShape>
+                                                        <Border.GestureRecognizers>
+                                                            <TapGestureRecognizer Tapped="OnClearFoto" CommandParameter="cliente" />
+                                                        </Border.GestureRecognizers>
+                                                        <Label Text="✕" FontSize="11" FontAttributes="Bold" TextColor="White"
+                                                               HorizontalOptions="Center" VerticalOptions="Center" Margin="0" />
+                                                    </Border>
+                                                </Grid>
+                                            </Border>
+                                            <Grid ColumnDefinitions="*,6,*" ColumnSpacing="6">
+                                                <Button Grid.Column="0"
+                                                        Text="📷"
+                                                        Style="{StaticResource PhotoBtn}"
+                                                        Clicked="OnCameraCliente" />
+                                                <Button Grid.Column="2"
+                                                        Text="📂"
+                                                        Style="{StaticResource PhotoBtn}"
+                                                        Clicked="OnUploadCliente" />
+                                            </Grid>
+                                        </VerticalStackLayout>
+                                    </Border>
+
+                                    <Border Grid.Row="1" Grid.Column="0" Style="{StaticResource PhotoTile}">
+                                        <VerticalStackLayout Spacing="7">
+                                            <Label Text="CONTRATO" Style="{StaticResource PhotoTitle}" />
+                                            <Border Style="{StaticResource PhotoPreview}">
+                                            <Border Style="{StaticResource PhotoPreview}">
+                                                <Grid>
+                                                    <Image x:Name="ImgContrato"
+                                                           Aspect="AspectFill"
+                                                           IsVisible="False">
+                                                        <Image.Clip>
+                                                            <RoundRectangleGeometry Rect="0,0,400,84" CornerRadius="10" />
+                                                        </Image.Clip>
+                                                    </Image>
+                                                    <Label x:Name="LblFotoContrato"
+                                                           Text="Sin foto"
+                                                           Style="{StaticResource PhotoState}"
+                                                           IsVisible="True" />
+                                                    <Border x:Name="BtnClearContrato" IsVisible="False"
+                                                            BackgroundColor="#CC1A1A1A"
+                                                            StrokeThickness="0"
+                                                            HeightRequest="24" WidthRequest="24"
+                                                            HorizontalOptions="End" VerticalOptions="Start"
+                                                            Margin="0,5,5,0">
+                                                        <Border.StrokeShape>
+                                                            <RoundRectangle CornerRadius="12" />
+                                                        </Border.StrokeShape>
+                                                        <Border.GestureRecognizers>
+                                                            <TapGestureRecognizer Tapped="OnClearFoto" CommandParameter="contrato" />
+                                                        </Border.GestureRecognizers>
+                                                        <Label Text="✕" FontSize="11" FontAttributes="Bold" TextColor="White"
+                                                               HorizontalOptions="Center" VerticalOptions="Center" Margin="0" />
+                                                    </Border>
+                                                </Grid>
+                                            </Border>
+                                            </Border>
+                                            <Grid ColumnDefinitions="*,6,*" ColumnSpacing="6">
+                                                <Button Grid.Column="0"
+                                                        Text="📷"
+                                                        Style="{StaticResource PhotoBtn}"
+                                                        Clicked="OnCameraContrato" />
+                                                <Button Grid.Column="2"
+                                                        Text="📂"
+                                                        Style="{StaticResource PhotoBtn}"
+                                                        Clicked="OnUploadContrato" />
+                                            </Grid>
+                                        </VerticalStackLayout>
+                                    </Border>
+
+                                    <Border Grid.Row="1" Grid.Column="2" Style="{StaticResource PhotoTile}">
+                                        <VerticalStackLayout Spacing="7">
+                                            <Label Text="ADICIONAL" Style="{StaticResource PhotoTitle}" />
+                                            <Border Style="{StaticResource PhotoPreview}">
+                                                <Grid>
+                                                    <Image x:Name="ImgAdicional"
+                                                           Aspect="AspectFill"
+                                                           IsVisible="False">
+                                                        <Image.Clip>
+                                                            <RoundRectangleGeometry Rect="0,0,400,84" CornerRadius="10" />
+                                                        </Image.Clip>
+                                                    </Image>
+                                                    <Label x:Name="LblFotoAdicional"
+                                                           Text="Sin foto"
+                                                           Style="{StaticResource PhotoState}"
+                                                           IsVisible="True" />
+                                                    <Border x:Name="BtnClearAdicional" IsVisible="False"
+                                                            BackgroundColor="#CC1A1A1A"
+                                                            StrokeThickness="0"
+                                                            HeightRequest="24" WidthRequest="24"
+                                                            HorizontalOptions="End" VerticalOptions="Start"
+                                                            Margin="0,5,5,0">
+                                                        <Border.StrokeShape>
+                                                            <RoundRectangle CornerRadius="12" />
+                                                        </Border.StrokeShape>
+                                                        <Border.GestureRecognizers>
+                                                            <TapGestureRecognizer Tapped="OnClearFoto" CommandParameter="adicional" />
+                                                        </Border.GestureRecognizers>
+                                                        <Label Text="✕" FontSize="11" FontAttributes="Bold" TextColor="White"
+                                                               HorizontalOptions="Center" VerticalOptions="Center" Margin="0" />
+                                                    </Border>
+                                                </Grid>
+                                            </Border>
+                                            <Grid ColumnDefinitions="*,6,*" ColumnSpacing="6">
+                                                <Button Grid.Column="0"
+                                                        Text="📷"
+                                                        Style="{StaticResource PhotoBtn}"
+                                                        Clicked="OnCameraAdicional" />
+                                                <Button Grid.Column="2"
+                                                        Text="📂"
+                                                        Style="{StaticResource PhotoBtn}"
+                                                        Clicked="OnUploadAdicional" />
+                                            </Grid>
+                                        </VerticalStackLayout>
+                                    </Border>
+                                </Grid>
+
+                                <Label x:Name="ErrFachada"
+                                       Text="⚠ Foto de fachada requerida"
+                                       Style="{StaticResource LblError}" />
+                            </VerticalStackLayout>
+                        </Border>
+
+                        <Border Style="{StaticResource SectionCard}">
+                            <VerticalStackLayout Spacing="8">
+                                <Label Text="Observaciones"
+                                       Style="{StaticResource SectionTitle}" />
+
+                                <Border Style="{StaticResource FieldBox}"
+                                        Padding="12,8"
+                                        HeightRequest="92">
+                                    <Editor x:Name="EditorNotas"
+                                            Placeholder="Notas adicionales de Domicilio referencias, acuerdos de contrato, importes, horario etc.."
+                                            HeightRequest="76"
+                                            Style="{StaticResource FieldEditor}" />
+                                </Border>
+                            </VerticalStackLayout>
+                        </Border>
+
+                        <Border x:Name="SectionSupervisor"
+                                IsVisible="False"
+                                Style="{StaticResource SectionCard}">
+                            <VerticalStackLayout Spacing="8">
+                                <Label Text="Comisiones"
+                                       Style="{StaticResource SectionTitle}" />
+
+                                <Grid ColumnDefinitions="*,8,*"
+                                      RowDefinitions="Auto,Auto"
+                                      ColumnSpacing="8"
+                                      RowSpacing="8">
+                                    <VerticalStackLayout Grid.Row="0" Grid.Column="0" Spacing="3">
+                                        <Label Text="VENDEDORA %" Style="{StaticResource LblField}" />
+                                        <Border Style="{StaticResource FieldBox}">
+                                            <Entry x:Name="EntryComisionVendedora"
+                                                   Placeholder="0"
+                                                   Keyboard="Numeric"
+                                                   Style="{StaticResource FieldEntry}" />
+                                        </Border>
+                                    </VerticalStackLayout>
+
+                                    <VerticalStackLayout Grid.Row="0" Grid.Column="2" Spacing="3">
+                                        <Label Text="SUPERVISORA %" Style="{StaticResource LblField}" />
+                                        <Border Style="{StaticResource FieldBox}">
+                                            <Entry x:Name="EntryComisionSupervisora"
+                                                   Placeholder="0"
+                                                   Keyboard="Numeric"
+                                                   Style="{StaticResource FieldEntry}" />
+                                        </Border>
+                                    </VerticalStackLayout>
+
+                                    <VerticalStackLayout Grid.Row="1" Grid.Column="0" Spacing="3">
+                                        <Label Text="GERENTE %" Style="{StaticResource LblField}" />
+                                        <Border Style="{StaticResource FieldBox}">
+                                            <Entry x:Name="EntryComisionGerente"
+                                                   Placeholder="0"
+                                                   Keyboard="Numeric"
+                                                   Style="{StaticResource FieldEntry}" />
+                                        </Border>
+                                    </VerticalStackLayout>
+
+                                    <VerticalStackLayout Grid.Row="1" Grid.Column="2" Spacing="3">
+                                        <Label Text="TOTAL NETO $" Style="{StaticResource LblField}" />
+                                        <Border Style="{StaticResource FieldBox}">
+                                            <Entry x:Name="EntryTotalNeto"
+                                                   Placeholder="0.00"
+                                                   Keyboard="Numeric"
+                                                   Style="{StaticResource FieldEntry}" />
+                                        </Border>
+                                    </VerticalStackLayout>
+                                </Grid>
+                            </VerticalStackLayout>
                         </Border>
                     </VerticalStackLayout>
-                    <VerticalStackLayout Grid.Column="2" Spacing="2">
-                        <Label Text="📅 PRIMER COBRO" Style="{StaticResource LblField}" />
-                        <Border Style="{StaticResource FieldBorder}" Padding="6,2">
-                            <DatePicker x:Name="DpPrimerCobro" Format="dd/MM/yyyy" TextColor="#333" FontSize="13" />
-                        </Border>
-                    </VerticalStackLayout>
-                </Grid>
+                </ScrollView>
 
-                <!-- NOMBRE CLIENTE -->
-                <VerticalStackLayout Spacing="3">
-                    <Label Text="👤 NOMBRE CLIENTE *" Style="{StaticResource LblField}" />
-                    <Border Style="{StaticResource FieldBorder}">
-                        <Entry x:Name="EntryNombre" Placeholder="Nombre completo" FontSize="14" TextColor="#333" />
-                    </Border>
-                </VerticalStackLayout>
+                <Border Grid.Row="1"
+                        BackgroundColor="{AppThemeBinding Light=#FBFCFB, Dark=#151C19}"
+                        Stroke="{AppThemeBinding Light=#E4EBE7, Dark=#27312C}"
+                        StrokeThickness="1"
+                        Padding="12,10,12,14">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="18,18,0,0" />
+                    </Border.StrokeShape>
 
-                <!-- CELULAR -->
-                <VerticalStackLayout Spacing="3">
-                    <Label Text="📱 CELULAR *" Style="{StaticResource LblField}" />
-                    <Border Style="{StaticResource FieldBorder}">
-                        <Entry x:Name="EntryCelular" Placeholder="10 dígitos" Keyboard="Telephone" FontSize="14" TextColor="#333" MaxLength="10" />
-                    </Border>
-                </VerticalStackLayout>
+                    <Grid ColumnDefinitions="108,*"
+                          ColumnSpacing="8">
+                        <Button Grid.Column="0"
+                                Text="Cancelar"
+                                Clicked="OnCancelTapped"
+                                Style="{StaticResource SecondaryFooterButton}" />
 
-                <!-- CALLE -->
-                <VerticalStackLayout Spacing="3">
-                    <Label Text="🏠 CALLE" Style="{StaticResource LblField}" />
-                    <Border Style="{StaticResource FieldBorder}">
-                        <Entry x:Name="EntryCalle" Placeholder="Calle y número" FontSize="14" TextColor="#333" />
-                    </Border>
-                </VerticalStackLayout>
-
-                <!-- REFERENCIA -->
-                <VerticalStackLayout Spacing="3">
-                    <Label Text="📌 REFERENCIA" Style="{StaticResource LblField}" />
-                    <Border Style="{StaticResource FieldBorder}">
-                        <Entry x:Name="EntryReferencia" Placeholder="Referencia" FontSize="14" TextColor="#333" />
-                    </Border>
-                </VerticalStackLayout>
-
-                <!-- ENTRE CALLES -->
-                <VerticalStackLayout Spacing="3">
-                    <Label Text="↔️ ENTRE CALLE" Style="{StaticResource LblField}" />
-                    <Grid ColumnDefinitions="*,Auto,*" ColumnSpacing="6">
-                        <Border Grid.Column="0" Style="{StaticResource FieldBorder}">
-                            <Entry x:Name="EntryEntreCalle1" Placeholder="Calle 1" FontSize="13" TextColor="#333" />
-                        </Border>
-                        <Label Grid.Column="1" Text="y" FontSize="13" TextColor="#999" VerticalOptions="Center" />
-                        <Border Grid.Column="2" Style="{StaticResource FieldBorder}">
-                            <Entry x:Name="EntryEntreCalle2" Placeholder="Calle 2" FontSize="13" TextColor="#333" />
-                        </Border>
+                        <Button Grid.Column="1"
+                                Text="Guardar venta"
+                                Clicked="OnSaveTapped"
+                                Style="{StaticResource PrimaryFooterButton}" />
                     </Grid>
-                </VerticalStackLayout>
-
-                <!-- ROW: ZONA | FORMA DE PAGO -->
-                <Grid ColumnDefinitions="*,8,*">
-                    <VerticalStackLayout Grid.Column="0" Spacing="3">
-                        <Label Text="📍 ZONA / COLONIA *" Style="{StaticResource LblField}" />
-                        <Border Style="{StaticResource FieldBorder}">
-                            <Picker x:Name="PickerZone"
-                                    FontSize="13" TextColor="#333"
-                                    ItemDisplayBinding="{Binding ZoneName}" />
-                        </Border>
-                    </VerticalStackLayout>
-                    <VerticalStackLayout Grid.Column="2" Spacing="3">
-                        <Label Text="💳 FORMA DE PAGO *" Style="{StaticResource LblField}" />
-                        <Border Style="{StaticResource FieldBorder}">
-                            <Picker x:Name="PickerFormaPago" FontSize="13" TextColor="#333">
-                                <Picker.ItemsSource>
-                                    <x:Array Type="{x:Type x:String}">
-                                        <x:String>SEMANAL</x:String>
-                                        <x:String>QUINCENAL</x:String>
-                                        <x:String>MENSUAL</x:String>
-                                        <x:String>CONTADO</x:String>
-                                    </x:Array>
-                                </Picker.ItemsSource>
-                            </Picker>
-                        </Border>
-                    </VerticalStackLayout>
-                </Grid>
-
-                <!-- PRODUCTO -->
-                <VerticalStackLayout Spacing="3">
-                    <Label Text="📦 PRODUCTO *" Style="{StaticResource LblField}" />
-                    <Border Style="{StaticResource FieldBorder}">
-                        <Picker x:Name="PickerProduct"
-                                FontSize="13" TextColor="#333"
-                                ItemDisplayBinding="{Binding ProductName}"
-                                SelectedIndexChanged="OnProductSelected" />
-                    </Border>
-                    <Label x:Name="LblPrice" Text="" FontSize="12" TextColor="{DynamicResource ThemeColorHex}" FontAttributes="Bold" Margin="4,0,0,0" />
-                </VerticalStackLayout>
-
-                <!-- ENGANCHE -->
-                <VerticalStackLayout Spacing="3">
-                    <Label Text="💵 ENGANCHE DE VENTA $" Style="{StaticResource LblField}" />
-                    <Border Style="{StaticResource FieldBorder}">
-                        <Entry x:Name="EntryEnganche" Placeholder="0.00" Keyboard="Numeric" FontSize="14" TextColor="#333" />
-                    </Border>
-                </VerticalStackLayout>
-
-                <!-- ROW: DÍA DE COBRO | ESTATUS -->
-                <Grid ColumnDefinitions="*,8,*">
-                    <VerticalStackLayout Grid.Column="0" Spacing="3">
-                        <Label Text="📆 DÍA COBRO *" Style="{StaticResource LblField}" />
-                        <Border Style="{StaticResource FieldBorder}">
-                            <Picker x:Name="PickerDiaCobro" FontSize="13" TextColor="#333">
-                                <Picker.ItemsSource>
-                                    <x:Array Type="{x:Type x:String}">
-                                        <x:String>LUN</x:String>
-                                        <x:String>MAR</x:String>
-                                        <x:String>MIE</x:String>
-                                        <x:String>JUE</x:String>
-                                        <x:String>VIE</x:String>
-                                        <x:String>SAB</x:String>
-                                        <x:String>DOM</x:String>
-                                    </x:Array>
-                                </Picker.ItemsSource>
-                            </Picker>
-                        </Border>
-                    </VerticalStackLayout>
-                    <VerticalStackLayout Grid.Column="2" Spacing="3">
-                        <Label Text="🔖 ESTATUS" Style="{StaticResource LblField}" />
-                        <Border Style="{StaticResource FieldBorder}">
-                            <Picker x:Name="PickerEstatus" 
-                                    ItemsSource="{Binding SaleStatuses}"
-                                    ItemDisplayBinding="{Binding StatusName}"
-                                    SelectedItem="{Binding SelectedSaleStatus}"
-                                    FontSize="13" TextColor="#333" />
-                        </Border>
-                    </VerticalStackLayout>
-                </Grid>
-
-                <!-- COORDENADAS -->
-                <VerticalStackLayout Spacing="3">
-                    <Label Text="🛰️ COORDENADAS (GPS)" Style="{StaticResource LblField}" />
-                    <Border Style="{StaticResource FieldBorder}" BackgroundColor="{DynamicResource ThemeColorLighterHex}">
-                        <Entry x:Name="EntryCoords" IsReadOnly="True" Placeholder="Obteniendo GPS..."
-                               FontSize="12" TextColor="{DynamicResource ThemeColorHex}" />
-                    </Border>
-                </VerticalStackLayout>
-
-                <!-- ═══ FOTOS 2x2 GRID ═══ -->
-                <Label Text="📸 FOTOS" FontSize="12" TextColor="{DynamicResource ThemeColorHex}" FontAttributes="Bold" Margin="0,6,0,0" />
-                <Grid ColumnDefinitions="*,10,*" RowDefinitions="Auto,Auto" RowSpacing="10">
-                    <!-- FACHADA -->
-                    <Border Grid.Row="0" Grid.Column="0" Style="{StaticResource FieldBorder}" Padding="8">
-                        <VerticalStackLayout Spacing="4">
-                            <Label Text="🏠 Fachada *" FontSize="10" TextColor="{DynamicResource ThemeColorHex}" FontAttributes="Bold" />
-                            <Image x:Name="ImgFachada" HeightRequest="70" Aspect="AspectFill" IsVisible="False" />
-                            <Label x:Name="LblFotoFachada" Text="Sin foto" FontSize="10" TextColor="#BBB"
-                                   HorizontalOptions="Center" IsVisible="True" />
-                            <Grid ColumnDefinitions="*,*" ColumnSpacing="4">
-                                <Button Grid.Column="0" Text="📷" FontSize="14" BackgroundColor="{DynamicResource ThemeColorLighterHex}" TextColor="{DynamicResource ThemeColorHex}"
-                                        CornerRadius="6" HeightRequest="32" Padding="0" Clicked="OnCameraFachada" />
-                                <Button Grid.Column="1" Text="📁" FontSize="14" BackgroundColor="{DynamicResource ThemeColorLighterHex}" TextColor="{DynamicResource ThemeColorHex}"
-                                        CornerRadius="6" HeightRequest="32" Padding="0" Clicked="OnUploadFachada" />
-                            </Grid>
-                        </VerticalStackLayout>
-                    </Border>
-                    <!-- CLIENTE -->
-                    <Border Grid.Row="0" Grid.Column="2" Style="{StaticResource FieldBorder}" Padding="8">
-                        <VerticalStackLayout Spacing="4">
-                            <Label Text="👤 Cliente" FontSize="10" TextColor="{DynamicResource ThemeColorHex}" FontAttributes="Bold" />
-                            <Image x:Name="ImgCliente" HeightRequest="70" Aspect="AspectFill" IsVisible="False" />
-                            <Label x:Name="LblFotoCliente" Text="Sin foto" FontSize="10" TextColor="#BBB"
-                                   HorizontalOptions="Center" IsVisible="True" />
-                            <Grid ColumnDefinitions="*,*" ColumnSpacing="4">
-                                <Button Grid.Column="0" Text="📷" FontSize="14" BackgroundColor="{DynamicResource ThemeColorLighterHex}" TextColor="{DynamicResource ThemeColorHex}"
-                                        CornerRadius="6" HeightRequest="32" Padding="0" Clicked="OnCameraCliente" />
-                                <Button Grid.Column="1" Text="📁" FontSize="14" BackgroundColor="{DynamicResource ThemeColorLighterHex}" TextColor="{DynamicResource ThemeColorHex}"
-                                        CornerRadius="6" HeightRequest="32" Padding="0" Clicked="OnUploadCliente" />
-                            </Grid>
-                        </VerticalStackLayout>
-                    </Border>
-                    <!-- CONTRATO -->
-                    <Border Grid.Row="1" Grid.Column="0" Style="{StaticResource FieldBorder}" Padding="8">
-                        <VerticalStackLayout Spacing="4">
-                            <Label Text="📄 Contrato" FontSize="10" TextColor="{DynamicResource ThemeColorHex}" FontAttributes="Bold" />
-                            <Image x:Name="ImgContrato" HeightRequest="70" Aspect="AspectFill" IsVisible="False" />
-                            <Label x:Name="LblFotoContrato" Text="Sin foto" FontSize="10" TextColor="#BBB"
-                                   HorizontalOptions="Center" IsVisible="True" />
-                            <Grid ColumnDefinitions="*,*" ColumnSpacing="4">
-                                <Button Grid.Column="0" Text="📷" FontSize="14" BackgroundColor="{DynamicResource ThemeColorLighterHex}" TextColor="{DynamicResource ThemeColorHex}"
-                                        CornerRadius="6" HeightRequest="32" Padding="0" Clicked="OnCameraContrato" />
-                                <Button Grid.Column="1" Text="📁" FontSize="14" BackgroundColor="{DynamicResource ThemeColorLighterHex}" TextColor="{DynamicResource ThemeColorHex}"
-                                        CornerRadius="6" HeightRequest="32" Padding="0" Clicked="OnUploadContrato" />
-                            </Grid>
-                        </VerticalStackLayout>
-                    </Border>
-                    <!-- ADICIONAL -->
-                    <Border Grid.Row="1" Grid.Column="2" Style="{StaticResource FieldBorder}" Padding="8">
-                        <VerticalStackLayout Spacing="4">
-                            <Label Text="🖼️ Adicional" FontSize="10" TextColor="{DynamicResource ThemeColorHex}" FontAttributes="Bold" />
-                            <Image x:Name="ImgAdicional" HeightRequest="70" Aspect="AspectFill" IsVisible="False" />
-                            <Label x:Name="LblFotoAdicional" Text="Sin foto" FontSize="10" TextColor="#BBB"
-                                   HorizontalOptions="Center" IsVisible="True" />
-                            <Grid ColumnDefinitions="*,*" ColumnSpacing="4">
-                                <Button Grid.Column="0" Text="📷" FontSize="14" BackgroundColor="{DynamicResource ThemeColorLighterHex}" TextColor="{DynamicResource ThemeColorHex}"
-                                        CornerRadius="6" HeightRequest="32" Padding="0" Clicked="OnCameraAdicional" />
-                                <Button Grid.Column="1" Text="📁" FontSize="14" BackgroundColor="{DynamicResource ThemeColorLighterHex}" TextColor="{DynamicResource ThemeColorHex}"
-                                        CornerRadius="6" HeightRequest="32" Padding="0" Clicked="OnUploadAdicional" />
-                            </Grid>
-                        </VerticalStackLayout>
-                    </Border>
-                </Grid>
-
-                <!-- NOTAS -->
-                <VerticalStackLayout Spacing="3">
-                    <Label Text="📝 OBSERVACIONES" Style="{StaticResource LblField}" />
-                    <Border Style="{StaticResource FieldBorder}">
-                        <Editor x:Name="EditorNotas" Placeholder="Notas adicionales..." HeightRequest="60"
-                                FontSize="13" TextColor="#333" />
-                    </Border>
-                </VerticalStackLayout>
-
-                <!-- ═══ CAMPOS SUPERVISORA ═══ -->
-                <VerticalStackLayout x:Name="SectionSupervisor" IsVisible="False" Spacing="8">
-                    <Label Text="👑 COMISIONES (Supervisora)" FontSize="12" TextColor="{DynamicResource ThemeColorHex}"
-                           FontAttributes="Bold" Margin="0,6,0,0" />
-                    <Grid ColumnDefinitions="*,8,*" RowDefinitions="Auto,Auto" RowSpacing="8">
-                        <VerticalStackLayout Grid.Row="0" Grid.Column="0" Spacing="2">
-                            <Label Text="Vendedora %" FontSize="10" TextColor="{DynamicResource ThemeColorHex}" FontAttributes="Bold" />
-                            <Border Style="{StaticResource FieldBorder}">
-                                <Entry x:Name="EntryComisionVendedora" Placeholder="0" Keyboard="Numeric" FontSize="13" TextColor="#333" />
-                            </Border>
-                        </VerticalStackLayout>
-                        <VerticalStackLayout Grid.Row="0" Grid.Column="2" Spacing="2">
-                            <Label Text="Supervisora %" FontSize="10" TextColor="{DynamicResource ThemeColorHex}" FontAttributes="Bold" />
-                            <Border Style="{StaticResource FieldBorder}">
-                                <Entry x:Name="EntryComisionSupervisora" Placeholder="0" Keyboard="Numeric" FontSize="13" TextColor="#333" />
-                            </Border>
-                        </VerticalStackLayout>
-                        <VerticalStackLayout Grid.Row="1" Grid.Column="0" Spacing="2">
-                            <Label Text="Gerente %" FontSize="10" TextColor="{DynamicResource ThemeColorHex}" FontAttributes="Bold" />
-                            <Border Style="{StaticResource FieldBorder}">
-                                <Entry x:Name="EntryComisionGerente" Placeholder="0" Keyboard="Numeric" FontSize="13" TextColor="#333" />
-                            </Border>
-                        </VerticalStackLayout>
-                        <VerticalStackLayout Grid.Row="1" Grid.Column="2" Spacing="2">
-                            <Label Text="Total Neto $" FontSize="10" TextColor="{DynamicResource ThemeColorHex}" FontAttributes="Bold" />
-                            <Border Style="{StaticResource FieldBorder}">
-                                <Entry x:Name="EntryTotalNeto" Placeholder="0.00" Keyboard="Numeric" FontSize="13" TextColor="#333" />
-                            </Border>
-                        </VerticalStackLayout>
-                    </Grid>
-                </VerticalStackLayout>
-
-                <BoxView HeightRequest="16" Color="Transparent" />
-            </VerticalStackLayout>
-        </ScrollView>
-
-        <!-- ═══ FOOTER ═══ -->
-        <Border Grid.Row="2" StrokeThickness="0" BackgroundColor="White"
-                Shadow="{Shadow Brush='#22000000', Offset='0,-2', Radius=6}">
-            <Grid ColumnDefinitions="*,*" Padding="14,10" ColumnSpacing="12">
-                <Button Grid.Column="0" Text="✕  CANCELAR" Clicked="OnCancelTapped"
-                        BackgroundColor="{DynamicResource ThemeColorLighterHex}" TextColor="{DynamicResource ThemeColorHex}" FontSize="14" FontAttributes="Bold"
-                        CornerRadius="10" HeightRequest="46" />
-                <Button Grid.Column="1" Text="✔  GUARDAR" Clicked="OnSaveTapped"
-                        BackgroundColor="{DynamicResource ThemeColor}" TextColor="White" FontSize="14" FontAttributes="Bold"
-                        CornerRadius="10" HeightRequest="46"
-                        Shadow="{Shadow Brush='#44000000', Offset='0,3', Radius=6}" />
+                </Border>
             </Grid>
-        </Border>
-    </Grid>
+        </controls:PageFrame.Body>
+    </controls:PageFrame>
 </ContentPage>

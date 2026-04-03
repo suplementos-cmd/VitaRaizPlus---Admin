@@ -7,7 +7,6 @@
     Title="VitaRaiz"
     FlyoutBehavior="Disabled"
     Shell.TabBarBackgroundColor="White"
-    Shell.TabBarTitleColor="#E91E8C"
     Shell.TabBarUnselectedColor="#AAAAAA"
     Shell.NavBarIsVisible="False">
 
@@ -19,9 +18,6 @@
         <ShellContent Title="Ventas" Icon="sales.png"
                       ContentTemplate="{DataTemplate pages:SalesPage}"
                       Route="SalesPage" />
-        <ShellContent Title="Cobranza" Icon="payment.png"
-                      ContentTemplate="{DataTemplate pages:PaymentPage}"
-                      Route="PaymentPage" />
         <ShellContent Title="Clientes" Icon="customers.png"
                       ContentTemplate="{DataTemplate pages:CustomersPage}"
                       Route="CustomersPage" />

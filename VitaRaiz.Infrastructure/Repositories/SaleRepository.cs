@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Oracle.ManagedDataAccess.Client;
 using VitaRaiz.Application.DTOs;
 using VitaRaiz.Application.Interfaces;
+using VitaRaiz.Domain.Constants;
 using VitaRaiz.Domain.Entities;
 using VitaRaiz.Infrastructure.Data;
 using System.Data;
@@ -10,25 +11,11 @@ namespace VitaRaiz.Infrastructure.Repositories;
 
 public class SaleRepository : BaseOracleRepository, ISaleRepository
 {
-    public SaleRepository(VitaRaizDbContext context) : base(context)
-    {
-    }
+    private readonly ICatalogRepository _catalogRepository;
 
-    /// <summary>
-    /// Normaliza el status de Oracle a un valor consistente en inglés para los clientes.
-    /// Oracle usa: EN_PROCESO, POR_INICIAR, LIQUIDADO, CANCELADO
-    /// API devuelve: active, pending, completed, cancelled
-    /// </summary>
-    private static string NormalizeStatus(string? oracleStatus)
+    public SaleRepository(VitaRaizDbContext context, ICatalogRepository catalogRepository) : base(context)
     {
-        return (oracleStatus?.ToUpper()) switch
-        {
-            "EN_PROCESO" or "ACTIVE" => "active",
-            "POR_INICIAR" or "PENDING" => "pending",
-            "LIQUIDADO" or "COMPLETED" => "completed",
-            "CANCELADO" or "CANCELLED" => "cancelled",
-            _ => oracleStatus?.ToLower() ?? "unknown"
-        };
+        _catalogRepository = catalogRepository;
     }
 
     public async Task<int> CreateSaleAsync(int customerId, int sellerId, int paymentTermDays, 
@@ -82,13 +69,37 @@ public class SaleRepository : BaseOracleRepository, ISaleRepository
         return true;
     }
 
+    public async Task<bool> UpdateSaleAsync(int saleId, string? paymentTerm, string? collectionDay,
+        DateTime? firstCollectionDate, decimal downPayment, string? notes, string? status,
+        DateTime saleDate)
+    {
+        var sale = await _context.Sales.FindAsync(saleId);
+        if (sale == null) return false;
+
+        sale.PaymentTerm = paymentTerm;
+        sale.CollectionDay = collectionDay;
+        sale.FirstCollectionDate = firstCollectionDate;
+        sale.DownPayment = downPayment;
+        sale.Notes = notes;
+        if (!string.IsNullOrEmpty(status))
+            sale.Status = status;
+        sale.SaleDate = saleDate;
+
+        await _context.SaveChangesAsync();
+        return true;
+    }
+
     public async Task<List<SaleDto>> GetSalesAsync(int? customerId, int? sellerId, 
         DateTime? startDate, DateTime? endDate, string? status)
     {
         try
         {
             Console.WriteLine($"[SaleRepository] GetSalesAsync - Params: customerId={customerId}, sellerId={sellerId}, status={status}");
-            
+
+            // Load catalog — source of truth for status codes
+            var saleStatuses = await _catalogRepository.GetSaleStatusesAsync();
+            var statusByCode = saleStatuses.ToDictionary(s => s.StatusCode.ToUpper(), s => s.StatusCode.ToLower());
+
             var query = _context.Sales
                 .Include(s => s.Customer)
                 .Include(s => s.Seller)
@@ -110,16 +121,10 @@ public class SaleRepository : BaseOracleRepository, ISaleRepository
 
             if (!string.IsNullOrEmpty(status))
             {
-                // Mapear estados de inglés a Oracle
-                var oracleStatus = status.ToLower() switch
-                {
-                    "active" => "EN_PROCESO",
-                    "pending" => "POR_INICIAR",
-                    "completed" => "LIQUIDADO",
-                    "cancelled" => "CANCELADO",
-                    _ => status.ToUpper()
-                };
-                
+                // Match catalog StatusCode (case-insensitive)—no hardcoded mapping
+                var matched = saleStatuses.FirstOrDefault(s =>
+                    string.Equals(s.StatusCode, status, StringComparison.OrdinalIgnoreCase));
+                var oracleStatus = matched?.StatusCode.ToUpper() ?? status.ToUpper();
                 query = query.Where(s => s.Status.ToUpper() == oracleStatus);
                 Console.WriteLine($"[SaleRepository] Filtro status: '{status}' -> '{oracleStatus}'");
             }
@@ -129,7 +134,7 @@ public class SaleRepository : BaseOracleRepository, ISaleRepository
                 .Select(s => new
                 {
                     SaleData = s,
-                    ApprovedPayments = s.Payments.Where(p => p.Status.ToUpper() == "APPROVED").ToList()
+                    ApprovedPayments = s.Payments.Where(p => p.StatusId == PaymentStatusCodes.Confirmado).ToList()
                 })
                 .ToListAsync();
 
@@ -151,7 +156,7 @@ public class SaleRepository : BaseOracleRepository, ISaleRepository
                     Balance = item.SaleData.TotalAmount - paidAmount,
                     SaleDate = item.SaleData.SaleDate,
                     FirstPaymentDate = firstPayment?.PaymentDate,
-                    Status = NormalizeStatus(item.SaleData.Status),
+                    Status = statusByCode.TryGetValue(item.SaleData.Status?.ToUpper() ?? "", out var sc1) ? sc1 : item.SaleData.Status?.ToLower() ?? "unknown",
                     PaymentTerms = item.SaleData.PaymentTerms,
                     ProductName = item.SaleData.SaleDetails != null && item.SaleData.SaleDetails.Any() 
                         ? item.SaleData.SaleDetails.OrderBy(si => si.DetailId).First().Product!.ProductName 
@@ -175,16 +180,25 @@ public class SaleRepository : BaseOracleRepository, ISaleRepository
         try
         {
             Console.WriteLine($"[SaleRepository] GetActiveSalesAsync - collectorId={collectorId}");
-            
-            // Ventas activas: buscar EN_PROCESO (Oracle status) o active (legacy)
-            // No podemos filtrar por PaidAmount en el Where porque no existe la columna - filtraremos después
+
+            // Load catalog for status resolution
+            var saleStatuses = await _catalogRepository.GetSaleStatusesAsync();
+            var statusByCode = saleStatuses.ToDictionary(s => s.StatusCode.ToUpper(), s => s.StatusCode.ToLower());
+
+            // Active-for-collection = all catalog statuses except terminal ones (LIQUIDADO/CANCELADO)
+            var activeCodes = saleStatuses
+                .Where(s => !string.Equals(s.StatusCode, "LIQUIDADO", StringComparison.OrdinalIgnoreCase)
+                         && !string.Equals(s.StatusCode, "CANCELADO", StringComparison.OrdinalIgnoreCase))
+                .Select(s => s.StatusCode.ToUpper())
+                .ToHashSet();
+
             var query = _context.Sales
                 .Include(s => s.Customer)
                     .ThenInclude(c => c!.Zone)
                 .Include(s => s.Payments)
                 .Include(s => s.Seller)
                 .Include(s => s.SaleDetails).ThenInclude(si => si.Product)
-                .Where(s => s.Status != null && (s.Status.ToUpper() == "EN_PROCESO" || s.Status.ToUpper() == "ACTIVE" || s.Status.ToUpper() == "POR_INICIAR"));
+                .Where(s => s.Status != null && activeCodes.Contains(s.Status.ToUpper()));
 
             if (collectorId.HasValue)
             {
@@ -202,10 +216,10 @@ public class SaleRepository : BaseOracleRepository, ISaleRepository
                 .Select(s => 
                 {
                     var paidAmount = (s.Payments ?? new List<Payment>())
-                        .Where(p => p.Status != null && p.Status.ToUpper() == "APPROVED")
+                        .Where(p => p.StatusId == PaymentStatusCodes.Confirmado)
                         .Sum(p => p.Amount);
                     var firstPayment = (s.Payments ?? new List<Payment>())
-                        .Where(p => p.Status != null && p.Status.ToUpper() == "APPROVED")
+                        .Where(p => p.StatusId == PaymentStatusCodes.Confirmado)
                         .OrderBy(p => p.PaymentDate)
                         .FirstOrDefault();
                     return new SaleDto
@@ -218,7 +232,7 @@ public class SaleRepository : BaseOracleRepository, ISaleRepository
                         Balance = s.TotalAmount - paidAmount,
                         SaleDate = s.SaleDate,
                         FirstPaymentDate = firstPayment?.PaymentDate,
-                        Status = NormalizeStatus(s.Status),
+                        Status = statusByCode.TryGetValue(s.Status?.ToUpper() ?? "", out var sc2) ? sc2 : s.Status?.ToLower() ?? "unknown",
                         PaymentTerms = s.PaymentTerms,
                         ProductName = s.SaleDetails != null && s.SaleDetails.Any()
                             ? s.SaleDetails.OrderBy(si => si.DetailId).First().Product?.ProductName
@@ -254,12 +268,15 @@ public class SaleRepository : BaseOracleRepository, ISaleRepository
             return null;
         
         var paidAmount = (sale.Payments ?? new List<Payment>())
-            .Where(p => p.Status != null && p.Status.ToUpper() == "APPROVED").Sum(p => p.Amount);
+            .Where(p => p.StatusId == PaymentStatusCodes.Confirmado).Sum(p => p.Amount);
         
         var firstPayment = (sale.Payments ?? new List<Payment>())
-            .Where(p => p.Status != null && p.Status.ToUpper() == "APPROVED")
+            .Where(p => p.StatusId == PaymentStatusCodes.Confirmado)
             .OrderBy(p => p.PaymentDate)
             .FirstOrDefault();
+
+        var saleStatuses = await _catalogRepository.GetSaleStatusesAsync();
+        var statusByCode = saleStatuses.ToDictionary(s => s.StatusCode.ToUpper(), s => s.StatusCode.ToLower());
         
         return new SaleDto
         {
@@ -271,7 +288,7 @@ public class SaleRepository : BaseOracleRepository, ISaleRepository
             Balance = sale.TotalAmount - paidAmount,
             SaleDate = sale.SaleDate,
             FirstPaymentDate = firstPayment?.PaymentDate,
-            Status = NormalizeStatus(sale.Status),
+            Status = statusByCode.TryGetValue(sale.Status?.ToUpper() ?? "", out var sc) ? sc : sale.Status?.ToLower() ?? "unknown",
             PaymentTerms = sale.PaymentTerms,
             ProductName = sale.SaleDetails != null && sale.SaleDetails.Any()
                 ? sale.SaleDetails.OrderBy(si => si.DetailId).First().Product?.ProductName
@@ -339,8 +356,15 @@ public class SaleRepository : BaseOracleRepository, ISaleRepository
 
             if (sale == null) return null;
 
+            // Load catalogs for status resolution
+            var saleStatuses = await _catalogRepository.GetSaleStatusesAsync();
+            var saleStatusByCode = saleStatuses.ToDictionary(s => s.StatusCode.ToUpper(), s => s.StatusCode.ToLower());
+
+            var paymentStatuses = await _catalogRepository.GetPaymentStatusesAsync();
+            var payStatusById = paymentStatuses.ToDictionary(s => s.StatusId, s => s.StatusCode.ToLower());
+
             var approvedPaid = (sale.Payments ?? new List<Payment>())
-                .Where(p => p.Status != null && p.Status.Equals("approved", StringComparison.OrdinalIgnoreCase))
+                .Where(p => p.StatusId == PaymentStatusCodes.Confirmado)
                 .Sum(p => p.Amount);
             var balance = sale.TotalAmount - approvedPaid;
 
@@ -353,7 +377,7 @@ public class SaleRepository : BaseOracleRepository, ISaleRepository
                 riskStatus = await GetSaleRiskStatusAsync(saleId);
                 paymentPct = sale.TotalAmount > 0 ? Math.Round(approvedPaid / sale.TotalAmount * 100, 2) : 0;
                 var lastPaymentDate = (sale.Payments ?? new List<Payment>())
-                    .Where(p => p.Status != null && p.Status.Equals("approved", StringComparison.OrdinalIgnoreCase))
+                    .Where(p => p.StatusId == PaymentStatusCodes.Confirmado)
                     .OrderByDescending(p => p.PaymentDate)
                     .Select(p => (DateTime?)p.PaymentDate)
                     .FirstOrDefault();
@@ -368,7 +392,7 @@ public class SaleRepository : BaseOracleRepository, ISaleRepository
                 PaidAmount = approvedPaid,
                 Balance = balance,
                 SaleDate = sale.SaleDate,
-                Status = NormalizeStatus(sale.Status),
+                Status = saleStatusByCode.TryGetValue(sale.Status?.ToUpper() ?? "", out var ssc) ? ssc : sale.Status?.ToLower() ?? "unknown",
                 
                 // Structured payment fields
                 PaymentTerm = sale.PaymentTerm,
@@ -420,7 +444,7 @@ public class SaleRepository : BaseOracleRepository, ISaleRepository
                     PaymentDate = p.PaymentDate,
                     GpsLatitude = p.GpsLatitude,
                     GpsLongitude = p.GpsLongitude,
-                    Status = p.Status?.ToLower() ?? "unknown",
+                    Status = payStatusById.TryGetValue(p.StatusId, out var pCode) ? pCode : p.StatusId.ToString(),
                     Notes = p.Notes
                 }).OrderByDescending(p => p.PaymentDate).ToList()
             };

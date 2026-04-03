@@ -10,4 +10,6 @@ public class RegisterPaymentCommand : IRequest<int>
     public decimal? GpsLatitude { get; set; }
     public decimal? GpsLongitude { get; set; }
     public string? Notes { get; set; }
+    public int? CollectionActionId { get; set; }
+    public int? CollectionSubId { get; set; }
 }

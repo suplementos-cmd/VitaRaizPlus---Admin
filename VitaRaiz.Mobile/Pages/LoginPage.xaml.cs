@@ -1,6 +1,8 @@
+using Microsoft.Extensions.DependencyInjection;
 using System.Text;
 using System.Text.Json;
 using System.Windows.Input;
+using VitaRaiz.Mobile.Services;
 
 namespace VitaRaiz.Mobile.Pages;
 
@@ -192,44 +194,62 @@ public partial class LoginPage : ContentPage
 
                 if (loginResponse != null && !string.IsNullOrEmpty(loginResponse.Token))
                 {
-                    System.Diagnostics.Debug.WriteLine("Login exitoso, guardando token...");
-                    
-                    // Guardar token en SecureStorage (usar "auth_token" para coincidir con ApiService)
-                    await SecureStorage.SetAsync("auth_token", loginResponse.Token);
-                    await SecureStorage.SetAsync("user_id", loginResponse.UserId.ToString());
-                    await SecureStorage.SetAsync("username", loginResponse.Username);
-                    await SecureStorage.SetAsync("role", loginResponse.Role);
+                    System.Diagnostics.Debug.WriteLine("Login exitoso — iniciando carga paralela...");
 
-                    System.Diagnostics.Debug.WriteLine("Token guardado, cargando tema...");
-                    
-                    // Cargar tema según el rol del usuario antes de navegar
-                    LoadThemeForRole(loginResponse.Role);
+                    // 1. Caché de token en memoria de inmediato — todas las llamadas API siguientes
+                    //    usan esta caché sin leer SecureStorage (evita ~200ms por llamada en Windows).
+                    ApiService.SetCachedToken(loginResponse.Token);
 
-                    System.Diagnostics.Debug.WriteLine("Navegando a AppShell...");
-                    
-                    // Navegar a la página principal en el hilo principal
+                    var themeService       = IPlatformApplication.Current.Services.GetRequiredService<ThemeService>();
+                    var catalogService     = IPlatformApplication.Current.Services.GetRequiredService<CatalogService>();
+                    var permissionsService = IPlatformApplication.Current.Services.GetRequiredService<PermissionsService>();
+
+                    // 2. Ejecutar en paralelo todo lo que no tiene dependencias entre sí:
+                    //    • Escrituras a SecureStorage (5 escrituras simultaneas en lugar de secuenciales)
+                    //    • Carga de catálogos desde API
+                    //    • Carga de permisos desde API
+                    await Task.WhenAll(
+                        // SecureStorage: 5 escrituras simultáneas
+                        Task.WhenAll(
+                            SecureStorage.SetAsync("auth_token", loginResponse.Token),
+                            SecureStorage.SetAsync("user_id",    loginResponse.UserId.ToString()),
+                            SecureStorage.SetAsync("username",   loginResponse.Username),
+                            SecureStorage.SetAsync("role",       loginResponse.Role),
+                            SecureStorage.SetAsync("role_id",    loginResponse.RoleId.ToString())),
+                        // API: catálogos y permisos en paralelo
+                        catalogService.LoadAsync(forceReload: true),
+                        permissionsService.LoadAsync(forceReload: true));
+
+                    // 3. Tema — depende de catálogos (ya cargados arriba), rápido (~0 I/O).
+                    await themeService.LoadAndApplyAsync(loginResponse.Role);
+
+                    // 4. Prefetch en background — no bloquea la navegación. Mientras el usuario
+                    //    ve el HomePage, ventas y clientes se cargan en segundo plano. Cuando el
+                    //    usuario toca esas pestañas, los datos ya están listos → 0 spinner.
+                    _ = PrefetchPageDataAsync();
+
+                    System.Diagnostics.Debug.WriteLine("[Login] Carga paralela completada. Navegando a AppShell...");
+
+                    // 5. Navegar al AppShell con el tema ya aplicado — sin flash de color.
                     await MainThread.InvokeOnMainThreadAsync(() =>
                     {
                         try
                         {
-                            System.Diagnostics.Debug.WriteLine("Creando AppShell...");
                             var window = Microsoft.Maui.Controls.Application.Current?.Windows[0];
                             if (window != null)
                             {
                                 window.Page = new AppShell();
-                                System.Diagnostics.Debug.WriteLine("Navegación completada!");
+                                System.Diagnostics.Debug.WriteLine("[Login] Navegación completada!");
                             }
                             else
                             {
-                                System.Diagnostics.Debug.WriteLine("ERROR: Window es null");
                                 ErrorMessage = "Error al navegar: Window no disponible";
                                 HasError = true;
                             }
                         }
                         catch (Exception navEx)
                         {
-                            System.Diagnostics.Debug.WriteLine($"ERROR al navegar: {navEx.Message}");
-                            System.Diagnostics.Debug.WriteLine($"StackTrace: {navEx.StackTrace}");
+                            System.Diagnostics.Debug.WriteLine($"[Login] ERROR al navegar: {navEx.Message}");
                             ErrorMessage = $"Error al navegar: {navEx.Message}";
                             HasError = true;
                         }
@@ -278,53 +298,30 @@ public partial class LoginPage : ContentPage
             IsLoading = false;
         }
     }
-    
+
     /// <summary>
-    /// Carga el tema basado en el rol del usuario
+    /// Prefetch sales and customers data in background during login.
+    /// Results are stored in PageDataCache so SalesPage and CustomersPage render instantly.
     /// </summary>
-    private void LoadThemeForRole(string role)
+    private static async Task PrefetchPageDataAsync()
     {
         try
         {
-            System.Diagnostics.Debug.WriteLine($"[LoginPage] Loading theme for role: {role}");
-            
-            string themeColor = role switch
-            {
-                "Admin" or "Administrador" => "#E91E63", // Rosa/Magenta
-                "Supervisor" => "#FF9800", // Naranja
-                "Vendedor" => "#2196F3", // Azul
-                "Cobrador" or _ => "#28A745" // Verde (default)
-            };
-            
-            // Calcular colores claros
-            string lightColor = LightenColor(themeColor, 0.7);
-            string lighterColor = LightenColor(themeColor, 0.85);
-            
-            App.UpdateThemeColors(themeColor, lightColor, lighterColor);
-            System.Diagnostics.Debug.WriteLine($"[LoginPage] Theme loaded: {themeColor}");
+            System.Diagnostics.Debug.WriteLine("[Prefetch] Iniciando precarga de ventas y clientes...");
+            var api = new ApiService();
+            var salesTask     = api.GetAsync<List<SaleDto>>("api/sales");
+            var customersTask = api.GetAsync<List<CustomerDto>>("api/customers");
+            await Task.WhenAll(salesTask, customersTask);
+            PageDataCache.PrefetchedSales     = salesTask.Result;
+            PageDataCache.PrefetchedCustomers = customersTask.Result;
+            System.Diagnostics.Debug.WriteLine(
+                $"[Prefetch] Completado \u2014 ventas={PageDataCache.PrefetchedSales?.Count ?? 0}, " +
+                $"clientes={PageDataCache.PrefetchedCustomers?.Count ?? 0}");
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[LoginPage] Error loading theme: {ex.Message}");
-        }
-    }
-    
-    /// <summary>
-    /// Aclara un color hexadecimal mezclándolo con blanco
-    /// </summary>
-    private static string LightenColor(string hexColor, double factor)
-    {
-        try
-        {
-            var color = Color.FromArgb(hexColor);
-            var r = (int)(color.Red * 255 + (255 - color.Red * 255) * factor);
-            var g = (int)(color.Green * 255 + (255 - color.Green * 255) * factor);
-            var b = (int)(color.Blue * 255 + (255 - color.Blue * 255) * factor);
-            return $"#{r:X2}{g:X2}{b:X2}";
-        }
-        catch
-        {
-            return hexColor;
+            // Non-fatal: pages will load data normally on first visit if prefetch fails.
+            System.Diagnostics.Debug.WriteLine($"[Prefetch] No fatal: {ex.Message}");
         }
     }
 }
@@ -336,5 +333,6 @@ public class LoginResponse
     public int UserId { get; set; }
     public string Username { get; set; } = string.Empty;
     public string Role { get; set; } = string.Empty;
+    public int RoleId { get; set; }
 }
 

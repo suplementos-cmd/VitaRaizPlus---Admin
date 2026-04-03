@@ -15,6 +15,20 @@
   C_RISK_ROJO     CONSTANT VARCHAR2(10) := 'ROJO';
   C_RISK_CRITICO  CONSTANT VARCHAR2(10) := 'CRITICO';
 
+  -- ========================================================================
+  -- IDs NUMÉRICOS DE ESTADO DE PAGO (PAYMENTS.STATUS = CATALOG_PAYMENT_STATUSES.STATUS_ID)
+  -- Usar siempre estas constantes en vez de los textos de STATUS_KEY
+  -- ========================================================================
+  C_PAY_PENDING   CONSTANT NUMBER := 1;  -- PENDING
+  C_PAY_CONFIRMED CONSTANT NUMBER := 2;  -- CONFIRMADO
+  C_PAY_REJECTED  CONSTANT NUMBER := 3;  -- RECHAZADO
+  C_PAY_CANCELLED CONSTANT NUMBER := 4;  -- CANCELLED
+  -- IDs de acción de visita del cobrador (PAYMENTS.COLLECTION_ACTION_ID)
+  C_ACT_PAGO_RECIBIDO CONSTANT NUMBER := 10;  -- PAGO_RECIBIDO
+  C_ACT_NO_ENCONTRADO CONSTANT NUMBER := 20;  -- CLIENTE_NO_ENCONTRADO
+  C_ACT_PROMESA_PAGO  CONSTANT NUMBER := 30;  -- PROMESA_PAGO
+  C_ACT_REHUSA        CONSTANT NUMBER := 40;  -- CLIENTE_REHUSA
+
   -- Tipo para resultado de operaciones
   TYPE t_result_record IS RECORD(
     success BOOLEAN,
@@ -32,7 +46,9 @@
                                 p_gps_lon      IN NUMBER,
                                 p_device_id    IN VARCHAR2,
                                 p_photo_path   IN VARCHAR2 DEFAULT NULL,
-                                p_notes        IN VARCHAR2 DEFAULT NULL);
+                                p_notes        IN VARCHAR2 DEFAULT NULL,
+                                p_action_id    IN NUMBER   DEFAULT NULL,
+                                p_sub_id       IN NUMBER   DEFAULT NULL);
 
   /**
   * Aprueba un pago registrado
@@ -446,6 +462,21 @@
   */
   FUNCTION fn_get_risk_status_by_days(p_days_overdue IN NUMBER)
     RETURN VARCHAR2;
+
+  /**
+  * Obtiene el tema de la aplicación por rol (PROFILE_THEMES)
+  * @return Cursor con datos del tema del rol o NULL si no configurado
+  */
+  PROCEDURE sp_get_theme_by_role(p_role_id IN NUMBER,
+                                  p_cursor  OUT SYS_REFCURSOR);
+
+  /**
+  * Obtiene todos los permisos (PERMISSION_NAME) asignados al rol del usuario
+  * @param p_user_id  ID del usuario autenticado
+  * @param p_cursor   Cursor con columnas: permissionName, module, description
+  */
+  PROCEDURE sp_get_user_permissions(p_user_id IN NUMBER,
+                                    p_cursor  OUT SYS_REFCURSOR);
   --
 END EM_VITARAIZ_AD;
 /
@@ -495,7 +526,9 @@ CREATE OR REPLACE PACKAGE BODY EM_VITARAIZ_AD AS
                                 p_gps_lon      IN NUMBER,
                                 p_device_id    IN VARCHAR2,
                                 p_photo_path   IN VARCHAR2 DEFAULT NULL,
-                                p_notes        IN VARCHAR2 DEFAULT NULL) IS
+                                p_notes        IN VARCHAR2 DEFAULT NULL,
+                                p_action_id    IN NUMBER   DEFAULT NULL,
+                                p_sub_id       IN NUMBER   DEFAULT NULL) IS
     v_total_paid  NUMBER;
     v_sale_amount NUMBER;
     v_new_status  VARCHAR2(20);
@@ -519,6 +552,8 @@ CREATE OR REPLACE PACKAGE BODY EM_VITARAIZ_AD AS
        gps_longitude,
        device_id,
        notes,
+       collection_action_id,
+       collection_sub_id,
        status)
     VALUES
       (seq_payments.NEXTVAL,
@@ -530,7 +565,9 @@ CREATE OR REPLACE PACKAGE BODY EM_VITARAIZ_AD AS
        p_gps_lon,
        p_device_id,
        p_notes,
-       'PENDING')
+       p_action_id,
+       p_sub_id,
+       C_PAY_PENDING)
     RETURNING payment_id INTO p_payment_id;
     -- Foto si se proporciona
     IF p_photo_path IS NOT NULL THEN
@@ -579,7 +616,9 @@ CREATE OR REPLACE PACKAGE BODY EM_VITARAIZ_AD AS
      WHERE payment_id = p_payment_id;
     --
     UPDATE payments
-       SET status = 'CONFIRMADO'
+       SET status     = C_PAY_CONFIRMED,
+           updated_at = SYSTIMESTAMP,
+           updated_by = p_approved_by
      WHERE payment_id = p_payment_id;
     --
     -- Calcular total pagado
@@ -587,7 +626,7 @@ CREATE OR REPLACE PACKAGE BODY EM_VITARAIZ_AD AS
       INTO v_total_paid
       FROM payments
      WHERE sale_id = v_sale_id
-       AND status = 'CONFIRMADO';
+       AND status = C_PAY_CONFIRMED;
     --
     SELECT total_amount
       INTO v_sale_amount
@@ -623,8 +662,10 @@ CREATE OR REPLACE PACKAGE BODY EM_VITARAIZ_AD AS
   BEGIN
     --
     UPDATE payments
-       SET status = 'RECHAZADO',
-           notes  = COALESCE(notes, '') || ' | RECHAZADO: ' || p_reason
+       SET status     = C_PAY_REJECTED,
+           notes      = COALESCE(notes, '') || ' | RECHAZADO: ' || p_reason,
+           updated_at = SYSTIMESTAMP,
+           updated_by = p_rejected_by
      WHERE payment_id = p_payment_id;
     --
     log_audit('PAYMENT', p_payment_id, 'REJECT', p_rejected_by, p_reason);
@@ -1498,7 +1539,7 @@ PROCEDURE sp_register_sale(p_sale_id               OUT NUMBER,
     SELECT s.total_amount - NVL((SELECT SUM(p.amount)
                                   FROM payments p
                                  WHERE p.sale_id = s.sale_id
-                                   AND p.status = 'CONFIRMADO'),
+                                   AND p.status = C_PAY_CONFIRMED),
                                 0)
       INTO v_balance
       FROM sales s
@@ -1530,7 +1571,7 @@ PROCEDURE sp_register_sale(p_sale_id               OUT NUMBER,
     SELECT TRUNC(SYSDATE) - TRUNC(NVL((SELECT MAX(p.payment_date)
                                         FROM payments p
                                        WHERE p.sale_id = s.sale_id
-                                         AND p.status = 'CONFIRMADO'),
+                                         AND p.status = C_PAY_CONFIRMED),
                                       s.sale_date))
       INTO v_days
       FROM sales s
@@ -1550,7 +1591,7 @@ PROCEDURE sp_register_sale(p_sale_id               OUT NUMBER,
            NVL((SELECT SUM(p.amount)
                  FROM payments p
                 WHERE p.sale_id = s.sale_id
-                  AND p.status = 'CONFIRMADO'),
+                  AND p.status = C_PAY_CONFIRMED),
                0)
       INTO v_total, v_paid
       FROM sales s
@@ -1573,7 +1614,7 @@ PROCEDURE sp_register_sale(p_sale_id               OUT NUMBER,
       FROM payments
      WHERE collector_id = p_collector_id
        AND payment_date BETWEEN p_from_date AND p_to_date
-       AND status = 'CONFIRMADO';
+       AND status = C_PAY_CONFIRMED;
     RETURN v_total;
   EXCEPTION
     WHEN OTHERS THEN
@@ -1686,9 +1727,15 @@ PROCEDURE sp_register_sale(p_sale_id               OUT NUMBER,
     v_balance NUMBER;
   BEGIN
     --
-    IF p_amount <= 0 THEN
+    -- Monto negativo siempre es invalido
+    IF p_amount < 0 THEN
       RETURN '0';
     END IF;
+    -- Monto = 0 es valido para registros de visita (no encontrado, promesa de pago, etc.)
+    IF p_amount = 0 THEN
+      RETURN '1';
+    END IF;
+    -- Monto > 0: validar que no exceda el saldo + 10% de tolerancia
     v_balance := fn_get_sale_balance(p_sale_id);
     RETURN CASE WHEN p_amount <=(v_balance * 1.1) THEN '1' ELSE '0' END;
   END fn_validate_payment_amount;
@@ -1789,15 +1836,22 @@ PROCEDURE sp_register_sale(p_sale_id               OUT NUMBER,
   --
   PROCEDURE sp_get_payment_statuses(p_cursor OUT SYS_REFCURSOR) IS
   BEGIN
+    -- Devuelve estados internos del flujo de aprobación (STATUS_TYPE='WORKFLOW')
+    -- Para acciones del cobrador en campo ver sp_get_visit_actions
     OPEN p_cursor FOR
-      SELECT STATUS_CODE   AS "statusCode",
-             STATUS_NAME   AS "statusName",
-             DESCRIPTION   AS "description",
-             DISPLAY_ORDER AS "displayOrder",
-             COLOR_HEX     AS "colorHex",
-             ICON          AS "icon"
+      SELECT STATUS_ID      AS "statusId",
+             STATUS_KEY     AS "statusCode",
+             STATUS_NAME    AS "statusName",
+             DESCRIPTION    AS "description",
+             DISPLAY_ORDER  AS "displayOrder",
+             COLOR_HEX      AS "colorHex",
+             ICON           AS "icon",
+             REQUIRES_NOTE  AS "requiresNote",
+             REQUIRES_PHOTO AS "requiresPhoto"
         FROM CATALOG_PAYMENT_STATUSES
-       WHERE IS_ACTIVE = 1
+       WHERE IS_ACTIVE          = 1
+         AND STATUS_TYPE        = 'WORKFLOW'
+         AND PARENT_STATUS_ID   IS NULL
        ORDER BY DISPLAY_ORDER, STATUS_NAME;
   END sp_get_payment_statuses;
   --
@@ -1892,18 +1946,23 @@ PROCEDURE sp_register_sale(p_sale_id               OUT NUMBER,
 
   PROCEDURE sp_get_visit_actions(p_cursor OUT SYS_REFCURSOR) IS
   BEGIN
+    -- Devuelve acciones de visita del cobrador (STATUS_TYPE='VISIT_ACTION')
+    -- Tabla unificada: CATALOG_PAYMENT_STATUSES (ver migración 03)
     OPEN p_cursor FOR
-      SELECT ACTION_CODE    AS "actionCode",
-             ACTION_NAME    AS "actionName",
-             DESCRIPTION    AS "description",
-             ICON           AS "icon",
-             COLOR_HEX      AS "colorHex",
-             REQUIRES_NOTE  AS "requiresNote",
-             REQUIRES_PHOTO AS "requiresPhoto",
-             DISPLAY_ORDER  AS "displayOrder"
-        FROM CATALOG_VISIT_ACTIONS
-       WHERE IS_ACTIVE = 1
-       ORDER BY DISPLAY_ORDER, ACTION_NAME;
+      SELECT STATUS_ID           AS "statusId",
+             STATUS_KEY          AS "actionCode",
+             STATUS_NAME         AS "actionName",
+             DESCRIPTION         AS "description",
+             ICON                AS "icon",
+             COLOR_HEX           AS "colorHex",
+             REQUIRES_NOTE       AS "requiresNote",
+             REQUIRES_PHOTO      AS "requiresPhoto",
+             DISPLAY_ORDER       AS "displayOrder",
+             PARENT_STATUS_ID    AS "parentActionId"
+        FROM CATALOG_PAYMENT_STATUSES
+       WHERE IS_ACTIVE   = 1
+         AND STATUS_TYPE = 'VISIT_ACTION'
+       ORDER BY PARENT_STATUS_ID NULLS FIRST, DISPLAY_ORDER, STATUS_NAME;
   END sp_get_visit_actions;
 
   FUNCTION fn_get_setting_value(p_setting_key IN VARCHAR2) RETURN VARCHAR2 IS
@@ -1942,6 +2001,53 @@ PROCEDURE sp_register_sale(p_sale_id               OUT NUMBER,
     WHEN OTHERS THEN
       RETURN 'CRITICO';
   END fn_get_risk_status_by_days;
+  --
+  -- ========================================================================
+  -- PROCEDIMIENTO DE TEMA POR ROL
+  -- ========================================================================
+  PROCEDURE sp_get_theme_by_role(p_role_id IN NUMBER,
+                                  p_cursor  OUT SYS_REFCURSOR) IS
+  BEGIN
+    OPEN p_cursor FOR
+      SELECT pt.THEME_ID         AS "themeId",
+             pt.ROLE_ID          AS "roleId",
+             pt.THEME_NAME       AS "themeName",
+             r.ROLE_NAME         AS "roleName",
+             pt.PRIMARY_COLOR    AS "primaryColor",
+             pt.SECONDARY_COLOR  AS "secondaryColor",
+             pt.ACCENT_COLOR     AS "accentColor",
+             pt.BACKGROUND_COLOR AS "backgroundColor",
+             pt.TEXT_COLOR       AS "textColor",
+             pt.ICON_NAME        AS "iconName"
+        FROM PROFILE_THEMES pt
+        JOIN ROLES r ON pt.ROLE_ID = r.ROLE_ID
+       WHERE pt.ROLE_ID = p_role_id
+         AND pt.IS_ACTIVE = 1
+       FETCH FIRST 1 ROWS ONLY;
+  EXCEPTION
+    WHEN OTHERS THEN
+      OPEN p_cursor FOR SELECT NULL FROM DUAL WHERE 1 = 0;
+  END sp_get_theme_by_role;
+
+  -- ========================================================================
+  -- PROCEDIMIENTO DE PERMISOS POR USUARIO
+  -- ========================================================================
+  PROCEDURE sp_get_user_permissions(p_user_id IN NUMBER,
+                                    p_cursor  OUT SYS_REFCURSOR) IS
+  BEGIN
+    OPEN p_cursor FOR
+      SELECT p.PERMISSION_NAME  AS "permissionName",
+             p.MODULE           AS "module",
+             p.DESCRIPTION      AS "description"
+        FROM PERMISSIONS p
+        JOIN ROLE_PERMISSIONS rp ON p.PERMISSION_ID = rp.PERMISSION_ID
+        JOIN USERS u             ON u.ROLE_ID        = rp.ROLE_ID
+       WHERE u.USER_ID = p_user_id
+       ORDER BY p.MODULE, p.PERMISSION_NAME;
+  EXCEPTION
+    WHEN OTHERS THEN
+      OPEN p_cursor FOR SELECT NULL, NULL, NULL FROM DUAL WHERE 1 = 0;
+  END sp_get_user_permissions;
   --
 END EM_VITARAIZ_AD;
 /

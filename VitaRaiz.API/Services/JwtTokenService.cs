@@ -14,7 +14,7 @@ public class JwtTokenService
         _configuration = configuration;
     }
 
-    public string GenerateToken(int userId, string username, string role)
+    public string GenerateToken(int userId, string username, string role, int roleId = 0)
     {
         var jwtSettings = _configuration.GetSection("JwtSettings");
         var secretKey = jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey not configured");
@@ -29,7 +29,9 @@ public class JwtTokenService
         {
             new Claim(JwtRegisteredClaimNames.Sub, userId.ToString()),
             new Claim(JwtRegisteredClaimNames.Name, username),
+            new Claim(ClaimTypes.Name, username),          // maps to Identity.Name
             new Claim(ClaimTypes.Role, role),
+            new Claim("roleId", roleId.ToString()),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
 

@@ -1,0 +1,397 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:controls="clr-namespace:VitaRaiz.Mobile.Controls"
+             xmlns:converters="clr-namespace:VitaRaiz.Mobile.Converters"
+             xmlns:pages="clr-namespace:VitaRaiz.Mobile.Pages"
+             x:Class="VitaRaiz.Mobile.Pages.RegistrarCobroPage"
+             x:Name="CobroPageRoot"
+             Shell.NavBarIsVisible="False"
+             Shell.TabBarIsVisible="False"
+             BackgroundColor="{DynamicResource PageBackground}">
+
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <converters:InverseBoolConverter x:Key="InvertedBoolConverter" />
+        </ResourceDictionary>
+    </ContentPage.Resources>
+
+    <controls:PageFrame Title="💵 Registrar Cobro"
+                        Subtitle="{Binding HeaderSubtitle}"
+                        CanGoBack="True"
+                        ShowActions="False"
+                        BackClicked="OnBackTapped">
+    <controls:PageFrame.Body>
+    <ScrollView>
+            <VerticalStackLayout Padding="14,14" Spacing="12">
+
+                <!-- Selector de venta (modo standalone) -->
+                <Border IsVisible="{Binding IsStandaloneMode}"
+                        BackgroundColor="White" StrokeThickness="0" Padding="14,12"
+                        Shadow="{Shadow Brush='#18000000', Offset='0,2', Radius=6}">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="12" /></Border.StrokeShape>
+                    <VerticalStackLayout Spacing="8">
+                        <Label Text="🧾 VENTA" FontSize="10"
+                               TextColor="{DynamicResource ThemeColorHex}" FontAttributes="Bold" />
+                        <Border StrokeThickness="1" Stroke="{DynamicResource ThemeColorLighterHex}"
+                                Padding="8,4" BackgroundColor="White">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="8" /></Border.StrokeShape>
+                            <Picker Title="Selecciona una venta..."
+                                    ItemsSource="{Binding Sales}"
+                                    ItemDisplayBinding="{Binding DisplayText}"
+                                    SelectedItem="{Binding SelectedSale}"
+                                    FontSize="13" TextColor="#333" />
+                        </Border>
+                        <Border IsVisible="{Binding HasSelectedSale}"
+                                BackgroundColor="#FFF3E0" StrokeThickness="0" Padding="10,8">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="8" /></Border.StrokeShape>
+                            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" RowSpacing="2">
+                                <Label Grid.Row="0" Grid.Column="0"
+                                       Text="{Binding SelectedSale.CustomerName}"
+                                       FontSize="13" FontAttributes="Bold" TextColor="#333" />
+                                <Label Grid.Row="1" Grid.Column="0"
+                                       Text="{Binding SelectedSale.TotalAmount, StringFormat='Total: ${0:N2}'}"
+                                       FontSize="11" TextColor="#777" />
+                                <Label Grid.Row="0" Grid.Column="1" Grid.RowSpan="2"
+                                       Text="{Binding SelectedSale.PendingAmount, StringFormat='${0:N2}'}"
+                                       FontSize="16" FontAttributes="Bold" TextColor="{DynamicResource DangerColor}"
+                                       VerticalOptions="Center" />
+                            </Grid>
+                        </Border>
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- Contexto de venta (modo contextual) -->
+                <Border IsVisible="{Binding HasContext}"
+                        BackgroundColor="White" StrokeThickness="0" Padding="12,10"
+                        Shadow="{Shadow Brush='#18000000', Offset='0,2', Radius=6}">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="12" /></Border.StrokeShape>
+                    <Grid ColumnDefinitions="Auto,*,*" ColumnSpacing="10">
+                        <!-- Saldo destacado -->
+                        <Border Grid.Column="0" BackgroundColor="#FFF3E0"
+                                StrokeThickness="0" Padding="10,8">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="8" /></Border.StrokeShape>
+                            <VerticalStackLayout Spacing="2" VerticalOptions="Center">
+                                <Label Text="💰 SALDO" FontSize="8" TextColor="#999" FontAttributes="Bold" />
+                                <Label Text="{Binding BalanceText}" FontSize="20" FontAttributes="Bold"
+                                       TextColor="{DynamicResource DangerColor}" />
+                                <Label Text="{Binding LastPaymentText, StringFormat='Últ: {0}'}"
+                                       FontSize="9" TextColor="#888" />
+                            </VerticalStackLayout>
+                        </Border>
+                        <!-- Fechas -->
+                        <VerticalStackLayout Grid.Column="1" Spacing="8" VerticalOptions="Center">
+                            <VerticalStackLayout Spacing="1">
+                                <Label Text="📅 F.VENTA" FontSize="8" TextColor="#999" FontAttributes="Bold" />
+                                <Label Text="{Binding SaleDateText}" FontSize="12" FontAttributes="Bold"
+                                       TextColor="{DynamicResource ThemeColorHex}" />
+                            </VerticalStackLayout>
+                            <VerticalStackLayout Spacing="1">
+                                <Label Text="🗓 1er COBRO" FontSize="8" TextColor="#999" FontAttributes="Bold" />
+                                <Label Text="{Binding FirstCollectionText}" FontSize="12" TextColor="#555" />
+                            </VerticalStackLayout>
+                        </VerticalStackLayout>
+                        <!-- Producto / Zona -->
+                        <VerticalStackLayout Grid.Column="2" Spacing="8" VerticalOptions="Center">
+                            <VerticalStackLayout Spacing="1">
+                                <Label Text="📦 PRODUCTO" FontSize="8" TextColor="#999" FontAttributes="Bold" />
+                                <Label Text="{Binding ProductName}" FontSize="11" TextColor="#333"
+                                       LineBreakMode="TailTruncation" />
+                            </VerticalStackLayout>
+                            <VerticalStackLayout Spacing="1">
+                                <Label Text="🗺 ZONA" FontSize="8" TextColor="#999" FontAttributes="Bold" />
+                                <Label Text="{Binding ZoneName}" FontSize="11" TextColor="#333" />
+                            </VerticalStackLayout>
+                        </VerticalStackLayout>
+                    </Grid>
+                </Border>
+
+                <!-- 3) Importes rápidos -->
+                <Border BackgroundColor="White" StrokeThickness="0" Padding="12,10"
+                        Shadow="{Shadow Brush='#18000000', Offset='0,2', Radius=6}">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="12" /></Border.StrokeShape>
+                    <VerticalStackLayout Spacing="6">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <Label Grid.Column="0" Text="💲 IMPORTE" FontSize="10"
+                                   TextColor="{DynamicResource ThemeColorHex}" FontAttributes="Bold"
+                                   VerticalOptions="Center" />
+                            <Label Grid.Column="1"
+                                   Text="{Binding RemainingBalanceText}"
+                                   FontSize="11" FontAttributes="Bold"
+                                   TextColor="{DynamicResource ThemeColorHex}"
+                                   IsVisible="{Binding HasRemainingBalance}"
+                                   VerticalOptions="Center"
+                                   HorizontalOptions="End" />
+                        </Grid>
+                        <!-- Chips de importes: grid uniforme responsive -->
+                        <Grid ColumnDefinitions="*,*,*,*,*" ColumnSpacing="6">
+                            <!-- $0 -->
+                            <Border Grid.Column="0" Padding="0,10" StrokeThickness="1.5"
+                                    BackgroundColor="White" Stroke="#CCCCCC">
+                                <Border.StrokeShape><RoundRectangle CornerRadius="6" /></Border.StrokeShape>
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding Source={x:Reference CobroPageRoot}, Path=BindingContext.SelectAmountCommand}" CommandParameter="0" />
+                                </Border.GestureRecognizers>
+                                <Border.Triggers>
+                                    <DataTrigger TargetType="Border" Binding="{Binding QuickAmounts[0].IsSelected}" Value="True">
+                                        <Setter Property="BackgroundColor" Value="{DynamicResource ThemeColorLighterHex}" />
+                                        <Setter Property="Stroke" Value="{DynamicResource ThemeColor}" />
+                                    </DataTrigger>
+                                </Border.Triggers>
+                                <Label Text="🚫 $0" FontSize="12" TextColor="#555" HorizontalOptions="Center">
+                                    <Label.Triggers>
+                                        <DataTrigger TargetType="Label" Binding="{Binding QuickAmounts[0].IsSelected}" Value="True">
+                                            <Setter Property="TextColor" Value="{DynamicResource ThemeColorHex}" />
+                                            <Setter Property="FontAttributes" Value="Bold" />
+                                        </DataTrigger>
+                                    </Label.Triggers>
+                                </Label>
+                            </Border>
+                            <!-- $100 -->
+                            <Border Grid.Column="1" Padding="0,10" StrokeThickness="1.5"
+                                    BackgroundColor="White" Stroke="#CCCCCC">
+                                <Border.StrokeShape><RoundRectangle CornerRadius="6" /></Border.StrokeShape>
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding Source={x:Reference CobroPageRoot}, Path=BindingContext.SelectAmountCommand}" CommandParameter="100" />
+                                </Border.GestureRecognizers>
+                                <Border.Triggers>
+                                    <DataTrigger TargetType="Border" Binding="{Binding QuickAmounts[1].IsSelected}" Value="True">
+                                        <Setter Property="BackgroundColor" Value="{DynamicResource ThemeColorLighterHex}" />
+                                        <Setter Property="Stroke" Value="{DynamicResource ThemeColor}" />
+                                    </DataTrigger>
+                                </Border.Triggers>
+                                <Label Text="$100" FontSize="12" TextColor="#555" HorizontalOptions="Center">
+                                    <Label.Triggers>
+                                        <DataTrigger TargetType="Label" Binding="{Binding QuickAmounts[1].IsSelected}" Value="True">
+                                            <Setter Property="TextColor" Value="{DynamicResource ThemeColorHex}" />
+                                            <Setter Property="FontAttributes" Value="Bold" />
+                                        </DataTrigger>
+                                    </Label.Triggers>
+                                </Label>
+                            </Border>
+                            <!-- $200 -->
+                            <Border Grid.Column="2" Padding="0,10" StrokeThickness="1.5"
+                                    BackgroundColor="White" Stroke="#CCCCCC">
+                                <Border.StrokeShape><RoundRectangle CornerRadius="6" /></Border.StrokeShape>
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding Source={x:Reference CobroPageRoot}, Path=BindingContext.SelectAmountCommand}" CommandParameter="200" />
+                                </Border.GestureRecognizers>
+                                <Border.Triggers>
+                                    <DataTrigger TargetType="Border" Binding="{Binding QuickAmounts[2].IsSelected}" Value="True">
+                                        <Setter Property="BackgroundColor" Value="{DynamicResource ThemeColorLighterHex}" />
+                                        <Setter Property="Stroke" Value="{DynamicResource ThemeColor}" />
+                                    </DataTrigger>
+                                </Border.Triggers>
+                                <Label Text="$200" FontSize="12" TextColor="#555" HorizontalOptions="Center">
+                                    <Label.Triggers>
+                                        <DataTrigger TargetType="Label" Binding="{Binding QuickAmounts[2].IsSelected}" Value="True">
+                                            <Setter Property="TextColor" Value="{DynamicResource ThemeColorHex}" />
+                                            <Setter Property="FontAttributes" Value="Bold" />
+                                        </DataTrigger>
+                                    </Label.Triggers>
+                                </Label>
+                            </Border>
+                            <!-- $500 -->
+                            <Border Grid.Column="3" Padding="0,10" StrokeThickness="1.5"
+                                    BackgroundColor="White" Stroke="#CCCCCC">
+                                <Border.StrokeShape><RoundRectangle CornerRadius="6" /></Border.StrokeShape>
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding Source={x:Reference CobroPageRoot}, Path=BindingContext.SelectAmountCommand}" CommandParameter="500" />
+                                </Border.GestureRecognizers>
+                                <Border.Triggers>
+                                    <DataTrigger TargetType="Border" Binding="{Binding QuickAmounts[3].IsSelected}" Value="True">
+                                        <Setter Property="BackgroundColor" Value="{DynamicResource ThemeColorLighterHex}" />
+                                        <Setter Property="Stroke" Value="{DynamicResource ThemeColor}" />
+                                    </DataTrigger>
+                                </Border.Triggers>
+                                <Label Text="$500" FontSize="12" TextColor="#555" HorizontalOptions="Center">
+                                    <Label.Triggers>
+                                        <DataTrigger TargetType="Label" Binding="{Binding QuickAmounts[3].IsSelected}" Value="True">
+                                            <Setter Property="TextColor" Value="{DynamicResource ThemeColorHex}" />
+                                            <Setter Property="FontAttributes" Value="Bold" />
+                                        </DataTrigger>
+                                    </Label.Triggers>
+                                </Label>
+                            </Border>
+                            <!-- Otro -->
+                            <Border Grid.Column="4" Padding="0,10" StrokeThickness="1.5"
+                                    BackgroundColor="White" Stroke="#CCCCCC">
+                                <Border.StrokeShape><RoundRectangle CornerRadius="6" /></Border.StrokeShape>
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding Source={x:Reference CobroPageRoot}, Path=BindingContext.SelectAmountCommand}" CommandParameter="custom" />
+                                </Border.GestureRecognizers>
+                                <Border.Triggers>
+                                    <DataTrigger TargetType="Border" Binding="{Binding QuickAmounts[4].IsSelected}" Value="True">
+                                        <Setter Property="BackgroundColor" Value="{DynamicResource ThemeColorLighterHex}" />
+                                        <Setter Property="Stroke" Value="{DynamicResource ThemeColor}" />
+                                    </DataTrigger>
+                                </Border.Triggers>
+                                <Label Text="Otro" FontSize="12" TextColor="#555" HorizontalOptions="Center">
+                                    <Label.Triggers>
+                                        <DataTrigger TargetType="Label" Binding="{Binding QuickAmounts[4].IsSelected}" Value="True">
+                                            <Setter Property="TextColor" Value="{DynamicResource ThemeColorHex}" />
+                                            <Setter Property="FontAttributes" Value="Bold" />
+                                        </DataTrigger>
+                                    </Label.Triggers>
+                                </Label>
+                            </Border>
+                        </Grid>
+                        <!-- Entry visible solo cuando se elige "Otro" -->
+                        <Border IsVisible="{Binding ShowCustomEntry}"
+                                StrokeThickness="1.5" Stroke="{DynamicResource ThemeColor}"
+                                Padding="12,6" BackgroundColor="White">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="10" /></Border.StrokeShape>
+                            <Entry x:Name="EntryMonto" Text="{Binding PaymentAmountText}"
+                                   Placeholder="$ Escribe el monto..." Keyboard="Numeric"
+                                   FontSize="20" FontAttributes="Bold" TextColor="#333" />
+                        </Border>
+                        <!-- Validación inline -->
+                        <HorizontalStackLayout Spacing="4" IsVisible="{Binding ShowAmountError}">
+                            <Label Text="⚠️" FontSize="11" VerticalOptions="Center" />
+                            <Label Text="Selecciona o escribe un importe válido"
+                                   FontSize="11" TextColor="#E53935" VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- 4) Estatus de cobro -->
+                <Border BackgroundColor="White" StrokeThickness="0" Padding="12,10"
+                        Shadow="{Shadow Brush='#18000000', Offset='0,2', Radius=6}">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="12" /></Border.StrokeShape>
+                    <VerticalStackLayout Spacing="8">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <Label Grid.Column="0" Text="⚡ ESTATUS DE COBRO" FontSize="10"
+                                   TextColor="{DynamicResource ThemeColorHex}" FontAttributes="Bold"
+                                   VerticalOptions="Center" />
+                        </Grid>
+
+                        <!-- Acciones de cobro: lista compacta radio-style -->
+                        <VerticalStackLayout BindableLayout.ItemsSource="{Binding VisitActions}" Spacing="0">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate x:DataType="pages:VisitActionItem">
+                                    <Border StrokeThickness="0" BackgroundColor="Transparent"
+                                            Padding="0,1">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer
+                                                Command="{Binding Source={x:Reference CobroPageRoot}, Path=BindingContext.SelectActionCommand}"
+                                                CommandParameter="{Binding ActionCode}" />
+                                        </Border.GestureRecognizers>
+                                        <Grid ColumnDefinitions="Auto,*,Auto" Padding="4,7" ColumnSpacing="10">
+                                            <!-- Radio circle -->
+                                            <Border Grid.Column="0"
+                                                    WidthRequest="18" HeightRequest="18"
+                                                    StrokeThickness="1.5" Stroke="#CCCCCC"
+                                                    BackgroundColor="White"
+                                                    VerticalOptions="Center">
+                                                <Border.StrokeShape><Ellipse /></Border.StrokeShape>
+                                                <Border.Triggers>
+                                                    <DataTrigger TargetType="Border" Binding="{Binding IsSelected}" Value="True">
+                                                        <Setter Property="BackgroundColor" Value="{DynamicResource ThemeColor}" />
+                                                        <Setter Property="Stroke" Value="{DynamicResource ThemeColor}" />
+                                                    </DataTrigger>
+                                                </Border.Triggers>
+                                            </Border>
+                                            <!-- Texto -->
+                                            <Label Grid.Column="1" Text="{Binding DisplayText}"
+                                                   FontSize="13" TextColor="#444"
+                                                   VerticalOptions="Center">
+                                                <Label.Triggers>
+                                                    <DataTrigger TargetType="Label" Binding="{Binding IsSelected}" Value="True">
+                                                        <Setter Property="TextColor" Value="{DynamicResource ThemeColorHex}" />
+                                                        <Setter Property="FontAttributes" Value="Bold" />
+                                                    </DataTrigger>
+                                                </Label.Triggers>
+                                            </Label>
+                                            <!-- Check -->
+                                            <Label Grid.Column="2" Text="✔"
+                                                   FontSize="13" TextColor="{DynamicResource ThemeColor}"
+                                                   VerticalOptions="Center"
+                                                   IsVisible="{Binding IsSelected}" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </VerticalStackLayout>
+
+                        <!-- Validación inline -->
+                        <HorizontalStackLayout Spacing="4" IsVisible="{Binding ShowActionError}">
+                            <Label Text="⚠️" FontSize="11" VerticalOptions="Center" />
+                            <Label Text="Selecciona un estatus de cobro"
+                                   FontSize="11" TextColor="#E53935" VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+
+                        <!-- Nota libre con contador -->
+                        <Border StrokeThickness="1" Stroke="#DDDDDD"
+                                Padding="10,4" BackgroundColor="White">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="10" /></Border.StrokeShape>
+                            <Grid RowDefinitions="*,Auto">
+                                <Editor Grid.Row="0" Text="{Binding SelectedNoteText}"
+                                        Placeholder="📝 Nota (opcional)..."
+                                        FontSize="13" TextColor="#333"
+                                        AutoSize="TextChanges"
+                                        MaxLength="300" />
+                                <Label Grid.Row="1"
+                                       Text="{Binding NoteLength, StringFormat='{0}/300'}"
+                                       FontSize="9" TextColor="#BBB"
+                                       HorizontalOptions="End" Margin="0,0,2,2" />
+                            </Grid>
+                        </Border>
+
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- 6) Botón registrar cobro -->
+                <Label Text="{Binding ErrorMessage}" TextColor="Red" FontSize="12"
+                       IsVisible="{Binding HasError}" Margin="2,0" />
+
+                <Border StrokeThickness="0" BackgroundColor="White"
+                        Shadow="{Shadow Brush='#22000000', Offset='0,2', Radius=6}">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="12" /></Border.StrokeShape>
+                    <Grid RowDefinitions="Auto,Auto">
+
+                        <!-- Fila GPS (30%) -->
+                        <Border Grid.Row="0" StrokeThickness="0" Padding="12,7"
+                                BackgroundColor="#F5F5F5">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="12,12,0,0" /></Border.StrokeShape>
+                            <Border.Triggers>
+                                <DataTrigger TargetType="Border" Binding="{Binding IsGpsReady}" Value="True">
+                                    <Setter Property="BackgroundColor" Value="#E8F5E9" />
+                                </DataTrigger>
+                            </Border.Triggers>
+                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                <Label Grid.Column="0" Text="{Binding GpsIcon}" FontSize="14"
+                                       TextColor="{Binding GpsIconColor}"
+                                       VerticalOptions="Center" />
+                                <Label Grid.Column="1" Text="{Binding GpsStatus}"
+                                       FontSize="11" FontAttributes="Bold"
+                                       TextColor="{Binding GpsIconColor}"
+                                       VerticalOptions="Center" Margin="6,0,0,0" />
+                                <Label Grid.Column="2" Text="{Binding PaymentDateTimeText}"
+                                       FontSize="10" TextColor="#999"
+                                       VerticalOptions="Center" />
+                            </Grid>
+                        </Border>
+
+                        <!-- Fila Botón (70%) -->
+                        <Button Grid.Row="1"
+                                Text="  REGISTRAR COBRO"
+                                BackgroundColor="{Binding GpsButtonColor}"
+                                TextColor="White" FontSize="16" FontAttributes="Bold"
+                                CornerRadius="0" HeightRequest="56"
+                                IsEnabled="{Binding CanRegister}"
+                                Clicked="OnRegistrarCobro" />
+
+                    </Grid>
+                </Border>
+
+                <ActivityIndicator IsRunning="{Binding IsRegistering}"
+                                   IsVisible="{Binding IsRegistering}"
+                                   Color="{DynamicResource ThemeColor}"
+                                   HorizontalOptions="Center" />
+                <BoxView HeightRequest="30" Color="Transparent" />
+            </VerticalStackLayout>
+        </ScrollView>
+    </controls:PageFrame.Body>
+    </controls:PageFrame>
+</ContentPage>
+

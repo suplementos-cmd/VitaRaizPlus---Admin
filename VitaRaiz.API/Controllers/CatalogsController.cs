@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using VitaRaiz.Application.DTOs;
 using VitaRaiz.Application.Interfaces;
+using VitaRaiz.Domain.Entities;
 
 namespace VitaRaiz.API.Controllers;
 
@@ -19,8 +21,9 @@ public class CatalogsController : ControllerBase
     }
 
     /// <summary>
-    /// Obtiene todos los catálogos en una sola llamada
-    /// Útil para la inicialización de la app móvil
+    /// Obtiene todos los catálogos en una sola llamada.
+    /// Si se llama con token Bearer válido, el tema retornado es el del rol del usuario.
+    /// Si se llama anónimamente, retorna el tema global por defecto.
     /// </summary>
     [AllowAnonymous]
     [HttpGet("all")]
@@ -29,12 +32,37 @@ public class CatalogsController : ControllerBase
         try
         {
             _logger.LogInformation("[CatalogsController] GetAllCatalogs called");
-            var saleStatuses = await _catalogRepository.GetSaleStatusesAsync();
+
+            var saleStatuses    = await _catalogRepository.GetSaleStatusesAsync();
             var paymentStatuses = await _catalogRepository.GetPaymentStatusesAsync();
-            var riskStatuses = await _catalogRepository.GetRiskStatusesAsync();
-            var theme = await _catalogRepository.GetActiveThemeAsync();
-            var visitActions = await _catalogRepository.GetVisitActionsAsync();
-            var settings = await _catalogRepository.GetAppSettingsAsync(null, true);
+            var riskStatuses    = await _catalogRepository.GetRiskStatusesAsync();
+            var visitActions    = await _catalogRepository.GetVisitActionsAsync();
+            var settings        = await _catalogRepository.GetAppSettingsAsync(null, true);
+
+            // Tema contextual: si el token tiene roleId, usar el tema del perfil
+            CatalogAppTheme? theme = null;
+            int? roleId = ExtractRoleId();
+
+            if (roleId.HasValue && roleId.Value > 0)
+            {
+                var profileTheme = await _catalogRepository.GetThemeByRoleAsync(roleId.Value);
+                if (profileTheme != null)
+                {
+                    theme = new CatalogAppTheme
+                    {
+                        ThemeCode       = $"ROLE_{roleId}",
+                        ThemeName       = profileTheme.ThemeName,
+                        PrimaryColor    = profileTheme.PrimaryColor,
+                        SecondaryColor  = profileTheme.SecondaryColor,
+                        AccentColor     = profileTheme.AccentColor,
+                        BackgroundColor = profileTheme.BackgroundColor,
+                        TextColor       = profileTheme.TextColor
+                    };
+                    _logger.LogInformation("[CatalogsController] Role theme applied: {ThemeName} for roleId={RoleId}", theme.ThemeName, roleId);
+                }
+            }
+
+            theme ??= await _catalogRepository.GetActiveThemeAsync();
 
             return Ok(new
             {
@@ -43,23 +71,21 @@ public class CatalogsController : ControllerBase
                 riskStatuses,
                 theme,
                 visitActions,
-                settings = settings.ToDictionary(s => s.SettingKey, s => new 
-                { 
-                    value = s.SettingValue, 
-                    type = s.SettingType,
-                    description = s.Description 
+                settings = settings.ToDictionary(s => s.SettingKey, s => new
+                {
+                    value       = s.SettingValue,
+                    type        = s.SettingType,
+                    description = s.Description
                 })
             });
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "[CatalogsController] Error loading catalogs");
             return StatusCode(500, new { error = "Error al cargar catálogos", details = ex.Message });
         }
     }
 
-    /// <summary>
-    /// Obtiene el catálogo de estados de venta
-    /// </summary>
     [AllowAnonymous]
     [HttpGet("sale-statuses")]
     public async Task<IActionResult> GetSaleStatuses()
@@ -75,9 +101,6 @@ public class CatalogsController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Obtiene el catálogo de estados de pago
-    /// </summary>
     [AllowAnonymous]
     [HttpGet("payment-statuses")]
     public async Task<IActionResult> GetPaymentStatuses()
@@ -93,9 +116,6 @@ public class CatalogsController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Obtiene el catálogo de estados de riesgo
-    /// </summary>
     [AllowAnonymous]
     [HttpGet("risk-statuses")]
     public async Task<IActionResult> GetRiskStatuses()
@@ -111,9 +131,6 @@ public class CatalogsController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Obtiene el tema activo de la aplicación
-    /// </summary>
     [AllowAnonymous]
     [HttpGet("theme")]
     public async Task<IActionResult> GetActiveTheme()
@@ -121,10 +138,8 @@ public class CatalogsController : ControllerBase
         try
         {
             var theme = await _catalogRepository.GetActiveThemeAsync();
-            
             if (theme == null)
                 return NotFound(new { message = "No hay tema activo configurado" });
-
             return Ok(theme);
         }
         catch (Exception ex)
@@ -134,8 +149,40 @@ public class CatalogsController : ControllerBase
     }
 
     /// <summary>
-    /// Obtiene las plantillas de notificaciones
+    /// Obtiene el tema específico configurado para un rol. Requiere autenticación.
     /// </summary>
+    [HttpGet("theme/role/{roleId:int}")]
+    public async Task<IActionResult> GetThemeByRole(int roleId)
+    {
+        try
+        {
+            if (roleId <= 0)
+                return BadRequest(new { error = "roleId debe ser un número positivo" });
+
+            var theme = await _catalogRepository.GetThemeByRoleAsync(roleId);
+            if (theme == null)
+                return NotFound(new { message = $"No hay tema configurado para el rol {roleId}" });
+
+            return Ok(new ProfileThemeDto
+            {
+                ThemeId         = theme.ThemeId,
+                RoleId          = theme.RoleId,
+                ThemeName       = theme.ThemeName,
+                RoleName        = theme.RoleName,
+                PrimaryColor    = theme.PrimaryColor,
+                SecondaryColor  = theme.SecondaryColor,
+                AccentColor     = theme.AccentColor,
+                BackgroundColor = theme.BackgroundColor,
+                TextColor       = theme.TextColor,
+                IconName        = theme.IconName
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
     [HttpGet("notification-templates")]
     public async Task<IActionResult> GetNotificationTemplates([FromQuery] string? templateType = null)
     {
@@ -150,9 +197,6 @@ public class CatalogsController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Obtiene las configuraciones de la aplicación
-    /// </summary>
     [HttpGet("settings")]
     public async Task<IActionResult> GetAppSettings(
         [FromQuery] string? category = null,
@@ -161,19 +205,16 @@ public class CatalogsController : ControllerBase
         try
         {
             var settings = await _catalogRepository.GetAppSettingsAsync(category, publicOnly);
-            
-            // Convertir a diccionario para facilitar el uso en la app
             var settingsDict = settings.ToDictionary(
                 s => s.SettingKey,
-                s => new 
-                { 
-                    value = s.SettingValue,
-                    type = s.SettingType,
+                s => new
+                {
+                    value       = s.SettingValue,
+                    type        = s.SettingType,
                     description = s.Description,
-                    category = s.Category
+                    category    = s.Category
                 }
             );
-            
             return Ok(settingsDict);
         }
         catch (Exception ex)
@@ -182,19 +223,14 @@ public class CatalogsController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Obtiene un setting específico por su key
-    /// </summary>
     [HttpGet("settings/{key}")]
     public async Task<IActionResult> GetSetting(string key)
     {
         try
         {
             var value = await _catalogRepository.GetSettingValueAsync(key);
-            
             if (value == null)
                 return NotFound(new { message = $"Setting '{key}' no encontrado" });
-
             return Ok(new { key, value });
         }
         catch (Exception ex)
@@ -203,20 +239,14 @@ public class CatalogsController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Obtiene las acciones de visita disponibles
-    /// </summary>
-    [HttpGet("visit-actions")]
-    public async Task<IActionResult> GetVisitActions()
+    // ── helpers ──────────────────────────────────────────────────────────────
+
+    /// <summary>Extrae roleId del claim del token JWT, si está presente.</summary>
+    private int? ExtractRoleId()
     {
-        try
-        {
-            var actions = await _catalogRepository.GetVisitActionsAsync();
-            return Ok(actions);
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { error = ex.Message });
-        }
+        var claim = User?.FindFirst("roleId")?.Value;
+        if (!string.IsNullOrEmpty(claim) && int.TryParse(claim, out var rid) && rid > 0)
+            return rid;
+        return null;
     }
 }

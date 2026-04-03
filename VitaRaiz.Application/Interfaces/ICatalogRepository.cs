@@ -8,6 +8,8 @@ public interface ICatalogRepository
     Task<List<CatalogPaymentStatus>> GetPaymentStatusesAsync();
     Task<List<CatalogRiskStatus>> GetRiskStatusesAsync();
     Task<CatalogAppTheme?> GetActiveThemeAsync();
+    /// <summary>Obtiene el tema configurado para un rol específico desde PROFILE_THEMES.</summary>
+    Task<ProfileTheme?> GetThemeByRoleAsync(int roleId);
     Task<List<CatalogNotificationTemplate>> GetNotificationTemplatesAsync(string? templateType = null);
     Task<List<CatalogAppSetting>> GetAppSettingsAsync(string? category = null, bool isPublic = true);
     Task<List<CatalogVisitAction>> GetVisitActionsAsync();

@@ -148,7 +148,7 @@ public class PaymentsController : ControllerBase
     /// Actualizar un pago
     /// </summary>
     [HttpPut("{id}")]
-    [Authorize(Roles = "Supervisor,AdminFull,Admin")]
+    [Authorize(Roles = "Cobrador,Supervisor,AdminFull,Admin")]
     public async Task<IActionResult> UpdatePayment(int id, [FromBody] UpdatePaymentCommand command)
     {
         if (id != command.PaymentId)

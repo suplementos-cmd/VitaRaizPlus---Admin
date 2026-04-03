@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Oracle.ManagedDataAccess.Client;
 using VitaRaiz.Application.DTOs;
 using VitaRaiz.Application.Interfaces;
+using VitaRaiz.Domain.Constants;
 using VitaRaiz.Domain.Entities;
 using VitaRaiz.Infrastructure.Data;
 
@@ -9,17 +10,12 @@ namespace VitaRaiz.Infrastructure.Repositories;
 
 public class PaymentRepository : BaseOracleRepository, IPaymentRepository
 {
-    public PaymentRepository(VitaRaizDbContext context) : base(context)
-    {
-    }
+    private readonly ICatalogRepository _catalogRepository;
 
-    /// <summary>
-    /// Normaliza el status de pago de Oracle a lowercase consistente.
-    /// Oracle usa: PENDING, APPROVED, REJECTED
-    /// API devuelve: pending, approved, rejected
-    /// </summary>
-    private static string NormalizePaymentStatus(string? status)
-        => status?.ToLower() ?? "unknown";
+    public PaymentRepository(VitaRaizDbContext context, ICatalogRepository catalogRepository) : base(context)
+    {
+        _catalogRepository = catalogRepository;
+    }
 
     public async Task<int> RegisterPaymentAsync(Payment payment)
     {
@@ -36,6 +32,8 @@ public class PaymentRepository : BaseOracleRepository, IPaymentRepository
         AddInputParameter(command, "p_device_id", "WEB_API");
         AddInputParameter(command, "p_photo_path", DBNull.Value);
         AddInputParameter(command, "p_notes", payment.Notes);
+        AddInputParameter(command, "p_action_id", (object?)payment.CollectionActionId ?? DBNull.Value);
+        AddInputParameter(command, "p_sub_id", (object?)payment.CollectionSubId ?? DBNull.Value);
 
         await command.ExecuteNonQueryAsync();
 
@@ -95,29 +93,35 @@ public class PaymentRepository : BaseOracleRepository, IPaymentRepository
             if (endDate.HasValue)
                 query = query.Where(p => p.PaymentDate <= endDate.Value);
 
-            if (!string.IsNullOrEmpty(status))
-                query = query.Where(p => p.Status.ToLower() == status.ToLower());
+            // Load catalog once — used for both filter and projection
+            var statusCatalog = await _catalogRepository.GetPaymentStatusesAsync();
+            var statusById  = statusCatalog.ToDictionary(s => s.StatusId,   s => s.StatusCode.ToLower());
+            var statusByKey = statusCatalog.ToDictionary(s => s.StatusCode.ToUpper(), s => s.StatusId);
 
-            var payments = await query
+            if (!string.IsNullOrEmpty(status))
+            {
+                // Resolve status ID from catalog (case-insensitive match on StatusCode)
+                if (statusByKey.TryGetValue(status.ToUpper(), out var sid))
+                    query = query.Where(p => p.StatusId == sid);
+            }
+
+            var rawPayments = await query
                 .OrderByDescending(p => p.PaymentDate)
-                .Select(p => new PaymentDto
-                {
-                    PaymentId = p.PaymentId,
-                    SaleId = p.SaleId,
-                    CustomerName = p.Sale.Customer.CustomerName,
-                    Amount = p.Amount,
-                    PaymentDate = p.PaymentDate,
-                    CollectorName = p.Collector.Username,
-                    Status = p.Status, // Se normaliza después de materializar
-                    Notes = p.Notes,
-                    GpsLatitude = p.GpsLatitude,
-                    GpsLongitude = p.GpsLongitude
-                })
                 .ToListAsync();
 
-            // Normalizar status después de materializar la query
-            foreach (var payment in payments)
-                payment.Status = NormalizePaymentStatus(payment.Status);
+            var payments = rawPayments.Select(p => new PaymentDto
+            {
+                PaymentId     = p.PaymentId,
+                SaleId        = p.SaleId,
+                CustomerName  = p.Sale.Customer.CustomerName,
+                Amount        = p.Amount,
+                PaymentDate   = p.PaymentDate,
+                CollectorName = p.Collector.Username,
+                Status        = statusById.TryGetValue(p.StatusId, out var code) ? code : p.StatusId.ToString(),
+                Notes         = p.Notes,
+                GpsLatitude   = p.GpsLatitude,
+                GpsLongitude  = p.GpsLongitude
+            }).ToList();
 
             Console.WriteLine($"[PaymentRepository] Devolviendo {payments.Count} pagos");
             return payments;
@@ -134,32 +138,33 @@ public class PaymentRepository : BaseOracleRepository, IPaymentRepository
         try
         {
             Console.WriteLine($"[PaymentRepository] GetPaymentByIdAsync - paymentId={paymentId}");
-            
-            var payment = await _context.Payments
+
+            var statusCatalog = await _catalogRepository.GetPaymentStatusesAsync();
+            var statusById = statusCatalog.ToDictionary(s => s.StatusId, s => s.StatusCode.ToLower());
+
+            var raw = await _context.Payments
                 .Include(p => p.Sale)
                     .ThenInclude(s => s.Customer)
                 .Include(p => p.Collector)
                 .Where(p => p.PaymentId == paymentId)
-                .Select(p => new PaymentDto
-                {
-                    PaymentId = p.PaymentId,
-                    SaleId = p.SaleId,
-                    CustomerName = p.Sale.Customer.CustomerName,
-                    Amount = p.Amount,
-                    PaymentDate = p.PaymentDate,
-                    CollectorName = p.Collector.Username,
-                    Status = p.Status, // Se normaliza abajo
-                    Notes = p.Notes,
-                    GpsLatitude = p.GpsLatitude,
-                    GpsLongitude = p.GpsLongitude
-                })
                 .FirstOrDefaultAsync();
 
-            if (payment != null)
-                payment.Status = NormalizePaymentStatus(payment.Status);
+            if (raw == null) return null;
 
-            Console.WriteLine($"[PaymentRepository] Pago encontrado: {payment != null}");
-            return payment;
+            Console.WriteLine($"[PaymentRepository] Pago encontrado: {raw.PaymentId}");
+            return new PaymentDto
+            {
+                PaymentId     = raw.PaymentId,
+                SaleId        = raw.SaleId,
+                CustomerName  = raw.Sale.Customer.CustomerName,
+                Amount        = raw.Amount,
+                PaymentDate   = raw.PaymentDate,
+                CollectorName = raw.Collector.Username,
+                Status        = statusById.TryGetValue(raw.StatusId, out var code) ? code : raw.StatusId.ToString(),
+                Notes         = raw.Notes,
+                GpsLatitude   = raw.GpsLatitude,
+                GpsLongitude  = raw.GpsLongitude
+            };
         }
         catch (Exception ex)
         {
@@ -204,7 +209,13 @@ public class PaymentRepository : BaseOracleRepository, IPaymentRepository
             // Update properties
             payment.Amount = amount;
             payment.PaymentDate = paymentDate;
-            payment.Status = status.ToUpper(); // Oracle stores status in uppercase
+
+            // Resolve status ID dynamically from catalog (STATUS_KEY match, case-insensitive)
+            var statuses = await _catalogRepository.GetPaymentStatusesAsync();
+            var matched = statuses.FirstOrDefault(s =>
+                string.Equals(s.StatusCode, status, StringComparison.OrdinalIgnoreCase));
+            payment.StatusId = matched?.StatusId ?? PaymentStatusCodes.Pending; // fallback: PENDING
+
             payment.Notes = notes;
 
             await _context.SaveChangesAsync();

@@ -1,61 +1,28 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:controls="clr-namespace:VitaRaiz.Mobile.Controls"
              x:Class="VitaRaiz.Mobile.Pages.CustomersPage"
              Title="Clientes"
              Shell.NavBarIsVisible="False"
              Shell.TabBarIsVisible="False"
-             BackgroundColor="#F0F4F8">
+             BackgroundColor="{DynamicResource PageBackground}">
     
-    <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="0">
+    <controls:PageFrame Title="  👤 CLIENTES"
+                        ShowBottomNav="True" ActiveTab="Customers"
+                        CanSearch="{Binding HasCustomers}"
+                        SearchText="{Binding SearchText, Mode=TwoWay}"
+                        RefreshClicked="OnRefreshTapped"
+                        LogoutClicked="OnLogoutTapped"
+                        SearchCompleted="OnSearchCompleted">
+    <controls:PageFrame.Body>
+    <Grid RowDefinitions="Auto,*" RowSpacing="0">
 
-        <!-- ═══ HEADER ═══ -->
-        <Border Grid.Row="0" StrokeThickness="0" BackgroundColor="{DynamicResource ThemeColor}"
-                Shadow="{Shadow Brush='#44000000', Offset='0,3', Radius=6}">
-            <Grid RowDefinitions="Auto,Auto" Padding="14,12" ColumnDefinitions="*,Auto,Auto,Auto">
-                <!-- Fila 1: Título y botones -->
-                <Label Grid.Row="0" Grid.Column="0" Text="  👤 CLIENTES" FontSize="18" FontAttributes="Bold"
-                       TextColor="White" VerticalOptions="Center" />
-                <Label Grid.Row="0" Grid.Column="1" x:Name="SearchIconLabel" Text="🔍" FontSize="20" 
-                       TextColor="{DynamicResource ThemeColorLightHex}" VerticalOptions="Center"
-                       Padding="8,0" IsEnabled="{Binding HasCustomers}" Opacity="{Binding SearchIconOpacity}">
-                    <Label.GestureRecognizers>
-                        <TapGestureRecognizer Tapped="OnSearchToggle" />
-                    </Label.GestureRecognizers>
-                </Label>
-                <Label Grid.Row="0" Grid.Column="2" Text="↻" FontSize="20" TextColor="{DynamicResource ThemeColorLightHex}" VerticalOptions="Center"
-                       Padding="8,0">
-                    <Label.GestureRecognizers>
-                        <TapGestureRecognizer Tapped="OnRefreshTapped" />
-                    </Label.GestureRecognizers>
-                </Label>
-                <Label Grid.Row="0" Grid.Column="3" Text="⎋" FontSize="20" TextColor="{DynamicResource ThemeColorLightHex}" VerticalOptions="Center"
-                       Padding="8,0">
-                    <Label.GestureRecognizers>
-                        <TapGestureRecognizer Tapped="OnLogoutTapped" />
-                    </Label.GestureRecognizers>
-                </Label>
-                
-                <!-- Fila 2: Búsqueda compacta (colapsable) -->
-                <Border Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="4" 
-                        x:Name="SearchBarCompact" IsVisible="False"
-                        BackgroundColor="White" StrokeThickness="0"
-                        Margin="0,8,0,0" Padding="8,4">
-                    <Border.StrokeShape><RoundRectangle CornerRadius="8" /></Border.StrokeShape>
-                    <Entry Placeholder="Buscar..."
-                           Text="{Binding SearchText}"
-                           TextColor="#333" PlaceholderColor="#999"
-                           FontSize="13" 
-                           Completed="OnSearchCompleted" />
-                </Border>
-            </Grid>
-        </Border>
-        
         <!-- Búsqueda (Toggleable) -->
-        <Border x:Name="SearchBar" Grid.Row="1" IsVisible="False"
+        <Border x:Name="SearchBar" Grid.Row="0" IsVisible="False"
                 BackgroundColor="White"
                 StrokeThickness="1"
-                Stroke="#E0E0E0"
+                Stroke="{DynamicResource BorderColorMedium}"
                 Padding="15"
                 Margin="12,8,12,0">
             <Border.StrokeShape>
@@ -69,7 +36,7 @@
         </Border>
         
         <!-- Lista de clientes -->
-        <CollectionView Grid.Row="2"
+        <CollectionView Grid.Row="1"
                         ItemsSource="{Binding Customers}"
                         SelectionMode="Single"
                         SelectedItem="{Binding SelectedCustomer}"
@@ -130,14 +97,14 @@
                             <Label Grid.Row="2" Grid.Column="1"
                                    Text="{Binding ZoneName}"
                                    FontSize="12"
-                                   TextColor="#2196F3" />
+                                   TextColor="{DynamicResource ThemeColorHex}" />
                             
                             <!-- Saldo -->
                             <Label Grid.Row="2" Grid.Column="2"
                                    Text="{Binding PendingBalance, StringFormat='${0:N2}'}"
                                    FontSize="12"
                                    FontAttributes="Bold"
-                                   TextColor="#F44336"
+                                   TextColor="{DynamicResource DangerColor}"
                                    HorizontalOptions="End" />
                         </Grid>
                     </Border>
@@ -158,36 +125,7 @@
             </CollectionView.EmptyView>
         </CollectionView>
 
-        <!-- ═══ BOTTOM NAV BAR ═══ -->
-        <Border Grid.Row="3" StrokeThickness="0" BackgroundColor="White"
-                Shadow="{Shadow Brush='#22000000', Offset='0,-2', Radius=4}">
-            <Grid ColumnDefinitions="*,*,*,*" HeightRequest="58" Padding="0,6,0,4">
-                <VerticalStackLayout Grid.Column="0" Spacing="2" HorizontalOptions="Center" VerticalOptions="Center">
-                    <Label Text="⌂" FontSize="24" HorizontalOptions="Center" TextColor="#AAAAAA" />
-                    <Label Text="Inicio" FontSize="10" HorizontalOptions="Center" TextColor="#AAAAAA" />
-                    <VerticalStackLayout.GestureRecognizers>
-                        <TapGestureRecognizer Tapped="OnTabInicio" />
-                    </VerticalStackLayout.GestureRecognizers>
-                </VerticalStackLayout>
-                <VerticalStackLayout Grid.Column="1" Spacing="2" HorizontalOptions="Center" VerticalOptions="Center">
-                    <Label Text="�" FontSize="24" HorizontalOptions="Center" TextColor="#AAAAAA" />
-                    <Label Text="Ventas" FontSize="10" HorizontalOptions="Center" TextColor="#AAAAAA" />
-                    <VerticalStackLayout.GestureRecognizers>
-                        <TapGestureRecognizer Tapped="OnTabVentas" />
-                    </VerticalStackLayout.GestureRecognizers>
-                </VerticalStackLayout>
-                <VerticalStackLayout Grid.Column="2" Spacing="2" HorizontalOptions="Center" VerticalOptions="Center">
-                    <Label Text="�" FontSize="24" HorizontalOptions="Center" TextColor="#AAAAAA" />
-                    <Label Text="Cobranza" FontSize="10" HorizontalOptions="Center" TextColor="#AAAAAA" />
-                    <VerticalStackLayout.GestureRecognizers>
-                        <TapGestureRecognizer Tapped="OnTabCobranza" />
-                    </VerticalStackLayout.GestureRecognizers>
-                </VerticalStackLayout>
-                <VerticalStackLayout Grid.Column="3" Spacing="2" HorizontalOptions="Center" VerticalOptions="Center">
-                    <Label Text="👤" FontSize="24" HorizontalOptions="Center" TextColor="{DynamicResource ThemeColor}" />
-                    <Label Text="Clientes" FontSize="10" HorizontalOptions="Center" TextColor="{DynamicResource ThemeColor}" FontAttributes="Bold" />
-                </VerticalStackLayout>
-            </Grid>
-        </Border>
     </Grid>
+    </controls:PageFrame.Body>
+    </controls:PageFrame>
 </ContentPage>

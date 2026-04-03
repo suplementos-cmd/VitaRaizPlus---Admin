@@ -2,133 +2,230 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="VitaRaiz.Mobile.Pages.LoginPage"
-             Shell.NavBarIsVisible="False"
-             BackgroundColor="#F0F4F8">
-    
-    <ScrollView>
-        <VerticalStackLayout Padding="30" 
-                             VerticalOptions="Center"
-                             Spacing="20">
-            
-            <!-- Logo y título -->
-            <Border BackgroundColor="White"
-                    StrokeThickness="0"
-                    Padding="20"
-                    HeightRequest="100"
-                    WidthRequest="100"
-                    HorizontalOptions="Center"
-                    Margin="0,0,0,30">
-                <Border.StrokeShape>
-                    <RoundRectangle CornerRadius="50" />
-                </Border.StrokeShape>
-                <Label Text="🌿 VR"
-                       FontSize="32"
-                       FontAttributes="Bold"
-                       TextColor="#28A745"
+             Shell.NavBarIsVisible="False">
+
+    <!-- Fondo: gradiente verde oscuro -->
+    <ContentPage.Background>
+        <LinearGradientBrush StartPoint="0,0" EndPoint="0.8,1">
+            <GradientStop Color="#071F0E" Offset="0.0" />
+            <GradientStop Color="#104D22" Offset="0.45" />
+            <GradientStop Color="#1A7A36" Offset="1.0" />
+        </LinearGradientBrush>
+    </ContentPage.Background>
+
+    <Grid>
+
+        <!-- Círculos decorativos de fondo -->
+        <AbsoluteLayout InputTransparent="True">
+            <Ellipse AbsoluteLayout.LayoutBounds="-110,-110,340,340"
+                     Fill="#1A6B35" Opacity="0.22" />
+            <Ellipse AbsoluteLayout.LayoutBounds="270,490,230,230"
+                     Fill="#22C55E" Opacity="0.14" />
+            <Ellipse AbsoluteLayout.LayoutBounds="250,-60,160,160"
+                     Fill="#0A4C1E" Opacity="0.28" />
+            <Ellipse AbsoluteLayout.LayoutBounds="-50,560,190,190"
+                     Fill="#145C2A" Opacity="0.18" />
+        </AbsoluteLayout>
+
+        <ScrollView>
+            <VerticalStackLayout Padding="26,56,26,40" Spacing="0">
+
+                <!-- ══════════════════════════════════════
+                     LOGO CIRCULAR
+                ══════════════════════════════════════ -->
+                <Grid HorizontalOptions="Center"
+                      WidthRequest="118" HeightRequest="118"
+                      Margin="0,0,0,12">
+
+                    <!-- Halo exterior difuso -->
+                    <Ellipse WidthRequest="118" HeightRequest="118"
+                             HorizontalOptions="Center" VerticalOptions="Center">
+                        <Ellipse.Fill>
+                            <RadialGradientBrush Center="0.5,0.5" Radius="0.5">
+                                <GradientStop Color="#4ADE8055" Offset="0.4" />
+                                <GradientStop Color="#00000000" Offset="1.0" />
+                            </RadialGradientBrush>
+                        </Ellipse.Fill>
+                    </Ellipse>
+
+                    <!-- Círculo principal con gradiente -->
+                    <Border WidthRequest="96" HeightRequest="96"
+                            HorizontalOptions="Center" VerticalOptions="Center"
+                            StrokeThickness="2.5" Stroke="#FFFFFF50">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                <GradientStop Color="#34D367" Offset="0.0" />
+                                <GradientStop Color="#15803D" Offset="1.0" />
+                            </LinearGradientBrush>
+                        </Border.Background>
+                        <Border.StrokeShape>
+                            <Ellipse />
+                        </Border.StrokeShape>
+                        <VerticalStackLayout HorizontalOptions="Center"
+                                             VerticalOptions="Center"
+                                             Spacing="1">
+                            <Label Text="🌿" FontSize="28"
+                                   HorizontalOptions="Center"
+                                   VerticalOptions="Center"
+                                   Margin="0,0,0,-2" />
+                            <Label Text="VR" FontSize="14"
+                                   FontAttributes="Bold"
+                                   TextColor="White"
+                                   HorizontalOptions="Center"
+                                   CharacterSpacing="3" />
+                        </VerticalStackLayout>
+                    </Border>
+                </Grid>
+
+                <!-- ══════════════════════════════════════
+                     ENCABEZADO
+                ══════════════════════════════════════ -->
+                <Label Text="VitaRaiz"
+                       FontSize="42" FontAttributes="Bold"
+                       TextColor="White"
                        HorizontalOptions="Center"
-                       VerticalOptions="Center" />
-            </Border>
-            
-            <Label Text="VitaRaiz Admin"
-                   FontSize="28"
-                   FontAttributes="Bold"
-                   HorizontalOptions="Center"
-                   TextColor="#333" />
-            
-            <Label Text="Inicia sesión para continuar"
-                   FontSize="14"
-                   HorizontalOptions="Center"
-                   TextColor="#666"
-                   Margin="0,0,0,20" />
-            
-            <!-- Formulario de login -->
-            <Border BackgroundColor="White"
-                    StrokeThickness="0"
-                    Padding="20">
-                <Border.StrokeShape>
-                    <RoundRectangle CornerRadius="15" />
-                </Border.StrokeShape>
-                
-                <VerticalStackLayout Spacing="15">
-                    <!-- Usuario -->
-                    <Label Text="Usuario"
-                           FontSize="14"
-                           TextColor="#333"
-                           FontAttributes="Bold" />
-                    
-                    <Border StrokeThickness="1"
-                            Stroke="#E0E0E0"
-                            BackgroundColor="White">
-                        <Border.StrokeShape>
-                            <RoundRectangle CornerRadius="8" />
-                        </Border.StrokeShape>
-                        <Entry x:Name="UsernameEntry"
-                               Placeholder="Ingresa tu usuario"
-                               Text="{Binding Username}"
-                               Keyboard="Default"
-                               TextColor="#333"
-                               PlaceholderColor="#999" />
-                    </Border>
-                    
-                    <!-- Contraseña -->
-                    <Label Text="Contraseña"
-                           FontSize="14"
-                           TextColor="#333"
-                           FontAttributes="Bold"
-                           Margin="0,10,0,0" />
-                    
-                    <Border StrokeThickness="1"
-                            Stroke="#E0E0E0"
-                            BackgroundColor="White">
-                        <Border.StrokeShape>
-                            <RoundRectangle CornerRadius="8" />
-                        </Border.StrokeShape>
-                        <Entry x:Name="PasswordEntry"
-                               Placeholder="Ingresa tu contraseña"
-                               Text="{Binding Password}"
-                               IsPassword="True"
-                               TextColor="#333"
-                               PlaceholderColor="#999" />
-                    </Border>
-                    
-                    <!-- Mensaje de error -->
-                    <Label x:Name="ErrorLabel"
-                           Text="{Binding ErrorMessage}"
-                           TextColor="Red"
-                           FontSize="12"
-                           IsVisible="{Binding HasError}"
-                           Margin="0,5,0,0" />
-                    
-                    <!-- Botón de login -->
-                    <Button x:Name="LoginButton"
-                            Text="INICIAR SESIÓN"
-                            Clicked="LoginButton_Clicked"
-                            BackgroundColor="#28A745"
-                            TextColor="White"
-                            FontAttributes="Bold"
-                            HeightRequest="50"
-                            CornerRadius="8"
-                            Margin="0,20,0,0" />
-                    
-                    <!-- Indicador de carga -->
-                    <ActivityIndicator IsRunning="{Binding IsLoading}"
-                                       IsVisible="{Binding IsLoading}"
-                                       Color="#28A745"
+                       FontFamily="OpenSans-Semibold"
+                       Margin="0,0,0,4" />
+
+                <Label Text="SISTEMA DE VENTAS"
+                       FontSize="10.5" TextColor="#86EFAC"
+                       HorizontalOptions="Center"
+                       CharacterSpacing="4.5"
+                       Margin="0,0,0,8" />
+
+                <Label Text="Inicia sesión para continuar"
+                       FontSize="14" TextColor="#BBF7D0"
+                       HorizontalOptions="Center"
+                       Margin="0,0,0,38" />
+
+                <!-- ══════════════════════════════════════
+                     TARJETA DE LOGIN
+                ══════════════════════════════════════ -->
+                <Border StrokeThickness="1" Stroke="#FFFFFF1A" Padding="26,28">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                            <GradientStop Color="#FEFFFD" Offset="0.0" />
+                            <GradientStop Color="#F0FDF4" Offset="1.0" />
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="26" />
+                    </Border.StrokeShape>
+
+                    <VerticalStackLayout Spacing="0">
+
+                        <!-- Campo: Usuario -->
+                        <Label Text="USUARIO" FontSize="10"
+                               TextColor="#16A34A" FontAttributes="Bold"
+                               CharacterSpacing="2" Margin="4,0,0,8" />
+                        <Border StrokeThickness="1.5" Stroke="#D1FAE5"
+                                BackgroundColor="#F0FDF4" Margin="0,0,0,20">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="13" />
+                            </Border.StrokeShape>
+                            <Grid ColumnDefinitions="46,*">
+                                <Label Grid.Column="0" Text="👤"
+                                       FontSize="16"
+                                       VerticalOptions="Center"
                                        HorizontalOptions="Center" />
-                </VerticalStackLayout>
-            </Border>
-            
-            <!-- Footer -->
-            <Label Text="VitaRaiz - Sistema de Ventas y Cobranza"
-                   FontSize="12"
-                   TextColor="#999"
-                   HorizontalOptions="Center"
-                   Margin="0,40,0,0" />
-            
-            <Label Text="Versión 1.0.0"
-                   FontSize="10"
-                   TextColor="#999"
-                   HorizontalOptions="Center" />
-        </VerticalStackLayout>
-    </ScrollView>
+                                <Entry Grid.Column="1"
+                                       x:Name="UsernameEntry"
+                                       Placeholder="Ingresa tu usuario"
+                                       Text="{Binding Username}"
+                                       Keyboard="Default"
+                                       TextColor="#14532D"
+                                       PlaceholderColor="#86EFAC"
+                                       BackgroundColor="Transparent" />
+                            </Grid>
+                        </Border>
+
+                        <!-- Campo: Contraseña -->
+                        <Label Text="CONTRASEÑA" FontSize="10"
+                               TextColor="#16A34A" FontAttributes="Bold"
+                               CharacterSpacing="2" Margin="4,0,0,8" />
+                        <Border StrokeThickness="1.5" Stroke="#D1FAE5"
+                                BackgroundColor="#F0FDF4" Margin="0,0,0,6">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="13" />
+                            </Border.StrokeShape>
+                            <Grid ColumnDefinitions="46,*">
+                                <Label Grid.Column="0" Text="🔒"
+                                       FontSize="16"
+                                       VerticalOptions="Center"
+                                       HorizontalOptions="Center" />
+                                <Entry Grid.Column="1"
+                                       x:Name="PasswordEntry"
+                                       Placeholder="Ingresa tu contraseña"
+                                       Text="{Binding Password}"
+                                       IsPassword="True"
+                                       TextColor="#14532D"
+                                       PlaceholderColor="#86EFAC"
+                                       BackgroundColor="Transparent" />
+                            </Grid>
+                        </Border>
+
+                        <!-- Mensaje de error -->
+                        <Border BackgroundColor="#FEF2F2" StrokeThickness="1"
+                                Stroke="#FECACA" Padding="14,10"
+                                IsVisible="{Binding HasError}"
+                                Margin="0,10,0,0">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="10" />
+                            </Border.StrokeShape>
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                                <Label Grid.Column="0" Text="⚠️"
+                                       FontSize="13" VerticalOptions="Center" />
+                                <Label Grid.Column="1"
+                                       Text="{Binding ErrorMessage}"
+                                       TextColor="#DC2626" FontSize="12.5"
+                                       VerticalOptions="Center" />
+                            </Grid>
+                        </Border>
+
+                        <!-- Botón de login con gradiente -->
+                        <Border StrokeThickness="0" Margin="0,26,0,0" HeightRequest="54">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                    <GradientStop Color="#22C55E" Offset="0.0" />
+                                    <GradientStop Color="#15803D" Offset="1.0" />
+                                </LinearGradientBrush>
+                            </Border.Background>
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="16" />
+                            </Border.StrokeShape>
+                            <Button x:Name="LoginButton"
+                                    Text="INICIAR SESIÓN  →"
+                                    Clicked="LoginButton_Clicked"
+                                    BackgroundColor="Transparent"
+                                    TextColor="White"
+                                    FontAttributes="Bold"
+                                    FontSize="15"
+                                    CharacterSpacing="1.5"
+                                    HeightRequest="54" />
+                        </Border>
+
+                        <!-- Indicador de carga -->
+                        <ActivityIndicator IsRunning="{Binding IsLoading}"
+                                           IsVisible="{Binding IsLoading}"
+                                           Color="#16A34A"
+                                           HorizontalOptions="Center"
+                                           Margin="0,14,0,0" />
+
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- ══════════════════════════════════════
+                     FOOTER
+                ══════════════════════════════════════ -->
+                <Label Text="VitaRaiz · Ventas y Cobranza"
+                       FontSize="11.5" TextColor="#6EE7B7"
+                       HorizontalOptions="Center"
+                       Margin="0,30,0,4" />
+                <Label Text="v 1.0.0"
+                       FontSize="10" TextColor="#4ADE8070"
+                       HorizontalOptions="Center" />
+
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
 </ContentPage>

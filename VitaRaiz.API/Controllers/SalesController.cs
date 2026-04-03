@@ -180,6 +180,31 @@ public class SalesController : ControllerBase
     }
 
     /// <summary>
+    /// Actualizar datos de una venta y su cliente
+    /// </summary>
+    [HttpPut("{id}")]
+    [Authorize] // TEMPORAL: Permite cualquier usuario autenticado actualizar ventas
+    public async Task<IActionResult> UpdateSale(int id, [FromBody] UpdateSaleCommand command)
+    {
+        command.SaleId = id; // route param is authoritative
+
+        try
+        {
+            var result = await _mediator.Send(command);
+
+            if (!result)
+                return NotFound(new { message = "Venta no encontrada" });
+
+            return Ok(new { message = "Venta actualizada exitosamente" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[SalesController] Error updating sale {SaleId}", id);
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
     /// Cancelar una venta
     /// </summary>
     [HttpPut("{id}/cancel")]

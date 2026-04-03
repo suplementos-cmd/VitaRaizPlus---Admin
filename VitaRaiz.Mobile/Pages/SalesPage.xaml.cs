@@ -11,6 +11,7 @@ public partial class SalesPage : ContentPage
 {
     private readonly ApiService _apiService;
     private readonly CatalogService _catalogService;
+    private readonly PermissionsService _permissionsService;
     private readonly Logger _logger = AppLogger.Get();
     private List<SaleListItem> _allSales = new();
     private string _searchText = "";
@@ -19,7 +20,12 @@ public partial class SalesPage : ContentPage
     private bool _initialized;
 
     // REDESIGNED: Flat list with mixed item types (headers + sales)
-    public ObservableCollection<SaleDisplayItem> FlatSalesList { get; } = new();
+    private ObservableCollection<SaleDisplayItem> _flatSalesList = new();
+    public ObservableCollection<SaleDisplayItem> FlatSalesList
+    {
+        get => _flatSalesList;
+        private set { _flatSalesList = value; OnPropertyChanged(); }
+    }
 
     public SalesPage()
     {
@@ -41,6 +47,8 @@ public partial class SalesPage : ContentPage
             System.Diagnostics.Debug.WriteLine("[SalesPage] Creating CatalogService...");
             _catalogService = Application.Current?.Handler?.MauiContext?.Services
                 .GetService<CatalogService>() ?? new CatalogService(_apiService);
+            _permissionsService = Application.Current?.Handler?.MauiContext?.Services
+                .GetService<PermissionsService>() ?? new PermissionsService(_apiService);
 
             System.Diagnostics.Debug.WriteLine("[SalesPage] Creating commands...");
             OpenDetailCommand = new Command<int>(OnOpenDetail);
@@ -88,6 +96,11 @@ public partial class SalesPage : ContentPage
     /// </summary>
     public bool HasSales => _allSales.Count > 0;
 
+    // ── Permission-based UI visibility ──────────────────────────────
+    public bool CanCreateSale  => _permissionsService is null || !_permissionsService.IsLoaded || _permissionsService.CanCreateSale;
+    public bool CanEditSale    => _permissionsService is null || !_permissionsService.IsLoaded || _permissionsService.CanEditOwnSale;
+    public bool CanAnnulSale   => _permissionsService is null || !_permissionsService.IsLoaded || _permissionsService.CanAnnulSale;
+
     // ═══ Commands ═══
     public ICommand OpenDetailCommand { get; }
     public ICommand RefreshCommand { get; }
@@ -101,16 +114,31 @@ public partial class SalesPage : ContentPage
         
         if (_initialized)
         {
-            _logger.Debug("Already initialized, skipping");
+            // If a save just happened, force a silent list refresh
+            if (Services.PageDataCache.ForceRefreshSalesList)
+            {
+                Services.PageDataCache.ForceRefreshSalesList = false;
+                _logger.Debug("ForceRefreshSalesList flag detected — reloading list");
+                await LoadDataAsync();
+            }
+            else
+            {
+                _logger.Debug("Already initialized, skipping");
+            }
             return;
         }
-        _initialized = true;
 
         try
         {
+            await CheckRoleAsync();
             await _catalogService.LoadAsync();
+            await _permissionsService.LoadAsync();
+            OnPropertyChanged(nameof(CanCreateSale));
+            OnPropertyChanged(nameof(CanEditSale));
+            OnPropertyChanged(nameof(CanAnnulSale));
             _logger.Info("CatalogService loaded successfully");
             await LoadDataAsync();
+            _initialized = true;
         }
         catch (Exception ex)
         {
@@ -133,8 +161,18 @@ public partial class SalesPage : ContentPage
             IsRefreshing = true;
             _logger.Info("[LoadDataAsync] INICIO");
             System.Diagnostics.Debug.WriteLine("[LoadDataAsync] Calling API: api/sales");
-            
-            var salesData = await _apiService.GetAsync<List<SaleDto>>("api/sales");
+
+            // Consume prefetch from login when available (avoids extra API round-trip).
+            var salesData = Services.PageDataCache.PrefetchedSales;
+            if (salesData != null)
+            {
+                Services.PageDataCache.PrefetchedSales = null;
+                System.Diagnostics.Debug.WriteLine($"[LoadDataAsync] Using prefetched data ({salesData.Count} ventas)");
+            }
+            else
+            {
+                salesData = await _apiService.GetAsync<List<SaleDto>>("api/sales");
+            }
             _logger.Info("[LoadDataAsync] API Response: Count={Count}, IsNull={IsNull}", 
                 salesData?.Count ?? 0, salesData == null);
             System.Diagnostics.Debug.WriteLine($"[LoadDataAsync] API returned {salesData?.Count ?? 0} sales");
@@ -251,58 +289,45 @@ public partial class SalesPage : ContentPage
     private async Task<Dictionary<int, string>> LoadAllSalePhotosAsync(List<int> saleIds)
     {
         var photoDict = new Dictionary<int, string>();
-        
+
+        if (saleIds.Count == 0) return photoDict;
+
         try
         {
-            System.Diagnostics.Debug.WriteLine($"[LoadAllSalePhotosAsync] Loading photos for {saleIds.Count} sales");
-            
-            // OPTIMIZACIÓN: Solo cargar desde BD local (SQLite es rápido)
-            // Eliminar llamadas individuales al API que causan problema N+1
-            
             var dbPath = Path.Combine(FileSystem.AppDataDirectory, "vitaraiz.db3");
-            if (File.Exists(dbPath))
+            if (!File.Exists(dbPath)) return photoDict;
+
+            var db = new Data.LocalDatabase(dbPath);
+
+            // Una sola consulta SQL para todas las ventas (evita el problema N+1)
+            var allPhotos = await db.GetSalePhotosBatchAsync(saleIds);
+
+            // Agrupar en memoria y seleccionar la mejor foto por venta
+            var priority = new[] { "Fachada", "Cliente", "Contrato", "Adicional" };
+            var grouped = allPhotos
+                .Where(p => !string.IsNullOrEmpty(p.LocalPath) && File.Exists(p.LocalPath))
+                .GroupBy(p => p.SaleId);
+
+            foreach (var group in grouped)
             {
-                var db = new Data.LocalDatabase(dbPath);
-                
-                foreach (var saleId in saleIds)
+                foreach (var type in priority)
                 {
-                    try
+                    var photo = group.FirstOrDefault(p => p.PhotoType == type);
+                    if (photo != null)
                     {
-                        var localPhotos = await db.GetSalePhotosAsync(saleId);
-                        if (localPhotos != null && localPhotos.Count > 0)
-                        {
-                            // Priority: Fachada > Cliente > Contrato
-                            var selectedPhoto = localPhotos.FirstOrDefault(p => p.PhotoType == "Fachada")
-                                             ?? localPhotos.FirstOrDefault(p => p.PhotoType == "Cliente")
-                                             ?? localPhotos.FirstOrDefault(p => p.PhotoType == "Contrato");
-                            
-                            if (selectedPhoto != null && !string.IsNullOrEmpty(selectedPhoto.LocalPath) &&
-                                File.Exists(selectedPhoto.LocalPath))
-                            {
-                                photoDict[saleId] = selectedPhoto.LocalPath;
-                            }
-                        }
-                    }
-                    catch (Exception exSale)
-                    {
-                        // Silently skip sales with photo errors
-                        System.Diagnostics.Debug.WriteLine($"[LoadAllSalePhotosAsync] Error for sale {saleId}: {exSale.Message}");
+                        photoDict[group.Key] = photo.LocalPath!;
+                        break;
                     }
                 }
             }
-            else
-            {
-                System.Diagnostics.Debug.WriteLine($"[LoadAllSalePhotosAsync] Local DB not found: {dbPath}");
-            }
-            
-            System.Diagnostics.Debug.WriteLine($"[LoadAllSalePhotosAsync] Loaded {photoDict.Count} photos from local DB");
+
+            _logger.Debug("[LoadAllSalePhotosAsync] {Found}/{Total} ventas con foto", photoDict.Count, saleIds.Count);
         }
         catch (Exception ex)
         {
-            _logger.LogException(ex, "[LoadAllSalePhotosAsync] Error general");
-            System.Diagnostics.Debug.WriteLine($"[LoadAllSalePhotosAsync] General error: {ex.Message}");
+            _logger.LogException(ex, "[LoadAllSalePhotosAsync] Error cargando fotos batch");
         }
-        
+
         return photoDict;
     }
 
@@ -359,67 +384,17 @@ public partial class SalesPage : ContentPage
             // CRITICAL: Must update UI on main thread
             if (MainThread.IsMainThread)
             {
-                _logger.Debug("[ApplyFilter] Ya en UI thread, actualizando directamente");
-                System.Diagnostics.Debug.WriteLine("[ApplyFilter] On main thread, updating directly");
-                
-                try
-                {
-                    _logger.Debug("[ApplyFilter] Limpiando FlatSalesList...");
-                    System.Diagnostics.Debug.WriteLine("[ApplyFilter] Clearing FlatSalesList...");
-                    FlatSalesList.Clear();
-                    _logger.Debug("[ApplyFilter] FlatSalesList cleared OK");
-                    System.Diagnostics.Debug.WriteLine("[ApplyFilter] FlatSalesList cleared OK");
-                    
-                    System.Diagnostics.Debug.WriteLine($">>> ADDING {flatList.Count} items to FlatSalesList");
-                    
-                    foreach (var item in flatList)
-                    {
-                        FlatSalesList.Add(item);
-                    }
-                    
-                    System.Diagnostics.Debug.WriteLine($">>> SUCCESS! FlatSalesList.Count = {FlatSalesList.Count}");
-                    _logger.Info("[ApplyFilter] ✓✓✓ FIN EXITOSO - FlatSalesList.Count={Count}", FlatSalesList.Count);
-                    System.Diagnostics.Debug.WriteLine($"[ApplyFilter] SUCCESS - FlatSalesList.Count={FlatSalesList.Count}");
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($">>> CRASH in FlatSalesList update: {ex.GetType().Name}");
-                    System.Diagnostics.Debug.WriteLine($">>> Message: {ex.Message}");
-                    System.Diagnostics.Debug.WriteLine($">>> HResult: 0x{ex.HResult:X8}");
-                    
-                    _logger.Error(ex, "[ApplyFilter] CRASH FATAL al actualizar ObservableCollection FlatSalesList");
-                    _logger.Error("[ApplyFilter] ExceptionType: {Type}", ex.GetType().FullName);
-                    _logger.Error("[ApplyFilter] HResult: 0x{HResult:X8}", ex.HResult);
-                    if (ex.InnerException != null)
-                    {
-                        _logger.Error("[ApplyFilter] InnerException: {Message}", ex.InnerException.Message);
-                        System.Diagnostics.Debug.WriteLine($">>> InnerException: {ex.InnerException.Message}");
-                    }
-                    throw;
-                }
+                // Reemplaza la colección completa en lugar de hacer N Add() individuales
+                // → una sola notificación al CollectionView en lugar de una por elemento
+                FlatSalesList = new ObservableCollection<SaleDisplayItem>(flatList);
+                _logger.Info("[ApplyFilter] FIN - FlatSalesList.Count={Count}", FlatSalesList.Count);
             }
             else
             {
-                _logger.Debug("[ApplyFilter] No en UI thread, usando MainThread.BeginInvokeOnMainThread");
                 MainThread.BeginInvokeOnMainThread(() =>
                 {
-                    try
-                    {
-                        _logger.Debug("[ApplyFilter] En UI thread dispatched. Limpiando FlatSalesList...");
-                        FlatSalesList.Clear();
-                        
-                        foreach (var item in flatList)
-                        {
-                            FlatSalesList.Add(item);
-                        }
-                        
-                        _logger.Info("[ApplyFilter] FIN (dispatched) - FlatSalesList.Count={Count}", FlatSalesList.Count);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogException(ex, "CRASH en ApplyFilter UI thread dispatched");
-                        throw;
-                    }
+                    FlatSalesList = new ObservableCollection<SaleDisplayItem>(flatList);
+                    _logger.Info("[ApplyFilter] FIN (dispatched) - FlatSalesList.Count={Count}", FlatSalesList.Count);
                 });
             }
         }
@@ -430,21 +405,11 @@ public partial class SalesPage : ContentPage
         }
     }
 
+    // ═══ Role Check (replaced by permission binding, kept for compatibility) ═══
+    private Task CheckRoleAsync() => Task.CompletedTask;
+
     // ═══ Event Handlers ═══
     private void OnSearchCompleted(object? sender, EventArgs e) => ApplyFilter();
-
-    private void OnSearchToggle(object? sender, EventArgs e)
-    {
-        if (!HasSales)
-        {
-            System.Diagnostics.Debug.WriteLine("[OnSearchToggle] No hay ventas para buscar");
-            return;
-        }
-        
-        // Toggle la barra de búsqueda compacta dentro del header
-        SearchBarCompact.IsVisible = !SearchBarCompact.IsVisible;
-        System.Diagnostics.Debug.WriteLine($"[OnSearchToggle] SearchBarCompact visible: {SearchBarCompact.IsVisible}");
-    }
 
     private async void OnRefreshTapped(object? sender, EventArgs e)
     {
@@ -466,6 +431,13 @@ public partial class SalesPage : ContentPage
             
             // IMPORTANTE: Resetear tema ANTES de limpiar storage
             App.ResetThemeToDefault();
+            ApiService.ClearCachedToken();
+            Services.PageDataCache.PrefetchedSales     = null;
+            Services.PageDataCache.PrefetchedCustomers = null;
+
+            // Limpiar permisos cacheados
+            var permSvc = IPlatformApplication.Current?.Services.GetService<PermissionsService>();
+            permSvc?.Clear();
             
             // Limpiar credenciales almacenadas
             SecureStorage.Remove("auth_token");
@@ -493,11 +465,6 @@ public partial class SalesPage : ContentPage
     {
         await Shell.Current.GoToAsync($"SaleDetailPage?saleId={saleId}");
     }
-
-    // ═══ Bottom Tab Navigation ═══
-    private async void OnTabInicio(object? s, EventArgs e) => await Shell.Current.GoToAsync("//HomePage");
-    private async void OnTabCobranza(object? s, EventArgs e) => await Shell.Current.GoToAsync("//PaymentPage");
-    private async void OnTabClientes(object? s, EventArgs e) => await Shell.Current.GoToAsync("//CustomersPage");
 
     // ═══ Image Viewer Modal (Enhanced) ═══
     private bool _isImageViewerVisible;

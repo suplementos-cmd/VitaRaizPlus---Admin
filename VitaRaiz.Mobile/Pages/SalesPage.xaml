@@ -1,64 +1,30 @@
-<?xml version="1.0" encoding="utf-8" ?>
+﻿<?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:converters="clr-namespace:VitaRaiz.Mobile.Converters"
+             xmlns:controls="clr-namespace:VitaRaiz.Mobile.Controls"
              x:Class="VitaRaiz.Mobile.Pages.SalesPage"
              Title="Ventas"
              Shell.NavBarIsVisible="False"
              Shell.TabBarIsVisible="False"
-             BackgroundColor="#FAFAFA">
+             BackgroundColor="{DynamicResource PageBackgroundNeutral}">
 
     <ContentPage.Resources>
         <converters:InverseBoolConverter x:Key="InverseBoolConverter" />
         <converters:FilePathToImageSourceConverter x:Key="FileToImageSource" />
     </ContentPage.Resources>
 
-    <Grid RowDefinitions="Auto,*,Auto">
+    <Grid>
 
-        <!-- ═══ HEADER ═══ -->
-        <Border Grid.Row="0" StrokeThickness="0" BackgroundColor="{DynamicResource ThemeColor}"
-                Shadow="{Shadow Brush='#44000000', Offset='0,3', Radius=6}">
-            <Grid RowDefinitions="Auto,Auto" Padding="14,12" ColumnDefinitions="*,Auto,Auto,Auto">
-                <!-- Fila 1: Título y botones -->
-                <Label Grid.Row="0" Grid.Column="0" Text="  🗒 VENTAS" FontSize="18" FontAttributes="Bold"
-                       TextColor="White" VerticalOptions="Center" />
-                <Label Grid.Row="0" Grid.Column="1" x:Name="SearchIcon" Text="🔍" FontSize="20" 
-                       TextColor="{DynamicResource ThemeColorLightHex}" VerticalOptions="Center"
-                       Padding="8,0" IsVisible="{Binding HasSales}">
-                    <Label.GestureRecognizers>
-                        <TapGestureRecognizer Tapped="OnSearchToggle" />
-                    </Label.GestureRecognizers>
-                </Label>
-                <Label Grid.Row="0" Grid.Column="2" Text="↻" FontSize="20" TextColor="{DynamicResource ThemeColorLightHex}" VerticalOptions="Center"
-                       Padding="8,0">
-                    <Label.GestureRecognizers>
-                        <TapGestureRecognizer Tapped="OnRefreshTapped" />
-                    </Label.GestureRecognizers>
-                </Label>
-                <Label Grid.Row="0" Grid.Column="3" Text="⎋" FontSize="20" TextColor="{DynamicResource ThemeColorLightHex}" VerticalOptions="Center"
-                       Padding="8,0">
-                    <Label.GestureRecognizers>
-                        <TapGestureRecognizer Tapped="OnLogoutTapped" />
-                    </Label.GestureRecognizers>
-                </Label>
-                
-                <!-- Fila 2: Búsqueda compacta (colapsable) -->
-                <Border Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="4" 
-                        x:Name="SearchBarCompact" IsVisible="False"
-                        BackgroundColor="White" StrokeThickness="0"
-                        Margin="0,6,0,0" Padding="6,2">
-                    <Border.StrokeShape><RoundRectangle CornerRadius="6" /></Border.StrokeShape>
-                    <Entry Placeholder="Buscar..."
-                           Text="{Binding SearchText}"
-                           TextColor="#333" PlaceholderColor="#999"
-                           FontSize="12" 
-                           Completed="OnSearchCompleted" />
-                </Border>
-            </Grid>
-        </Border>
-
-        <!-- ═══ CONTENT ═══ -->
-        <Grid Grid.Row="1">
+        <controls:PageFrame Title="  🗒 VENTAS"
+                            ShowBottomNav="True" ActiveTab="Sales"
+                            CanSearch="{Binding HasSales}"
+                            SearchText="{Binding SearchText, Mode=TwoWay}"
+                            RefreshClicked="OnRefreshTapped"
+                            LogoutClicked="OnLogoutTapped"
+                            SearchCompleted="OnSearchCompleted">
+        <controls:PageFrame.Body>
+        <Grid>
 
             <RefreshView IsRefreshing="{Binding IsRefreshing}"
                          Command="{Binding RefreshCommand}">
@@ -74,11 +40,11 @@
                                 <!-- GROUP HEADER -->
                                 <VerticalStackLayout Padding="14,10,14,2" IsVisible="{Binding IsHeader}">
                                     <HorizontalStackLayout Spacing="6">
-                                        <Label Text="⭐" FontSize="14" TextColor="{DynamicResource ThemeColorHex}" VerticalOptions="Center" />
+                                                <Label Text="👤 Fecha de Venta" FontSize="14" TextColor="{DynamicResource ThemeColorHex}" VerticalOptions="Center" />
                                         <Label Text="{Binding DateLabel}" FontSize="15" FontAttributes="Bold" TextColor="{DynamicResource ThemeColorHex}" />
-                                        <Border StrokeThickness="0" BackgroundColor="{DynamicResource ThemeColorLighterHex}" Padding="6,1">
+                                                <Border StrokeThickness="0" BackgroundColor="Silver" Padding="8,3">
                                             <Border.StrokeShape><RoundRectangle CornerRadius="10" /></Border.StrokeShape>
-                                            <Label Text="{Binding ItemCount}" FontSize="11" TextColor="{DynamicResource ThemeColorHex}" FontAttributes="Bold" />
+                                            <Label Text="{Binding ItemCount}" FontSize="11" TextColor="Black" FontAttributes="Bold" />
                                         </Border>
                                     </HorizontalStackLayout>
                                 </VerticalStackLayout>
@@ -97,7 +63,7 @@
 
                                         <!-- Imagen: fachada real o placeholder con tap mejorado -->
                                         <Border Grid.Column="0" Grid.RowSpan="3" HeightRequest="65" WidthRequest="65"
-                                                StrokeThickness="0" BackgroundColor="#F3E5F5" VerticalOptions="Center">
+                                                StrokeThickness="0" BackgroundColor="Transparent" VerticalOptions="Center">
                                             <Border.StrokeShape><RoundRectangle CornerRadius="10" /></Border.StrokeShape>
                                             <Grid>
                                                 <Image Source="{Binding Sale.ThumbnailPath, Converter={StaticResource FileToImageSource}}" 
@@ -110,7 +76,7 @@
                                                     </Image.GestureRecognizers>
                                                 </Image>
                                                 <Label Text="🏠" FontSize="28" HorizontalOptions="Center" VerticalOptions="Center"
-                                                       TextColor="#CE93D8" IsVisible="{Binding Sale.HasThumbnail, Converter={StaticResource InverseBoolConverter}}" />
+                                                       TextColor="{DynamicResource ThemeColorLight}" IsVisible="{Binding Sale.HasThumbnail, Converter={StaticResource InverseBoolConverter}}" />
                                             </Grid>
                                         </Border>
 
@@ -160,7 +126,7 @@
                                         <HorizontalStackLayout Grid.Column="3" Grid.Row="2" Spacing="4" HorizontalOptions="End">
                                             <Label Text="Resta:" FontSize="10" TextColor="#999" VerticalOptions="Center" />
                                             <Label Text="{Binding Sale.Balance, StringFormat='${0:N0}'}" 
-                                                   FontSize="11" FontAttributes="Bold" TextColor="#DC3545" VerticalOptions="Center" />
+                                                   FontSize="11" FontAttributes="Bold" TextColor="{DynamicResource DangerColor}" VerticalOptions="Center" />
                                         </HorizontalStackLayout>
                                     </Grid>
                                 </Border>
@@ -180,7 +146,9 @@
             </RefreshView>
 
             <!-- ═══ FAB: Agregar Venta ═══ -->
-            <Button Text="＋"
+            <Button x:Name="AddSaleFab"
+                    Text="＋"
+                    IsVisible="{Binding CanCreateSale}"
                     Clicked="OnAddSaleTapped"
                     BackgroundColor="{DynamicResource ThemeColor}"
                     TextColor="White"
@@ -194,42 +162,11 @@
                     Shadow="{Shadow Brush='#44000000', Offset='0,4', Radius=8}"
                     ZIndex="20" />
         </Grid>
-
-        <!-- ═══ BOTTOM NAV BAR ═══ -->
-        <Border Grid.Row="2" StrokeThickness="0" BackgroundColor="White"
-                Shadow="{Shadow Brush='#22000000', Offset='0,-2', Radius=4}">
-            <Grid ColumnDefinitions="*,*,*,*" HeightRequest="58" Padding="0,6,0,4">
-                <VerticalStackLayout Grid.Column="0" Spacing="2" HorizontalOptions="Center" VerticalOptions="Center">
-                    <Label Text="⌂" FontSize="24" HorizontalOptions="Center" TextColor="#AAAAAA" />
-                    <Label Text="Inicio" FontSize="10" HorizontalOptions="Center" TextColor="#AAAAAA" />
-                    <VerticalStackLayout.GestureRecognizers>
-                        <TapGestureRecognizer Tapped="OnTabInicio" />
-                    </VerticalStackLayout.GestureRecognizers>
-                </VerticalStackLayout>
-                <VerticalStackLayout Grid.Column="1" Spacing="2" HorizontalOptions="Center" VerticalOptions="Center">
-                    <Label Text="🗒" FontSize="24" HorizontalOptions="Center" TextColor="{DynamicResource ThemeColor}" />
-                    <Label Text="Ventas" FontSize="10" HorizontalOptions="Center" TextColor="{DynamicResource ThemeColor}" FontAttributes="Bold" />
-                </VerticalStackLayout>
-                <VerticalStackLayout Grid.Column="2" Spacing="2" HorizontalOptions="Center" VerticalOptions="Center">
-                    <Label Text="💵" FontSize="24" HorizontalOptions="Center" TextColor="#AAAAAA" />
-                    <Label Text="Cobranza" FontSize="10" HorizontalOptions="Center" TextColor="#AAAAAA" />
-                    <VerticalStackLayout.GestureRecognizers>
-                        <TapGestureRecognizer Tapped="OnTabCobranza" />
-                    </VerticalStackLayout.GestureRecognizers>
-                </VerticalStackLayout>
-                <VerticalStackLayout Grid.Column="3" Spacing="2" HorizontalOptions="Center" VerticalOptions="Center">
-                    <Label Text="👤" FontSize="24" HorizontalOptions="Center" TextColor="#AAAAAA" />
-                    <Label Text="Clientes" FontSize="10" HorizontalOptions="Center" TextColor="#AAAAAA" />
-                    <VerticalStackLayout.GestureRecognizers>
-                        <TapGestureRecognizer Tapped="OnTabClientes" />
-                    </VerticalStackLayout.GestureRecognizers>
-                </VerticalStackLayout>
-            </Grid>
-        </Border>
+        </controls:PageFrame.Body>
+        </controls:PageFrame>
 
         <!-- ═══ IMAGE VIEWER MODAL (Enhanced) ═══ -->
         <Grid x:Name="ImageViewerModal" 
-              Grid.Row="0" Grid.RowSpan="3" 
               IsVisible="{Binding IsImageViewerVisible}" 
               BackgroundColor="#E6000000" 
               ZIndex="1000"

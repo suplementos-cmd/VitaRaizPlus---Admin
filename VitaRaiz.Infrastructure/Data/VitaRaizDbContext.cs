@@ -65,6 +65,9 @@ public class VitaRaizDbContext : DbContext
                 .HasColumnType("NUMBER(10)");
             entity.Property(e => e.RoleName).HasColumnName("ROLE_NAME").HasMaxLength(50);
             entity.Property(e => e.Description).HasColumnName("ROLE_DESCRIPTION");
+            entity.Property(e => e.DefaultThemeColor).HasColumnName("DEFAULT_THEME_COLOR").HasMaxLength(7);
+            entity.Property(e => e.DefaultThemeLight).HasColumnName("DEFAULT_THEME_LIGHT").HasMaxLength(7);
+            entity.Property(e => e.DefaultThemeLighter).HasColumnName("DEFAULT_THEME_LIGHTER").HasMaxLength(7);
         });
 
         // Zone configuration
@@ -227,9 +230,13 @@ public class VitaRaizDbContext : DbContext
             entity.Property(e => e.Amount).HasColumnName("AMOUNT").HasPrecision(10, 2);
             entity.Property(e => e.PaymentDate).HasColumnName("PAYMENT_DATE");
             entity.Property(e => e.GpsLatitude).HasColumnName("GPS_LATITUDE").HasPrecision(10, 7);
-            entity.Property(e => e.GpsLongitude).HasColumnName("GPS_LONGITUDE").HasPrecision(10, 7);
-            entity.Property(e => e.Status).HasColumnName("STATUS").HasMaxLength(50);
-            entity.Ignore(e => e.Validation); // Columna NO existe en Oracle
+            entity.Property(e => e.GpsLongitude).HasColumnName("GPS_LONGITUDE").HasPrecision(10, 7);  
+            entity.Property(e => e.StatusId).HasColumnName("STATUS");
+            entity.Ignore(e => e.Validation);  // Columna NO existe en Oracle
+            entity.Ignore(e => e.UpdatedAt);   // Sin columna UPDATED_AT en PAYMENTS
+            entity.Ignore(e => e.UpdatedBy);   // Sin columna UPDATED_BY en PAYMENTS
+            entity.Property(e => e.CollectionActionId).HasColumnName("COLLECTION_ACTION_ID");
+            entity.Property(e => e.CollectionSubId).HasColumnName("COLLECTION_SUB_ID");
             entity.Property(e => e.Notes).HasColumnName("NOTES");
 
             entity.HasOne(e => e.Sale)

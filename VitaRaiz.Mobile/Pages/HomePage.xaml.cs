@@ -5,13 +5,13 @@ namespace VitaRaiz.Mobile.Pages;
 public partial class HomePage : ContentPage
 {
     private readonly ApiService _apiService;
+    private readonly PermissionsService _permissionsService;
     private string _username = string.Empty;
     private string _role = string.Empty;
     private decimal _todayPayments;
     private int _todaySales;
     private decimal _pendingAmount;
     private int _todayVisits;
-    private string _searchText = string.Empty;
 
     public HomePage()
     {
@@ -22,6 +22,8 @@ public partial class HomePage : ContentPage
             BindingContext = this;
             
             _apiService = new ApiService();
+            _permissionsService = IPlatformApplication.Current?.Services
+                .GetService<PermissionsService>() ?? new PermissionsService(_apiService);
             
             System.Diagnostics.Debug.WriteLine("HomePage: Inicialización completa");
             
@@ -40,6 +42,55 @@ public partial class HomePage : ContentPage
     // PROPERTIES
     // ══════════════════════════════════════════════════════════════════
     
+    // ── Computed / display properties ──────────────────────────────
+    public string UserInitials => string.IsNullOrWhiteSpace(_username) ? "?" :
+        _username.Split(' ') is { Length: >= 2 } parts
+            ? $"{parts[0][0]}{parts[1][0]}".ToUpper()
+            : _username.Length >= 2 ? _username.Substring(0, 2).ToUpper() : _username.ToUpper();
+
+    public string RoleDisplayName => _role.ToLower() switch
+    {
+        var r when r.Contains("admin")      => "ADMINISTRADOR",
+        var r when r.Contains("supervisor") => "SUPERVISORA",
+        var r when r.Contains("vendedor")   => "VENDEDORA",
+        var r when r.Contains("cobrador")   => "COBRADORA",
+        _                                   => _role.ToUpper()
+    };
+
+    public string GreetingText
+    {
+        get
+        {
+            var hour = DateTime.Now.Hour;
+            var saludo = hour < 12 ? "Buenos días" : hour < 19 ? "Buenas tardes" : "Buenas noches";
+            var firstName = _username.Split(' ')[0];
+            return $"{saludo}, {firstName} 👋";
+        }
+    }
+
+    public bool IsCobradorOrAdmin =>
+        _role.Contains("cobrador",   StringComparison.OrdinalIgnoreCase) ||
+        _role.Contains("admin",      StringComparison.OrdinalIgnoreCase) ||
+        _role.Contains("supervisor", StringComparison.OrdinalIgnoreCase);
+
+    public bool IsVendedorOrAbove =>
+        _role.Contains("vendedor",   StringComparison.OrdinalIgnoreCase) ||
+        _role.Contains("supervisor", StringComparison.OrdinalIgnoreCase) ||
+        _role.Contains("admin",      StringComparison.OrdinalIgnoreCase);
+
+    // ── Permission-based UI visibility (from API) ───────────────────
+    // Show everything when service is null (XAML evaluates bindings before ctor assigns the service)
+    // or when permissions haven't loaded yet (API offline / first launch).
+    public bool CanSeeSalesButton     => _permissionsService is null || !_permissionsService.IsLoaded || _permissionsService.CanViewOwnSales;
+    public bool CanSeeCustomersButton => _permissionsService is null || !_permissionsService.IsLoaded || _permissionsService.CanViewCustomers;
+    public bool CanCreateSaleButton   => _permissionsService is null || !_permissionsService.IsLoaded || _permissionsService.CanCreateSale;
+    public bool CanSeePaymentsStats   => _permissionsService is null || !_permissionsService.IsLoaded || _permissionsService.CanViewPayments;
+    public bool CanSeeReports         => _permissionsService is null || !_permissionsService.IsLoaded || _permissionsService.CanViewReports;
+
+    // HomePage is a dashboard — search is not applicable here.
+    public bool HasSearchableData => false;
+    public string SearchText { get; set; } = string.Empty;
+
     public string Username
     {
         get => _username;
@@ -47,6 +98,8 @@ public partial class HomePage : ContentPage
         {
             _username = value;
             OnPropertyChanged();
+            OnPropertyChanged(nameof(UserInitials));
+            OnPropertyChanged(nameof(GreetingText));
         }
     }
 
@@ -57,6 +110,9 @@ public partial class HomePage : ContentPage
         {
             _role = value;
             OnPropertyChanged();
+            OnPropertyChanged(nameof(RoleDisplayName));
+            OnPropertyChanged(nameof(IsCobradorOrAdmin));
+            OnPropertyChanged(nameof(IsVendedorOrAbove));
         }
     }
 
@@ -67,7 +123,6 @@ public partial class HomePage : ContentPage
         {
             _todayPayments = value;
             OnPropertyChanged();
-            OnPropertyChanged(nameof(HasSearchableData));
         }
     }
 
@@ -78,7 +133,6 @@ public partial class HomePage : ContentPage
         {
             _todaySales = value;
             OnPropertyChanged();
-            OnPropertyChanged(nameof(HasSearchableData));
         }
     }
 
@@ -99,26 +153,10 @@ public partial class HomePage : ContentPage
         {
             _todayVisits = value;
             OnPropertyChanged();
-            OnPropertyChanged(nameof(HasSearchableData));
         }
     }
 
-    public string SearchText
-    {
-        get => _searchText;
-        set
-        {
-            _searchText = value;
-            OnPropertyChanged();
-        }
-    }
 
-    /// <summary>
-    /// Habilita el botón de búsqueda solo cuando hay datos para buscar
-    /// </summary>
-    public bool HasSearchableData => TodaySales > 0 || TodayVisits > 0 || TodayPayments > 0;
-    
-    public double SearchIconOpacity => HasSearchableData ? 1.0 : 0.5;
 
     private async Task LoadDataAsync()
     {
@@ -131,6 +169,10 @@ public partial class HomePage : ContentPage
             Role = await SecureStorage.GetAsync("role") ?? "Cobrador";
             var userIdStr = await SecureStorage.GetAsync("user_id");
             int userId = int.TryParse(userIdStr, out var id) ? id : 0;
+
+            // Cargar permisos (si aún no están disponibles)
+            await _permissionsService.LoadAsync();
+            NotifyPermissions();
             
             System.Diagnostics.Debug.WriteLine($"HomePage: Usuario {Username}, Rol {Role}, ID {userId}");
             
@@ -175,11 +217,6 @@ public partial class HomePage : ContentPage
             var activeSales = await _apiService.GetAsync<List<VitaRaiz.Mobile.Services.SaleDto>>("api/sales/active", activeSalesParams);
             PendingAmount = activeSales?.Sum(s => s.Balance) ?? 0;
             
-            // ══════════════════════════════════════════════════════════════════
-            // LOAD DYNAMIC THEME FROM API/Profile
-            // ══════════════════════════════════════════════════════════════════
-            await LoadUserThemeAsync(userId, Role);
-            
             System.Diagnostics.Debug.WriteLine($"HomePage: Monto pendiente: {PendingAmount}");
             System.Diagnostics.Debug.WriteLine("HomePage: Datos cargados correctamente");
         }
@@ -193,123 +230,6 @@ public partial class HomePage : ContentPage
             PendingAmount = 0;
             TodayVisits = 0;
         }
-    }
-
-    // ══════════════════════════════════════════════════════════════════
-    // LOAD DYNAMIC THEME - Aplicar globalmente a todas las páginas
-    // ══════════════════════════════════════════════════════════════════
-    private async Task LoadUserThemeAsync(int userId, string role)
-    {
-        try
-        {
-            System.Diagnostics.Debug.WriteLine($"[LoadUserTheme] Cargando tema para usuario {userId}, rol {role}...");
-            
-            string themeColor;
-            string themeColorLight;
-            string themeColorLighter;
-            
-            // Intentar cargar configuración de tema desde la API
-            try
-            {
-                var userSettings = await _apiService.GetAsync<UserSettingsDto>($"api/users/{userId}/settings");
-                
-                if (userSettings != null && !string.IsNullOrEmpty(userSettings.ThemeColor))
-                {
-                    themeColor = userSettings.ThemeColor;
-                    themeColorLight = userSettings.ThemeColorLight ?? LightenColor(themeColor, 0.3);
-                    themeColorLighter = userSettings.ThemeColorLighter ?? LightenColor(themeColor, 0.6);
-                    
-                    System.Diagnostics.Debug.WriteLine($"[LoadUserTheme] Tema cargado desde API: {themeColor}");
-                }
-                else
-                {
-                    // Tema por defecto según rol
-                    themeColor = GetThemeByRole(role);
-                    themeColorLight = LightenColor(themeColor, 0.3);
-                    themeColorLighter = LightenColor(themeColor, 0.6);
-                    
-                    System.Diagnostics.Debug.WriteLine($"[LoadUserTheme] Tema por defecto según rol: {themeColor}");
-                }
-            }
-            catch
-            {
-                // En caso de error, usar tema por defecto
-                themeColor = GetThemeByRole(role);
-                themeColorLight = LightenColor(themeColor, 0.3);
-                themeColorLighter = LightenColor(themeColor, 0.6);
-            }
-            
-            // Aplicar tema GLOBALMENTE para todas las páginas
-            App.UpdateThemeColors(themeColor, themeColorLight, themeColorLighter);
-            
-            System.Diagnostics.Debug.WriteLine($"[LoadUserTheme] Tema aplicado globalmente: {themeColor}");
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[LoadUserTheme] Error: {ex.Message}");
-        }
-    }
-
-    private string GetThemeByRole(string role)
-    {
-        return role.ToLower() switch
-        {
-            var r when r.Contains("admin") => "#E91E63", // Rosa para admin
-            var r when r.Contains("supervisor") => "#FF9800", // Naranja para supervisor
-            var r when r.Contains("vendedor") => "#2196F3", // Azul para vendedor
-            var r when r.Contains("cobrador") => "#28A745", // Verde para cobrador
-            _ => "#28A745" // Verde por defecto
-        };
-    }
-
-    /// <summary>
-    /// Aclara un color hex agregando transparencia o mezclando con blanco
-    /// </summary>
-    private string LightenColor(string hexColor, double factor)
-    {
-        try
-        {
-            // Remover el # si existe
-            hexColor = hexColor.TrimStart('#');
-            
-            // Convertir a RGB
-            int r = Convert.ToInt32(hexColor.Substring(0, 2), 16);
-            int g = Convert.ToInt32(hexColor.Substring(2, 2), 16);
-            int b = Convert.ToInt32(hexColor.Substring(4, 2), 16);
-            
-            // Aclarar mezclando con blanco
-            r = (int)(r + (255 - r) * factor);
-            g = (int)(g + (255 - g) * factor);
-            b = (int)(b + (255 - b) * factor);
-            
-            // Retornar color aclarado
-            return $"#{r:X2}{g:X2}{b:X2}";
-        }
-        catch
-        {
-            return hexColor;
-        }
-    }
-
-    private async Task OnGoToPayments()
-    {
-        try
-        {
-            System.Diagnostics.Debug.WriteLine("=== OnGoToPayments START ===");
-            await Shell.Current.GoToAsync("//PaymentPage");
-            System.Diagnostics.Debug.WriteLine("=== Navegación a PaymentPage completada ===");
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"ERROR en OnGoToPayments: {ex.Message}");
-            System.Diagnostics.Debug.WriteLine($"StackTrace: {ex.StackTrace}");
-        }
-    }
-
-    private async void OnPaymentsClicked(object sender, EventArgs e)
-    {
-        System.Diagnostics.Debug.WriteLine("=== OnPaymentsClicked EVENT ===");
-        await OnGoToPayments();
     }
 
     private async Task OnGoToSales()
@@ -327,7 +247,16 @@ public partial class HomePage : ContentPage
         }
     }
 
-    private async void OnSalesClicked(object sender, EventArgs e)
+    private void NotifyPermissions()
+    {
+        OnPropertyChanged(nameof(CanSeeSalesButton));
+        OnPropertyChanged(nameof(CanSeeCustomersButton));
+        OnPropertyChanged(nameof(CanCreateSaleButton));
+        OnPropertyChanged(nameof(CanSeePaymentsStats));
+        OnPropertyChanged(nameof(CanSeeReports));
+    }
+
+    private async void OnSalesClicked(object? sender, EventArgs e)
     {
         System.Diagnostics.Debug.WriteLine("=== OnSalesClicked EVENT ===");
         await OnGoToSales();
@@ -348,16 +277,25 @@ public partial class HomePage : ContentPage
         }
     }
 
-    private async void OnCustomersClicked(object sender, EventArgs e)
+    private async void OnCustomersClicked(object? sender, EventArgs e)
     {
         System.Diagnostics.Debug.WriteLine("=== OnCustomersClicked EVENT ===");
         await OnGoToCustomers();
     }
 
-    // ═══ Bottom Tab Navigation ═══
-    private async void OnTabVentas(object? s, EventArgs e) => await Shell.Current.GoToAsync("//SalesPage");
-    private async void OnTabCobranza(object? s, EventArgs e) => await Shell.Current.GoToAsync("//PaymentPage");
-    private async void OnTabClientes(object? s, EventArgs e) => await Shell.Current.GoToAsync("//CustomersPage");
+    private async void OnNuevaVentaClicked(object? sender, EventArgs e)
+    {
+        try
+        {
+            System.Diagnostics.Debug.WriteLine("=== OnNuevaVentaClicked ===");
+            await Shell.Current.GoToAsync("CreateSalePage");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"ERROR en OnNuevaVentaClicked: {ex.Message}");
+        }
+    }
+
     
     // ══════════════════════════════════════════════════════════════════
     // CERRAR SESIÓN
@@ -379,6 +317,13 @@ public partial class HomePage : ContentPage
             
             // IMPORTANTE: Resetear tema ANTES de limpiar storage
             App.ResetThemeToDefault();
+            ApiService.ClearCachedToken();
+            Services.PageDataCache.PrefetchedSales     = null;
+            Services.PageDataCache.PrefetchedCustomers = null;
+
+            // Limpiar permisos cacheados
+            var permSvc = IPlatformApplication.Current?.Services.GetService<PermissionsService>();
+            permSvc?.Clear();
             
             // Limpiar credenciales almacenadas
             SecureStorage.Remove("auth_token");
@@ -400,22 +345,6 @@ public partial class HomePage : ContentPage
             System.Diagnostics.Debug.WriteLine($"StackTrace: {ex.StackTrace}");
             await DisplayAlert("Error", "No se pudo cerrar la sesión", "OK");
         }
-    }
-
-    // ══════════════════════════════════════════════════════════════════
-    // HEADER ACTIONS
-    // ══════════════════════════════════════════════════════════════════
-    private void OnSearchToggle(object? sender, EventArgs e)
-    {
-        if (!HasSearchableData)
-        {
-            System.Diagnostics.Debug.WriteLine("[OnSearchToggle] No hay datos para buscar");
-            return;
-        }
-        
-        // Toggle la barra de búsqueda compacta dentro del header
-        SearchBarCompact.IsVisible = !SearchBarCompact.IsVisible;
-        System.Diagnostics.Debug.WriteLine($"[OnSearchToggle] SearchBar visible: {SearchBarCompact.IsVisible}");
     }
 
     private async void OnRefreshTapped(object? sender, EventArgs e)
