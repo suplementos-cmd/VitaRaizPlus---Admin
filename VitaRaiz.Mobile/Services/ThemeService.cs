@@ -5,103 +5,88 @@ namespace VitaRaiz.Mobile.Services;
 
 /// <summary>
 /// Gestiona el tema visual de la aplicación basado en el perfil del usuario.
-/// Prioridad: 1) Tema del rol desde API  2) Tema global desde API  3) Color por rol (hardcode fallback).
-/// Los colores aplicados se persisten en SecureStorage para el arranque en frío.
+/// Prioridad: 1) GET api/Catalogs/theme/role/{roleId}  2) Caché (SecureStorage)  3) Neutro hasta login.
 /// </summary>
 public class ThemeService
 {
-    // ── SecureStorage keys ────────────────────────────────────────────────
+    // ── SecureStorage keys ───────────────────────────────────────────
     private const string KeyThemePrimary  = "theme_primary_color";
     private const string KeyThemeLight    = "theme_light_color";
     private const string KeyThemeLighter  = "theme_lighter_color";
-    private const string KeyThemeRole     = "theme_role";
+    private const string KeyThemeRole     = "theme_role_id";
 
-    // ── Role-based fallback colors (aligned with PROFILE_THEMES seed data) ─
-    private static readonly Dictionary<string, string> RoleFallbackColors = new(StringComparer.OrdinalIgnoreCase)
-    {
-        { "vendedor",         "#FF1744" },
-        { "vendedora",        "#FF1744" },
-        { "supervisor",       "#C62828" },
-        { "supervisorajunior","#C62828" },
-        { "cobrador",         "#28A745" },
-        { "cobradora",        "#28A745" },
-        { "admin",            "#E91E63" },
-        { "administrador",    "#E91E63" },
-    };
+    private const string NeutralColor   = "#607D8B";
+    private const string NeutralLight   = "#B0BEC5";
+    private const string NeutralLighter = "#ECEFF1";
 
-    private readonly CatalogService _catalogService;
+    private readonly ApiService _apiService;
     private readonly Logger _logger = AppLogger.Get();
 
-    private string _themeColor    = "#28A745";
-    private string _themeLight    = "#C8E6C9";
-    private string _themeLighter  = "#E8F5E9";
-    private string _currentRole   = string.Empty;
+    private string _themeColor    = NeutralColor;
+    private string _themeLight    = NeutralLight;
+    private string _themeLighter  = NeutralLighter;
 
-    public ThemeService(CatalogService catalogService)
+    public ThemeService(ApiService apiService)
     {
-        _catalogService = catalogService;
+        _apiService = apiService;
     }
 
     public string ThemeColor   => _themeColor;
     public string ThemeLight   => _themeLight;
     public string ThemeLighter => _themeLighter;
 
-    // ── Called after successful login ──────────────────────────────────────
+    // ── Called after successful login ───────────────────────────────────
 
     /// <summary>
-    /// Carga y aplica el tema según el rol. Llama a la API (token ya guardado).
+    /// Carga y aplica el tema del perfil del usuario desde el endpoint dedicado.
+    /// GET api/Catalogs/theme/role/{roleId} — requiere token ya guardado.
     /// Persiste los colores en SecureStorage para el arranque en frío.
     /// </summary>
-    public async Task LoadAndApplyAsync(string role)
+    public async Task LoadAndApplyAsync(int roleId)
     {
-        _currentRole = role;
         try
         {
-            if (!_catalogService.IsLoaded)
-                await _catalogService.LoadAsync();
+            var profileTheme = await _apiService.GetProfileThemeAsync(roleId);
 
-            if (_catalogService.Theme != null)
+            if (profileTheme != null)
             {
-                // API returned a role-specific or global theme
-                _themeColor   = _catalogService.Theme.PrimaryColor;
-                _themeLight   = _catalogService.Theme.SecondaryColor  ?? LightenColor(_themeColor, 0.7);
-                _themeLighter = _catalogService.Theme.AccentColor     ?? LightenColor(_themeColor, 0.85);
-                _logger.Info("[ThemeService] Theme from API: {Color} ({Name})",
-                    _themeColor, _catalogService.Theme.ThemeName);
+                _themeColor   = profileTheme.PrimaryColor;
+                _themeLight   = profileTheme.SecondaryColor  ?? LightenColor(_themeColor, 0.7);
+                _themeLighter = profileTheme.AccentColor      ?? LightenColor(_themeColor, 0.85);
+                _logger.Info("[ThemeService] Theme from API: {Color} ({Name}) for roleId={RoleId}",
+                    _themeColor, profileTheme.ThemeName, roleId);
             }
             else
             {
-                ApplyRoleFallback(role);
-                _logger.Info("[ThemeService] Fallback theme for role '{Role}': {Color}", role, _themeColor);
+                _logger.Warn("[ThemeService] API returned no theme for roleId={RoleId}, keeping neutral", roleId);
             }
 
-            await PersistAsync();
+            await PersistAsync(roleId);
             App.UpdateThemeColors(_themeColor, _themeLight, _themeLighter);
         }
         catch (Exception ex)
         {
-            _logger.Error(ex, "[ThemeService] Error loading theme, applying role fallback");
-            ApplyRoleFallback(role);
+            _logger.Error(ex, "[ThemeService] Error loading theme from API, keeping neutral");
             App.UpdateThemeColors(_themeColor, _themeLight, _themeLighter);
         }
     }
 
-    // ── Called on cold start (no API call needed) ─────────────────────────
+    // ── Called on cold start (no API call needed) ─────────────────────
 
     /// <summary>
-    /// Restaura el tema guardado en SecureStorage. Si no existe, aplica el fallback por rol.
+    /// Restaura el tema guardado en SecureStorage.
+    /// Si no existe o el roleId no coincide, muestra neutro hasta el próximo login.
     /// </summary>
-    public static async Task RestoreCachedThemeAsync(string role = "")
+    public static async Task RestoreCachedThemeAsync(int roleId = 0)
     {
         try
         {
-            var cachedRole = await SecureStorage.GetAsync(KeyThemeRole) ?? string.Empty;
-            var primary    = await SecureStorage.GetAsync(KeyThemePrimary);
+            var cachedRoleIdStr = await SecureStorage.GetAsync(KeyThemeRole) ?? string.Empty;
+            var primary         = await SecureStorage.GetAsync(KeyThemePrimary);
 
-            // Only use cached colors if they belong to the same role (avoid stale cache from a different user)
-            bool roleMatches = !string.IsNullOrEmpty(cachedRole)
-                               && !string.IsNullOrEmpty(role)
-                               && cachedRole.Equals(role, StringComparison.OrdinalIgnoreCase);
+            bool roleMatches = roleId > 0
+                               && int.TryParse(cachedRoleIdStr, out int cachedRoleId)
+                               && cachedRoleId == roleId;
 
             if (roleMatches && !string.IsNullOrEmpty(primary))
             {
@@ -113,14 +98,8 @@ public class ThemeService
         }
         catch { /* non-fatal */ }
 
-        // No valid cached theme for this role → apply role-based fallback immediately
-        if (!string.IsNullOrEmpty(role))
-        {
-            var color   = GetRoleFallbackColor(role);
-            var light   = LightenColor(color, 0.7);
-            var lighter = LightenColor(color, 0.85);
-            App.UpdateThemeColors(color, light, lighter);
-        }
+        // Sin caché válida → neutro hasta que el usuario haga login y la API responda
+        App.UpdateThemeColors(NeutralColor, NeutralLight, NeutralLighter);
     }
 
     /// <summary>
@@ -136,42 +115,12 @@ public class ThemeService
 
     // ── Helpers ───────────────────────────────────────────────────────────
 
-    private void ApplyRoleFallback(string role)
-    {
-        _themeColor   = GetRoleFallbackColor(role);
-        _themeLight   = LightenColor(_themeColor, 0.7);
-        _themeLighter = LightenColor(_themeColor, 0.85);
-    }
-
-    private static string GetRoleFallbackColor(string role)
-    {
-        foreach (var kv in RoleFallbackColors)
-        {
-            if (role.Contains(kv.Key, StringComparison.OrdinalIgnoreCase))
-                return kv.Value;
-        }
-        return "#28A745"; // default green
-    }
-
-    /// <summary>
-    /// Applies the role fallback color synchronously (no async/SecureStorage).
-    /// Safe to call from CreateWindow on a ThreadPool thread.
-    /// </summary>
-    public static void ApplyRoleColorSync(string role)
-    {
-        var color   = GetRoleFallbackColor(role);
-        var light   = LightenColor(color, 0.7);
-        var lighter = LightenColor(color, 0.85);
-        App.UpdateThemeColors(color, light, lighter);
-    }
-
-    private async Task PersistAsync()
+    private async Task PersistAsync(int roleId)
     {
         await SecureStorage.SetAsync(KeyThemePrimary,  _themeColor);
         await SecureStorage.SetAsync(KeyThemeLight,    _themeLight);
         await SecureStorage.SetAsync(KeyThemeLighter,  _themeLighter);
-        if (!string.IsNullOrEmpty(_currentRole))
-            await SecureStorage.SetAsync(KeyThemeRole, _currentRole);
+        await SecureStorage.SetAsync(KeyThemeRole,     roleId.ToString());
     }
 
     private static string LightenColor(string hexColor, double factor)

@@ -53,9 +53,13 @@ public static class MauiProgram
 		Microsoft.Maui.Handlers.EntryHandler.Mapper.AppendToMapping("VitaRaizNoUnderline", (handler, _) =>
 		{
 #if ANDROID
-			handler.PlatformView.BackgroundTintList =
-				Android.Content.Res.ColorStateList.ValueOf(Android.Graphics.Color.Transparent);
-			handler.PlatformView.Background = null;
+			static void ClearAndroidUnderline(Android.Widget.TextView v)
+			{
+				v.Background = null;
+				v.BackgroundTintList = Android.Content.Res.ColorStateList.ValueOf(Android.Graphics.Color.Transparent);
+			}
+			ClearAndroidUnderline(handler.PlatformView);
+			handler.PlatformView.FocusChange += (_, _) => ClearAndroidUnderline(handler.PlatformView);
 #elif WINDOWS
 			var tb = handler.PlatformView;
 			var clearBorder = () =>
@@ -72,9 +76,13 @@ public static class MauiProgram
 		Microsoft.Maui.Handlers.PickerHandler.Mapper.AppendToMapping("VitaRaizNoUnderline", (handler, _) =>
 		{
 #if ANDROID
-			handler.PlatformView.BackgroundTintList =
-				Android.Content.Res.ColorStateList.ValueOf(Android.Graphics.Color.Transparent);
-			handler.PlatformView.Background = null;
+			static void ClearAndroidUnderline(Android.Widget.TextView v)
+			{
+				v.Background = null;
+				v.BackgroundTintList = Android.Content.Res.ColorStateList.ValueOf(Android.Graphics.Color.Transparent);
+			}
+			ClearAndroidUnderline(handler.PlatformView);
+			handler.PlatformView.FocusChange += (_, _) => ClearAndroidUnderline(handler.PlatformView);
 #elif WINDOWS
 			var tb = handler.PlatformView;
 			var clearBorder = () =>
@@ -90,9 +98,13 @@ public static class MauiProgram
 		Microsoft.Maui.Handlers.DatePickerHandler.Mapper.AppendToMapping("VitaRaizNoUnderline", (handler, _) =>
 		{
 #if ANDROID
-			handler.PlatformView.BackgroundTintList =
-				Android.Content.Res.ColorStateList.ValueOf(Android.Graphics.Color.Transparent);
-			handler.PlatformView.Background = null;
+			static void ClearAndroidUnderline(Android.Widget.TextView v)
+			{
+				v.Background = null;
+				v.BackgroundTintList = Android.Content.Res.ColorStateList.ValueOf(Android.Graphics.Color.Transparent);
+			}
+			ClearAndroidUnderline(handler.PlatformView);
+			handler.PlatformView.FocusChange += (_, _) => ClearAndroidUnderline(handler.PlatformView);
 #elif WINDOWS
 			var tb = handler.PlatformView;
 			var clearBorder = () =>
@@ -108,9 +120,13 @@ public static class MauiProgram
 		Microsoft.Maui.Handlers.EditorHandler.Mapper.AppendToMapping("VitaRaizNoUnderline", (handler, _) =>
 		{
 #if ANDROID
-			handler.PlatformView.BackgroundTintList =
-				Android.Content.Res.ColorStateList.ValueOf(Android.Graphics.Color.Transparent);
-			handler.PlatformView.Background = null;
+			static void ClearAndroidUnderline(Android.Widget.TextView v)
+			{
+				v.Background = null;
+				v.BackgroundTintList = Android.Content.Res.ColorStateList.ValueOf(Android.Graphics.Color.Transparent);
+			}
+			ClearAndroidUnderline(handler.PlatformView);
+			handler.PlatformView.FocusChange += (_, _) => ClearAndroidUnderline(handler.PlatformView);
 #elif WINDOWS
 			var tb = handler.PlatformView;
 			var clearBorder = () =>

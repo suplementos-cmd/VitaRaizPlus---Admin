@@ -58,7 +58,7 @@ public class CatalogAppTheme
 {
     public string ThemeCode { get; set; } = string.Empty;
     public string ThemeName { get; set; } = string.Empty;
-    public string PrimaryColor { get; set; } = "#28A745";
+    public string PrimaryColor { get; set; } = string.Empty;
     public string? SecondaryColor { get; set; }
     public string? AccentColor { get; set; }
     public string? BackgroundColor { get; set; }
@@ -72,7 +72,7 @@ public class ProfileThemeDto
     public int RoleId { get; set; }
     public string ThemeName { get; set; } = string.Empty;
     public string? RoleName { get; set; }
-    public string PrimaryColor { get; set; } = "#28A745";
+    public string PrimaryColor { get; set; } = string.Empty;
     public string? SecondaryColor { get; set; }
     public string? AccentColor { get; set; }
     public string? BackgroundColor { get; set; }

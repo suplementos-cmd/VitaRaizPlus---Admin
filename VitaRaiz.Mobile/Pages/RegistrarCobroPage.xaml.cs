@@ -162,7 +162,7 @@ public partial class RegistrarCobroPage : ContentPage
     public bool IsGpsReady      => _latitude != 0 || _longitude != 0 || _gpsGaveUp;
     public string GpsIcon        => (_latitude != 0 || _longitude != 0) ? "📍" : _gpsGaveUp ? "⚠" : "⏳";
     public string GpsIconColor   => (_latitude != 0 || _longitude != 0) ? "#28A745" : _gpsGaveUp ? "#F59E0B" : "#9E9E9E";
-    public string GpsButtonColor => CanRegister ? Application.Current!.Resources["ThemeColor"] is Color c ? c.ToHex() : "#28A745" : "#BDBDBD";
+    public string GpsButtonColor => CanRegister ? Application.Current!.Resources["ThemeColor"] is Color c ? c.ToHex() : "#9E9E9E" : "#BDBDBD";
     public bool CanRegister      => !IsRegistering && IsGpsReady;
 
     private string _gpsCoordinates = "";

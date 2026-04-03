@@ -90,22 +90,22 @@ public partial class CreateSalePage : ContentPage, INotifyPropertyChanged
     {
         object? selBgObj = null;
         Application.Current?.Resources.TryGetValue("ThemeColor", out selBgObj);
-        var selBg     = selBgObj is Color s ? s : Color.FromArgb("#32B864");
-        var unselBg   = Colors.Transparent;
-        var unselBorder = Color.FromArgb("#C8D4CC");
+        var selBg   = selBgObj is Color s ? s : Colors.Gray;
+        var unselBg = Application.Current?.RequestedTheme == AppTheme.Dark
+            ? Color.FromArgb("#1E2722") : Color.FromArgb("#EBF0ED");
         var unselText = Color.FromArgb("#6E7D75");
 
         for (int i = 0; i < _payChipBorders.Length; i++)
         {
             bool active = i == selectedIndex;
-            _payChipBorders[i].BackgroundColor = active ? selBg : unselBg;
-            _payChipBorders[i].Stroke          = active ? new SolidColorBrush(selBg) : new SolidColorBrush(unselBorder);
-            _payChipBorders[i].StrokeThickness = 1.5;
-            _payChipBorders[i].Shadow = active
-                ? new Shadow { Brush = new SolidColorBrush(selBg), Offset = new Point(0, 3), Radius = 8, Opacity = 0.35f }
-                : null;
-            _payChipLabels[i].TextColor      = active ? Colors.White : unselText;
-            _payChipLabels[i].FontAttributes = active ? FontAttributes.Bold : FontAttributes.None;
+            // Selected: transparent bg + theme-color outline (contorno)
+            // Unselected: subtle bg tint, no border
+            _payChipBorders[i].BackgroundColor = active ? Colors.Transparent : unselBg;
+            _payChipBorders[i].Stroke          = active ? new SolidColorBrush(selBg) : new SolidColorBrush(Colors.Transparent);
+            _payChipBorders[i].StrokeThickness = active ? 1.8 : 0;
+            _payChipBorders[i].Shadow          = null;
+            _payChipLabels[i].TextColor        = active ? selBg : unselText;
+            _payChipLabels[i].FontAttributes   = active ? FontAttributes.Bold : FontAttributes.None;
         }
     }
 
@@ -127,22 +127,22 @@ public partial class CreateSalePage : ContentPage, INotifyPropertyChanged
     {
         object? selBgObj = null;
         Application.Current?.Resources.TryGetValue("ThemeColor", out selBgObj);
-        var selBg       = selBgObj is Color s ? s : Color.FromArgb("#32B864");
-        var unselBg     = Colors.Transparent;
-        var unselBorder = Color.FromArgb("#C8D4CC");
-        var unselText   = Color.FromArgb("#6E7D75");
+        var selBg   = selBgObj is Color s ? s : Colors.Gray;
+        var unselBg = Application.Current?.RequestedTheme == AppTheme.Dark
+            ? Color.FromArgb("#1E2722") : Color.FromArgb("#EBF0ED");
+        var unselText = Color.FromArgb("#6E7D75");
 
         for (int i = 0; i < _dayChipBorders.Length; i++)
         {
             bool active = i == selectedIndex;
-            _dayChipBorders[i].BackgroundColor = active ? selBg : unselBg;
-            _dayChipBorders[i].Stroke          = active ? new SolidColorBrush(selBg) : new SolidColorBrush(unselBorder);
-            _dayChipBorders[i].StrokeThickness = 1.5;
-            _dayChipBorders[i].Shadow = active
-                ? new Shadow { Brush = new SolidColorBrush(selBg), Offset = new Point(0, 3), Radius = 8, Opacity = 0.35f }
-                : null;
-            _dayChipLabels[i].TextColor      = active ? Colors.White : unselText;
-            _dayChipLabels[i].FontAttributes = active ? FontAttributes.Bold : FontAttributes.None;
+            // Selected: transparent bg + theme-color outline (contorno)
+            // Unselected: subtle bg tint, no border
+            _dayChipBorders[i].BackgroundColor = active ? Colors.Transparent : unselBg;
+            _dayChipBorders[i].Stroke          = active ? new SolidColorBrush(selBg) : new SolidColorBrush(Colors.Transparent);
+            _dayChipBorders[i].StrokeThickness = active ? 1.8 : 0;
+            _dayChipBorders[i].Shadow          = null;
+            _dayChipLabels[i].TextColor        = active ? selBg : unselText;
+            _dayChipLabels[i].FontAttributes   = active ? FontAttributes.Bold : FontAttributes.None;
         }
     }
 
@@ -257,7 +257,7 @@ public partial class CreateSalePage : ContentPage, INotifyPropertyChanged
                 _gpsLat = location.Latitude;
                 _gpsLng = location.Longitude;
                 _gpsObtained = true;
-                EntryCoords.Text = $"{_gpsLat:F6}, {_gpsLng:F6}";
+                EntryCoords.Text = $"📍 {_gpsLat:F5}, {_gpsLng:F5}";
                 LblGpsShort.Text = $"{_gpsLat:F4}, {_gpsLng:F4}";
             }
         }
@@ -266,6 +266,15 @@ public partial class CreateSalePage : ContentPage, INotifyPropertyChanged
             EntryCoords.Text = "GPS no disponible";
             System.Diagnostics.Debug.WriteLine($"[CreateSale] GPS error: {ex.Message}");
         }
+    }
+
+    // Carga coordenadas GPS obtenidas al campo manual
+    private void OnLoadGpsToCoords2(object? sender, TappedEventArgs e)
+    {
+        if (_gpsObtained)
+            EntryCoords2.Text = $"{_gpsLat:F6}, {_gpsLng:F6}";
+        else
+            EntryCoords2.Focus();
     }
 
     // ═══ Supervisor check ═══
@@ -290,7 +299,8 @@ public partial class CreateSalePage : ContentPage, INotifyPropertyChanged
         if (PickerProduct.SelectedIndex >= 0 && PickerProduct.SelectedIndex < _products.Count)
         {
             var product = _products[PickerProduct.SelectedIndex];
-            LblPrice.Text = $"Precio: ${product.UnitPrice:N2}";
+            LblPrice.Text = $"${product.UnitPrice:N0}";
+            PriceBadgeBorder.IsVisible = true;
             ErrProducto.IsVisible = false;
         }
     }
@@ -310,7 +320,7 @@ public partial class CreateSalePage : ContentPage, INotifyPropertyChanged
         if (path != null)
         {
             label.Text = "✓ Foto lista";
-            label.TextColor = Color.FromArgb("#28A745");
+            label.TextColor = Application.Current?.Resources["ThemeColor"] is Color tc ? tc : Colors.Gray;
             image.Source = ImageSource.FromFile(path);
             image.IsVisible = true;
             label.IsVisible = false;
@@ -444,7 +454,7 @@ public partial class CreateSalePage : ContentPage, INotifyPropertyChanged
         if (sender is Entry entry && entry.Parent is Border border)
         {
             var themeColor = Application.Current?.Resources.TryGetValue("ThemeColor", out var c) == true
-                ? (Color)c : Color.FromArgb("#32B864");
+                ? (Color)c : Colors.Gray;
             border.Stroke = new SolidColorBrush(themeColor);
             border.StrokeThickness = 1.5;
             border.Shadow = new Shadow
@@ -970,11 +980,10 @@ public partial class CreateSalePage : ContentPage, INotifyPropertyChanged
                 _gpsLat = (double)sale.CustomerGpsLatitude.Value;
                 _gpsLng = (double)sale.CustomerGpsLongitude.Value;
                 _gpsObtained = true;
-                EntryCoords.Text = $"{_gpsLat:F6}, {_gpsLng:F6}";
+                EntryCoords.Text = $"📍 {_gpsLat:F5}, {_gpsLng:F5}";
                 LblGpsShort.Text = $"{_gpsLat:F4}, {_gpsLng:F4}";
             }
         });
-
         // Load previously saved photos from local SQLite DB
         await LoadEditPhotosAsync(sale.SaleId);
     }
@@ -1054,7 +1063,7 @@ public partial class CreateSalePage : ContentPage, INotifyPropertyChanged
 
             var toast = new Frame
             {
-                BackgroundColor = Color.FromArgb("#28A745"),
+                BackgroundColor = Application.Current?.Resources["ThemeColor"] is Color tc ? tc : Colors.Gray,
                 CornerRadius = 12,
                 Padding = new Thickness(18, 10),
                 HorizontalOptions = LayoutOptions.Center,

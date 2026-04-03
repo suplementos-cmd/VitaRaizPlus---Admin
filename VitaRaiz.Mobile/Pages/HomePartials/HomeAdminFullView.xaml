@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="VitaRaiz.Mobile.Pages.HomePartials.HomeAdminFullView">
+
+    <VerticalStackLayout Spacing="14">
+
+        <!-- ── RESUMEN EJECUTIVO ───────────────────────────────────── -->
+        <Label Text="Resumen ejecutivo"
+               FontSize="13" FontAttributes="Bold"
+               TextColor="{DynamicResource ThemeColor}"
+               Margin="2,0,0,0" />
+
+        <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
+
+            <!-- Ventas hoy -->
+            <Border Grid.Column="0"
+                    BackgroundColor="{AppThemeBinding Light=White, Dark=#1C2620}"
+                    StrokeThickness="0" Padding="0"
+                    Shadow="{Shadow Brush='#14000000', Offset='0,2', Radius=5}">
+                <Border.StrokeShape><RoundRectangle CornerRadius="12" /></Border.StrokeShape>
+                <Grid RowDefinitions="3,Auto">
+                    <BoxView Grid.Row="0" Color="#1976D2" />
+                    <VerticalStackLayout Grid.Row="1" Spacing="2" Padding="8,10">
+                        <Label Text="🛒" FontSize="20" HorizontalOptions="Center" />
+                        <Label Text="Ventas" FontSize="9"
+                               TextColor="{AppThemeBinding Light=#999, Dark=#778880}"
+                               HorizontalOptions="Center" />
+                        <Label Text="{Binding TodaySales}"
+                               FontSize="16" FontAttributes="Bold"
+                               TextColor="#1976D2" HorizontalOptions="Center" />
+                    </VerticalStackLayout>
+                </Grid>
+            </Border>
+
+            <!-- Cobros hoy -->
+            <Border Grid.Column="1"
+                    BackgroundColor="{AppThemeBinding Light=White, Dark=#1C2620}"
+                    StrokeThickness="0" Padding="0"
+                    Shadow="{Shadow Brush='#14000000', Offset='0,2', Radius=5}">
+                <Border.StrokeShape><RoundRectangle CornerRadius="12" /></Border.StrokeShape>
+                <Grid RowDefinitions="3,Auto">
+                    <BoxView Grid.Row="0" Color="{DynamicResource ThemeColor}" />
+                    <VerticalStackLayout Grid.Row="1" Spacing="2" Padding="8,10">
+                        <Label Text="💳" FontSize="20" HorizontalOptions="Center" />
+                        <Label Text="Cobros" FontSize="9"
+                               TextColor="{AppThemeBinding Light=#999, Dark=#778880}"
+                               HorizontalOptions="Center" />
+                        <Label Text="{Binding TodayPayments, StringFormat='${0:N0}'}"
+                               FontSize="12" FontAttributes="Bold"
+                               TextColor="{DynamicResource ThemeColor}"
+                               HorizontalOptions="Center" />
+                    </VerticalStackLayout>
+                </Grid>
+            </Border>
+
+            <!-- Pendiente total -->
+            <Border Grid.Column="2"
+                    BackgroundColor="{AppThemeBinding Light=White, Dark=#1C2620}"
+                    StrokeThickness="0" Padding="0"
+                    Shadow="{Shadow Brush='#14000000', Offset='0,2', Radius=5}">
+                <Border.StrokeShape><RoundRectangle CornerRadius="12" /></Border.StrokeShape>
+                <Grid RowDefinitions="3,Auto">
+                    <BoxView Grid.Row="0" Color="#FF9800" />
+                    <VerticalStackLayout Grid.Row="1" Spacing="2" Padding="8,10">
+                        <Label Text="📌" FontSize="20" HorizontalOptions="Center" />
+                        <Label Text="Pendiente" FontSize="9"
+                               TextColor="{AppThemeBinding Light=#999, Dark=#778880}"
+                               HorizontalOptions="Center" />
+                        <Label Text="{Binding PendingAmount, StringFormat='${0:N0}'}"
+                               FontSize="12" FontAttributes="Bold"
+                               TextColor="#FF9800" HorizontalOptions="Center" />
+                    </VerticalStackLayout>
+                </Grid>
+            </Border>
+
+        </Grid>
+
+        <!-- ── ACCESOS RÁPIDOS ─────────────────────────────────────── -->
+        <Label Text="Accesos rápidos"
+               FontSize="13" FontAttributes="Bold"
+               TextColor="{DynamicResource ThemeColor}"
+               Margin="2,4,0,0" />
+
+        <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+
+            <Border Grid.Column="0"
+                    BackgroundColor="{AppThemeBinding Light=White, Dark=#1C2620}"
+                    StrokeThickness="0" Padding="0"
+                    Shadow="{Shadow Brush='#14000000', Offset='0,2', Radius=5}">
+                <Border.StrokeShape><RoundRectangle CornerRadius="12" /></Border.StrokeShape>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnSalesClicked" />
+                </Border.GestureRecognizers>
+                <Grid RowDefinitions="3,Auto">
+                    <BoxView Grid.Row="0" Color="#1976D2" />
+                    <VerticalStackLayout Grid.Row="1" Spacing="4" Padding="10,12">
+                        <Label Text="📋" FontSize="24" HorizontalOptions="Center" />
+                        <Label Text="Ventas" FontSize="12" FontAttributes="Bold"
+                               TextColor="{AppThemeBinding Light=#333, Dark=#E8F0EB}"
+                               HorizontalOptions="Center" />
+                        <Label Text="Ver todas" FontSize="10"
+                               TextColor="{AppThemeBinding Light=#AAA, Dark=#778880}"
+                               HorizontalOptions="Center" />
+                    </VerticalStackLayout>
+                </Grid>
+            </Border>
+
+            <Border Grid.Column="1"
+                    BackgroundColor="{AppThemeBinding Light=White, Dark=#1C2620}"
+                    StrokeThickness="0" Padding="0"
+                    Shadow="{Shadow Brush='#14000000', Offset='0,2', Radius=5}">
+                <Border.StrokeShape><RoundRectangle CornerRadius="12" /></Border.StrokeShape>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnCustomersClicked" />
+                </Border.GestureRecognizers>
+                <Grid RowDefinitions="3,Auto">
+                    <BoxView Grid.Row="0" Color="#9C27B0" />
+                    <VerticalStackLayout Grid.Row="1" Spacing="4" Padding="10,12">
+                        <Label Text="👤" FontSize="24" HorizontalOptions="Center" />
+                        <Label Text="Clientes" FontSize="12" FontAttributes="Bold"
+                               TextColor="{AppThemeBinding Light=#333, Dark=#E8F0EB}"
+                               HorizontalOptions="Center" />
+                        <Label Text="Ver directorio" FontSize="10"
+                               TextColor="{AppThemeBinding Light=#AAA, Dark=#778880}"
+                               HorizontalOptions="Center" />
+                    </VerticalStackLayout>
+                </Grid>
+            </Border>
+
+        </Grid>
+
+        <!-- ── CTAs COMPLETAS ─────────────────────────────────────── -->
+        <Border BackgroundColor="{AppThemeBinding Light=White, Dark=#1C2620}"
+                StrokeThickness="0" Padding="0"
+                Shadow="{Shadow Brush='#14000000', Offset='0,2', Radius=5}">
+            <Border.StrokeShape><RoundRectangle CornerRadius="12" /></Border.StrokeShape>
+            <Border.GestureRecognizers>
+                <TapGestureRecognizer Tapped="OnNuevaVentaClicked" />
+            </Border.GestureRecognizers>
+            <Grid ColumnDefinitions="5,*,Auto" ColumnSpacing="12" Padding="0,14,16,14">
+                <BoxView Grid.Column="0" BackgroundColor="{DynamicResource ThemeColor}" />
+                <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+                    <Label Text="+ Nueva venta" FontSize="14" FontAttributes="Bold"
+                           TextColor="{DynamicResource ThemeColor}" />
+                    <Label Text="Registrar venta a crédito" FontSize="11"
+                           TextColor="{AppThemeBinding Light=#AAA, Dark=#778880}" />
+                </VerticalStackLayout>
+                <Label Grid.Column="2" Text="›" FontSize="24"
+                       TextColor="{AppThemeBinding Light=#CCC, Dark=#4A5752}"
+                       VerticalOptions="Center" />
+            </Grid>
+        </Border>
+
+        <Border BackgroundColor="{AppThemeBinding Light=White, Dark=#1C2620}"
+                StrokeThickness="0" Padding="0"
+                Shadow="{Shadow Brush='#14000000', Offset='0,2', Radius=5}">
+            <Border.StrokeShape><RoundRectangle CornerRadius="12" /></Border.StrokeShape>
+            <Border.GestureRecognizers>
+                <TapGestureRecognizer Tapped="OnRegistrarCobroClicked" />
+            </Border.GestureRecognizers>
+            <Grid ColumnDefinitions="5,*,Auto" ColumnSpacing="12" Padding="0,14,16,14">
+                <BoxView Grid.Column="0" BackgroundColor="#FF9800" />
+                <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+                    <Label Text="+ Registrar cobro" FontSize="14" FontAttributes="Bold"
+                           TextColor="#FF9800" />
+                    <Label Text="Capturar pago de cliente" FontSize="11"
+                           TextColor="{AppThemeBinding Light=#AAA, Dark=#778880}" />
+                </VerticalStackLayout>
+                <Label Grid.Column="2" Text="›" FontSize="24"
+                       TextColor="{AppThemeBinding Light=#CCC, Dark=#4A5752}"
+                       VerticalOptions="Center" />
+            </Grid>
+        </Border>
+
+    </VerticalStackLayout>
+</ContentView>

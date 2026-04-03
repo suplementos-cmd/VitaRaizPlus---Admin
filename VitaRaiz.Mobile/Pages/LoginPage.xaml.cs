@@ -220,8 +220,8 @@ public partial class LoginPage : ContentPage
                         catalogService.LoadAsync(forceReload: true),
                         permissionsService.LoadAsync(forceReload: true));
 
-                    // 3. Tema — depende de catálogos (ya cargados arriba), rápido (~0 I/O).
-                    await themeService.LoadAndApplyAsync(loginResponse.Role);
+                    // 3. Tema — llama directo a GET api/Catalogs/theme/role/{roleId} (endpoint dedicado por perfil).
+                    await themeService.LoadAndApplyAsync(loginResponse.RoleId);
 
                     // 4. Prefetch en background — no bloquea la navegación. Mientras el usuario
                     //    ve el HomePage, ventas y clientes se cargan en segundo plano. Cuando el

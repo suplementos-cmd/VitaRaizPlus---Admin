@@ -379,8 +379,8 @@
                                 <Button Grid.Column="1" Text="⏰ Más tarde" FontSize="11" BackgroundColor="#E3F2FD"
                                         TextColor="#1565C0" CornerRadius="8" HeightRequest="40" Padding="4"
                                         Clicked="OnPasarMasTarde" />
-                                <Button Grid.Column="2" Text="📅 Prox sem" FontSize="11" BackgroundColor="#E8F5E9"
-                                        TextColor="#2E7D32" CornerRadius="8" HeightRequest="40" Padding="4"
+                                <Button Grid.Column="2" Text="📅 Prox sem" FontSize="11" BackgroundColor="{DynamicResource ThemeColorLighter}"
+                                        TextColor="{DynamicResource ThemeColorDark}" CornerRadius="8" HeightRequest="40" Padding="4"
                                         Clicked="OnProximaSemana" />
                             </Grid>
 

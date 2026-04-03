@@ -1,0 +1,1 @@
+  C:\app\esteban.gabriel\product\21c\dbhomeXE\network\admin\tnsnames.ora

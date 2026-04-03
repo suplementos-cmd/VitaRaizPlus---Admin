@@ -1,0 +1,438 @@
+-- ===========================================================================
+-- VITARAIZ - MIGRACIÓN ESQUEMA SALESAPP
+-- Parte 04/09: TABLAS NIVELES 3–6 (resto de tablas en orden de dependencia)
+-- Nivel 3: CUSTOMERS, COLLECTOR_ROUTES, AUDIT_LOGS, SYNC_*, USER_*
+-- Nivel 4: SALES, CUSTOMER_INCIDENTS, BLACKLIST_PROPOSALS
+-- Nivel 5: SALE_ITEMS, SALE_PHOTOS, SALE_STATUS_HISTORY,
+--          COLLECTOR_VISIT_ACTIONS, PAYMENTS
+-- Nivel 6: PAYMENT_PHOTOS, WHATSAPP_MESSAGES
+-- Generado: 2026-04-03
+-- ===========================================================================
+
+-- ===========================================================================
+-- NIVEL 3
+-- ===========================================================================
+
+-- ---------------------------------------------------------------------------
+-- CUSTOMERS   (FK → ZONES, USERS)
+-- ---------------------------------------------------------------------------
+CREATE TABLE SALESAPP.CUSTOMERS (
+    CUSTOMER_ID          NUMBER          NOT NULL,
+    CUSTOMER_NAME        VARCHAR2(200)   NOT NULL,
+    PHONE                VARCHAR2(20),
+    EMAIL                VARCHAR2(100),
+    ADDRESS              VARCHAR2(300),
+    ADDRESS_REF          VARCHAR2(300),
+    GPS_LATITUDE         NUMBER(10,7),
+    GPS_LONGITUDE        NUMBER(10,7),
+    ZONE_ID              NUMBER,
+    IS_BLACKLISTED       CHAR(1)         DEFAULT '0',
+    BLACKLIST_REASON     VARCHAR2(500),
+    BLACKLIST_DATE       TIMESTAMP(6),
+    BLACKLIST_APPROVED_BY NUMBER,
+    IS_GOLD_CUSTOMER     CHAR(1)         DEFAULT '0',
+    GOLD_SINCE           TIMESTAMP(6),
+    CREATED_BY           NUMBER          NOT NULL,
+    CREATED_AT           TIMESTAMP(6)    DEFAULT CURRENT_TIMESTAMP,
+    UPDATED_AT           TIMESTAMP(6),
+    CONSTRAINT PK_CUSTOMERS              PRIMARY KEY (CUSTOMER_ID),
+    CONSTRAINT FK_CUSTOMERS_ZONE         FOREIGN KEY (ZONE_ID)
+        REFERENCES SALESAPP.ZONES (ZONE_ID),
+    CONSTRAINT FK_CUSTOMERS_CREATED_BY   FOREIGN KEY (CREATED_BY)
+        REFERENCES SALESAPP.USERS (USER_ID),
+    CONSTRAINT FK_CUSTOMERS_BLACKLIST_BY FOREIGN KEY (BLACKLIST_APPROVED_BY)
+        REFERENCES SALESAPP.USERS (USER_ID)
+);
+
+-- ---------------------------------------------------------------------------
+-- COLLECTOR_ROUTES   (FK → USERS)
+-- ---------------------------------------------------------------------------
+CREATE TABLE SALESAPP.COLLECTOR_ROUTES (
+    ROUTE_ID        NUMBER          NOT NULL,
+    COLLECTOR_ID    NUMBER          NOT NULL,
+    ROUTE_DATE      DATE            NOT NULL,
+    SALES_ASSIGNED  NUMBER,
+    SALES_VISITED   NUMBER          DEFAULT 0,
+    TOTAL_COLLECTED NUMBER(10,2)    DEFAULT 0,
+    START_TIME      TIMESTAMP(6),
+    END_TIME        TIMESTAMP(6),
+    STATUS          VARCHAR2(20)    DEFAULT 'ACTIVE',
+    CONSTRAINT PK_COLLECTOR_ROUTES      PRIMARY KEY (ROUTE_ID),
+    CONSTRAINT UQ_ROUTES_COLLECTOR_DATE UNIQUE (COLLECTOR_ID, ROUTE_DATE),
+    CONSTRAINT FK_ROUTES_COLLECTOR      FOREIGN KEY (COLLECTOR_ID)
+        REFERENCES SALESAPP.USERS (USER_ID)
+);
+
+-- ---------------------------------------------------------------------------
+-- AUDIT_LOGS   (FK → USERS nullable)
+-- ---------------------------------------------------------------------------
+CREATE TABLE SALESAPP.AUDIT_LOGS (
+    LOG_ID     NUMBER          NOT NULL,
+    USER_ID    NUMBER,
+    TABLE_NAME VARCHAR2(50),
+    RECORD_ID  NUMBER,
+    ACTION     VARCHAR2(20),
+    OLD_VALUES CLOB,
+    NEW_VALUES CLOB,
+    IP_ADDRESS VARCHAR2(50),
+    USER_AGENT VARCHAR2(200),
+    TIMESTAMP  TIMESTAMP(6)    DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT PK_AUDIT_LOGS PRIMARY KEY (LOG_ID),
+    CONSTRAINT FK_AUDIT_USER FOREIGN KEY (USER_ID)
+        REFERENCES SALESAPP.USERS (USER_ID)
+);
+
+-- ---------------------------------------------------------------------------
+-- SYNC_QUEUE   (FK → USERS)
+-- ---------------------------------------------------------------------------
+CREATE TABLE SALESAPP.SYNC_QUEUE (
+    QUEUE_ID       NUMBER          NOT NULL,
+    USER_ID        NUMBER          NOT NULL,
+    OPERATION_TYPE VARCHAR2(50)    NOT NULL,
+    TABLE_NAME     VARCHAR2(50)    NOT NULL,
+    RECORD_ID      NUMBER,
+    DATA_JSON      CLOB,
+    CREATED_AT     TIMESTAMP(6)    DEFAULT CURRENT_TIMESTAMP,
+    SYNCED         CHAR(1)         DEFAULT '0',
+    SYNCED_AT      TIMESTAMP(6),
+    SYNC_ATTEMPTS  NUMBER          DEFAULT 0,
+    LAST_ERROR     VARCHAR2(500),
+    CONSTRAINT PK_SYNC_QUEUE  PRIMARY KEY (QUEUE_ID),
+    CONSTRAINT FK_SYNC_USER   FOREIGN KEY (USER_ID)
+        REFERENCES SALESAPP.USERS (USER_ID)
+);
+
+-- ---------------------------------------------------------------------------
+-- SYNC_CONFLICTS   (FK → USERS nullable)
+-- ---------------------------------------------------------------------------
+CREATE TABLE SALESAPP.SYNC_CONFLICTS (
+    CONFLICT_ID    NUMBER          NOT NULL,
+    TABLE_NAME     VARCHAR2(50)    NOT NULL,
+    RECORD_ID      NUMBER,
+    SERVER_VERSION CLOB,
+    CLIENT_VERSION CLOB,
+    DETECTED_AT    TIMESTAMP(6)    DEFAULT CURRENT_TIMESTAMP,
+    RESOLVED       CHAR(1)         DEFAULT '0',
+    RESOLVED_AT    TIMESTAMP(6),
+    RESOLVED_BY    NUMBER,
+    RESOLUTION     VARCHAR2(20),
+    CONSTRAINT PK_SYNC_CONFLICTS     PRIMARY KEY (CONFLICT_ID),
+    CONSTRAINT FK_CONFLICTS_RESOLVED FOREIGN KEY (RESOLVED_BY)
+        REFERENCES SALESAPP.USERS (USER_ID)
+);
+
+-- ---------------------------------------------------------------------------
+-- USER_SESSIONS   (FK → USERS)
+-- ---------------------------------------------------------------------------
+CREATE TABLE SALESAPP.USER_SESSIONS (
+    SESSION_ID    VARCHAR2(100)   NOT NULL,
+    USER_ID       NUMBER          NOT NULL,
+    JWT_TOKEN     VARCHAR2(1000),
+    REFRESH_TOKEN VARCHAR2(100),
+    DEVICE_INFO   VARCHAR2(200),
+    IP_ADDRESS    VARCHAR2(50),
+    CREATED_AT    TIMESTAMP(6)    DEFAULT CURRENT_TIMESTAMP,
+    EXPIRES_AT    TIMESTAMP(6)    NOT NULL,
+    IS_ACTIVE     CHAR(1)         DEFAULT '1',
+    CONSTRAINT PK_USER_SESSIONS  PRIMARY KEY (SESSION_ID),
+    CONSTRAINT FK_SESSIONS_USER  FOREIGN KEY (USER_ID)
+        REFERENCES SALESAPP.USERS (USER_ID)
+);
+
+-- ---------------------------------------------------------------------------
+-- USER_THEME_PREFERENCES   (FK → USERS)
+-- ---------------------------------------------------------------------------
+CREATE TABLE SALESAPP.USER_THEME_PREFERENCES (
+    USER_ID              NUMBER      NOT NULL,
+    CUSTOM_PRIMARY_COLOR VARCHAR2(7),
+    DARK_MODE            CHAR(1)     DEFAULT '0',
+    UPDATED_AT           TIMESTAMP(6),
+    CONSTRAINT PK_USER_THEME_PREFS  PRIMARY KEY (USER_ID),
+    CONSTRAINT FK_THEME_PREFS_USER  FOREIGN KEY (USER_ID)
+        REFERENCES SALESAPP.USERS (USER_ID)
+);
+
+-- ===========================================================================
+-- NIVEL 4
+-- ===========================================================================
+
+-- ---------------------------------------------------------------------------
+-- SALES   (FK → CUSTOMERS, USERS)
+-- ---------------------------------------------------------------------------
+CREATE TABLE SALESAPP.SALES (
+    SALE_ID               NUMBER          NOT NULL,
+    CUSTOMER_ID           NUMBER          NOT NULL,
+    SELLER_ID             NUMBER          NOT NULL,
+    SALE_DATE             DATE            NOT NULL,
+    SALE_TIME             TIMESTAMP(6)    DEFAULT CURRENT_TIMESTAMP,
+    TOTAL_AMOUNT          NUMBER(10,2)    NOT NULL,
+    PAYMENT_TERMS         VARCHAR2(50),
+    NUMBER_OF_PAYMENTS    NUMBER,
+    PAYMENT_AMOUNT        NUMBER(10,2),
+    FIRST_PAYMENT_DATE    DATE,
+    GPS_LATITUDE          NUMBER(10,7),
+    GPS_LONGITUDE         NUMBER(10,7),
+    SALES_LOCATION        VARCHAR2(300),
+    STATUS                VARCHAR2(20)    DEFAULT 'POR_INICIAR',
+    ASSIGNED_COLLECTOR_ID NUMBER,
+    NOTES                 VARCHAR2(1000),
+    CREATED_AT            TIMESTAMP(6)    DEFAULT CURRENT_TIMESTAMP,
+    UPDATED_AT            TIMESTAMP(6),
+    SYNCED                CHAR(1)         DEFAULT '1',
+    PAYMENT_TERM          VARCHAR2(20)    DEFAULT 'SEMANAL',
+    COLLECTION_DAY        VARCHAR2(10),
+    FIRST_COLLECTION_DATE DATE,
+    DOWN_PAYMENT          NUMBER(10,2)    DEFAULT 0,
+    CONSTRAINT PK_SALES           PRIMARY KEY (SALE_ID),
+    CONSTRAINT CHK_SALE_STATUS    CHECK (STATUS IN (
+        'POR_INICIAR','EN_PROCESO','LIQUIDADO','ANULADO','CANCELADO'
+    )),
+    CONSTRAINT FK_SALES_CUSTOMER  FOREIGN KEY (CUSTOMER_ID)
+        REFERENCES SALESAPP.CUSTOMERS (CUSTOMER_ID),
+    CONSTRAINT FK_SALES_SELLER    FOREIGN KEY (SELLER_ID)
+        REFERENCES SALESAPP.USERS (USER_ID),
+    CONSTRAINT FK_SALES_COLLECTOR FOREIGN KEY (ASSIGNED_COLLECTOR_ID)
+        REFERENCES SALESAPP.USERS (USER_ID)
+);
+
+COMMENT ON COLUMN SALESAPP.SALES.PAYMENT_TERM IS
+    'Tipo de plazo: SEMANAL, QUINCENAL, MENSUAL, CONTADO';
+COMMENT ON COLUMN SALESAPP.SALES.PAYMENT_TERMS IS
+    'Términos de pago adicionales en texto libre';
+COMMENT ON COLUMN SALESAPP.SALES.COLLECTION_DAY IS
+    'Día de la semana para cobro: LUN, MAR, MIE, JUE, VIE, SAB, DOM';
+COMMENT ON COLUMN SALESAPP.SALES.FIRST_COLLECTION_DATE IS
+    'Fecha programada para el primer cobro';
+COMMENT ON COLUMN SALESAPP.SALES.DOWN_PAYMENT IS
+    'Monto del enganche o pago inicial';
+
+-- ---------------------------------------------------------------------------
+-- CUSTOMER_INCIDENTS   (FK → CUSTOMERS, USERS)
+-- ---------------------------------------------------------------------------
+CREATE TABLE SALESAPP.CUSTOMER_INCIDENTS (
+    INCIDENT_ID   NUMBER          NOT NULL,
+    CUSTOMER_ID   NUMBER          NOT NULL,
+    INCIDENT_TYPE VARCHAR2(50),
+    DESCRIPTION   VARCHAR2(500),
+    SEVERITY      VARCHAR2(20),
+    REPORTED_BY   NUMBER          NOT NULL,
+    REPORTED_AT   TIMESTAMP(6)    DEFAULT CURRENT_TIMESTAMP,
+    RESOLVED      CHAR(1)         DEFAULT '0',
+    RESOLVED_AT   TIMESTAMP(6),
+    RESOLVED_BY   NUMBER,
+    CONSTRAINT PK_CUSTOMER_INCIDENTS  PRIMARY KEY (INCIDENT_ID),
+    CONSTRAINT FK_INCIDENTS_CUSTOMER  FOREIGN KEY (CUSTOMER_ID)
+        REFERENCES SALESAPP.CUSTOMERS (CUSTOMER_ID),
+    CONSTRAINT FK_INCIDENTS_REPORTED  FOREIGN KEY (REPORTED_BY)
+        REFERENCES SALESAPP.USERS (USER_ID),
+    CONSTRAINT FK_INCIDENTS_RESOLVED  FOREIGN KEY (RESOLVED_BY)
+        REFERENCES SALESAPP.USERS (USER_ID)
+);
+
+-- ---------------------------------------------------------------------------
+-- BLACKLIST_PROPOSALS   (FK → CUSTOMERS, USERS)
+-- ---------------------------------------------------------------------------
+CREATE TABLE SALESAPP.BLACKLIST_PROPOSALS (
+    PROPOSAL_ID  NUMBER          NOT NULL,
+    CUSTOMER_ID  NUMBER          NOT NULL,
+    PROPOSED_BY  NUMBER          NOT NULL,
+    REASON       VARCHAR2(500)   NOT NULL,
+    PROPOSED_AT  TIMESTAMP(6)    DEFAULT CURRENT_TIMESTAMP,
+    STATUS       VARCHAR2(20)    DEFAULT 'PENDING',
+    REVIEWED_BY  NUMBER,
+    REVIEWED_AT  TIMESTAMP(6),
+    REVIEW_NOTES VARCHAR2(500),
+    CONSTRAINT PK_BLACKLIST_PROPOSALS PRIMARY KEY (PROPOSAL_ID),
+    CONSTRAINT FK_BLACKLIST_CUSTOMER  FOREIGN KEY (CUSTOMER_ID)
+        REFERENCES SALESAPP.CUSTOMERS (CUSTOMER_ID),
+    CONSTRAINT FK_BLACKLIST_PROPOSED  FOREIGN KEY (PROPOSED_BY)
+        REFERENCES SALESAPP.USERS (USER_ID),
+    CONSTRAINT FK_BLACKLIST_REVIEWED  FOREIGN KEY (REVIEWED_BY)
+        REFERENCES SALESAPP.USERS (USER_ID)
+);
+
+-- ===========================================================================
+-- NIVEL 5
+-- ===========================================================================
+
+-- ---------------------------------------------------------------------------
+-- SALE_ITEMS   (FK → SALES on delete cascade, PRODUCTS)
+-- ---------------------------------------------------------------------------
+CREATE TABLE SALESAPP.SALE_ITEMS (
+    SALE_ITEM_ID NUMBER          NOT NULL,
+    SALE_ID      NUMBER          NOT NULL,
+    PRODUCT_ID   NUMBER          NOT NULL,
+    QUANTITY     NUMBER          NOT NULL,
+    UNIT_PRICE   NUMBER(10,2)    NOT NULL,
+    SUBTOTAL     NUMBER(10,2)    NOT NULL,
+    DISCOUNT     NUMBER(10,2)    DEFAULT 0,
+    NOTES        VARCHAR2(200),
+    CONSTRAINT PK_SALE_ITEMS        PRIMARY KEY (SALE_ITEM_ID),
+    CONSTRAINT FK_SALEITEMS_SALE    FOREIGN KEY (SALE_ID)
+        REFERENCES SALESAPP.SALES (SALE_ID) ON DELETE CASCADE,
+    CONSTRAINT FK_SALEITEMS_PRODUCT FOREIGN KEY (PRODUCT_ID)
+        REFERENCES SALESAPP.PRODUCTS (PRODUCT_ID)
+);
+
+-- ---------------------------------------------------------------------------
+-- SALE_PHOTOS   (FK → SALES on delete cascade, USERS)
+-- ---------------------------------------------------------------------------
+CREATE TABLE SALESAPP.SALE_PHOTOS (
+    PHOTO_ID      NUMBER          NOT NULL,
+    SALE_ID       NUMBER          NOT NULL,
+    PHOTO_TYPE    VARCHAR2(20)    NOT NULL,
+    FILE_PATH     VARCHAR2(500)   NOT NULL,
+    THUMBNAIL_PATH VARCHAR2(500),
+    GPS_LATITUDE  NUMBER(10,7),
+    GPS_LONGITUDE NUMBER(10,7),
+    FILE_SIZE     NUMBER,
+    UPLOADED_AT   TIMESTAMP(6)    DEFAULT CURRENT_TIMESTAMP,
+    UPLOADED_BY   NUMBER,
+    SYNCED        CHAR(1)         DEFAULT '1',
+    CONSTRAINT PK_SALE_PHOTOS     PRIMARY KEY (PHOTO_ID),
+    CONSTRAINT CHK_PHOTO_TYPE     CHECK (PHOTO_TYPE IN (
+        'FOTO_FACHADA','FOTO_CLIENTE','FOTO_CONTRATO','FOTO_ADD_1','FOTO_ADD_2'
+    )),
+    CONSTRAINT FK_PHOTOS_SALE     FOREIGN KEY (SALE_ID)
+        REFERENCES SALESAPP.SALES (SALE_ID) ON DELETE CASCADE,
+    CONSTRAINT FK_PHOTOS_USER     FOREIGN KEY (UPLOADED_BY)
+        REFERENCES SALESAPP.USERS (USER_ID)
+);
+
+-- ---------------------------------------------------------------------------
+-- SALE_STATUS_HISTORY   (FK → SALES on delete cascade, USERS)
+-- ---------------------------------------------------------------------------
+CREATE TABLE SALESAPP.SALE_STATUS_HISTORY (
+    HISTORY_ID  NUMBER          NOT NULL,
+    SALE_ID     NUMBER          NOT NULL,
+    FROM_STATUS VARCHAR2(20),
+    TO_STATUS   VARCHAR2(20)    NOT NULL,
+    CHANGED_BY  NUMBER          NOT NULL,
+    CHANGED_AT  TIMESTAMP(6)    DEFAULT CURRENT_TIMESTAMP,
+    NOTES       VARCHAR2(500),
+    CONSTRAINT PK_SALE_STATUS_HISTORY  PRIMARY KEY (HISTORY_ID),
+    CONSTRAINT FK_STATUSHISTORY_SALE   FOREIGN KEY (SALE_ID)
+        REFERENCES SALESAPP.SALES (SALE_ID) ON DELETE CASCADE,
+    CONSTRAINT FK_STATUSHISTORY_USER   FOREIGN KEY (CHANGED_BY)
+        REFERENCES SALESAPP.USERS (USER_ID)
+);
+
+-- ---------------------------------------------------------------------------
+-- COLLECTOR_VISIT_ACTIONS   (FK → SALES, USERS)
+-- ---------------------------------------------------------------------------
+CREATE TABLE SALESAPP.COLLECTOR_VISIT_ACTIONS (
+    ACTION_ID     NUMBER          NOT NULL,
+    SALE_ID       NUMBER          NOT NULL,
+    COLLECTOR_ID  NUMBER          NOT NULL,
+    ACTION_TYPE   VARCHAR2(20)    NOT NULL,
+    ACTION_DATE   DATE            NOT NULL,
+    ACTION_TIME   TIMESTAMP(6)    DEFAULT CURRENT_TIMESTAMP,
+    GPS_LATITUDE  NUMBER(10,7),
+    GPS_LONGITUDE NUMBER(10,7),
+    NOTES         VARCHAR2(500),
+    CONSTRAINT PK_COLLECTOR_VISIT_ACTIONS PRIMARY KEY (ACTION_ID),
+    CONSTRAINT CHK_ACTION_TYPE CHECK (ACTION_TYPE IN (
+        'PASAR','MAS_TARDE','MAÑANA','PROXIMA_SEMANA',
+        'LIQUIDADO','CANCELADO','VISITADO'
+    )),
+    CONSTRAINT FK_ACTIONS_SALE      FOREIGN KEY (SALE_ID)
+        REFERENCES SALESAPP.SALES (SALE_ID),
+    CONSTRAINT FK_ACTIONS_COLLECTOR FOREIGN KEY (COLLECTOR_ID)
+        REFERENCES SALESAPP.USERS (USER_ID)
+);
+
+-- ---------------------------------------------------------------------------
+-- PAYMENTS   (FK → SALES, USERS, CATALOG_PAYMENT_STATUSES x3)
+-- ---------------------------------------------------------------------------
+CREATE TABLE SALESAPP.PAYMENTS (
+    PAYMENT_ID          NUMBER          NOT NULL,
+    SALE_ID             NUMBER          NOT NULL,
+    COLLECTOR_ID        NUMBER          NOT NULL,
+    PAYMENT_DATE        DATE            NOT NULL,
+    PAYMENT_TIME        TIMESTAMP(6)    DEFAULT CURRENT_TIMESTAMP,
+    AMOUNT              NUMBER(10,2)    NOT NULL,
+    PAYMENT_METHOD      VARCHAR2(20)    DEFAULT 'CASH',
+    GPS_LATITUDE        NUMBER(10,7),
+    GPS_LONGITUDE       NUMBER(10,7),
+    DEVICE_ID           VARCHAR2(100),
+    NOTES               VARCHAR2(500),
+    CREATED_AT          TIMESTAMP(6)    DEFAULT CURRENT_TIMESTAMP,
+    SYNCED              CHAR(1)         DEFAULT '1',
+    SYNC_TIMESTAMP      TIMESTAMP(6),
+    UPDATED_AT          TIMESTAMP(6),
+    UPDATED_BY          NUMBER,
+    COLLECTION_ACTION_ID NUMBER         DEFAULT NULL,
+    COLLECTION_SUB_ID   NUMBER          DEFAULT NULL,
+    STATUS              NUMBER          DEFAULT NULL,
+    CONSTRAINT PK_PAYMENTS            PRIMARY KEY (PAYMENT_ID),
+    CONSTRAINT FK_PAYMENTS_SALE       FOREIGN KEY (SALE_ID)
+        REFERENCES SALESAPP.SALES (SALE_ID),
+    CONSTRAINT FK_PAYMENTS_COLLECTOR  FOREIGN KEY (COLLECTOR_ID)
+        REFERENCES SALESAPP.USERS (USER_ID),
+    CONSTRAINT FK_PAYMENT_UPDATED_BY  FOREIGN KEY (UPDATED_BY)
+        REFERENCES SALESAPP.USERS (USER_ID),
+    CONSTRAINT FK_PAYMENT_STATUS_ID   FOREIGN KEY (STATUS)
+        REFERENCES SALESAPP.CATALOG_PAYMENT_STATUSES (STATUS_ID),
+    CONSTRAINT FK_PAYMENT_ACTION_ID   FOREIGN KEY (COLLECTION_ACTION_ID)
+        REFERENCES SALESAPP.CATALOG_PAYMENT_STATUSES (STATUS_ID),
+    CONSTRAINT FK_PAYMENT_SUB_ID      FOREIGN KEY (COLLECTION_SUB_ID)
+        REFERENCES SALESAPP.CATALOG_PAYMENT_STATUSES (STATUS_ID)
+);
+
+COMMENT ON COLUMN SALESAPP.PAYMENTS.PAYMENT_DATE IS
+    'Fecha/hora en que se registró el pago — equivale a CREATED_AT';
+COMMENT ON COLUMN SALESAPP.PAYMENTS.UPDATED_AT IS
+    'Fecha/hora de la última modificación del registro (aprobación, rechazo, etc.)';
+COMMENT ON COLUMN SALESAPP.PAYMENTS.UPDATED_BY IS
+    'Usuario que realizó la última modificación (FK → USERS.USER_ID)';
+COMMENT ON COLUMN SALESAPP.PAYMENTS.COLLECTOR_ID IS
+    'Cobrador que registró el pago (quien creó el registro, FK → USERS.USER_ID)';
+COMMENT ON COLUMN SALESAPP.PAYMENTS.COLLECTION_ACTION_ID IS
+    'FK numérica → STATUS_ID de la acción raíz de visita del cobrador (VISIT_ACTION, PARENT NULL).';
+COMMENT ON COLUMN SALESAPP.PAYMENTS.COLLECTION_SUB_ID IS
+    'FK numérica → STATUS_ID del sub-estado de visita (hijo de COLLECTION_ACTION_ID).';
+
+-- ===========================================================================
+-- NIVEL 6
+-- ===========================================================================
+
+-- ---------------------------------------------------------------------------
+-- PAYMENT_PHOTOS   (FK → PAYMENTS on delete cascade)
+-- ---------------------------------------------------------------------------
+CREATE TABLE SALESAPP.PAYMENT_PHOTOS (
+    PHOTO_ID       NUMBER          NOT NULL,
+    PAYMENT_ID     NUMBER          NOT NULL,
+    PHOTO_TYPE     VARCHAR2(20)    DEFAULT 'RECEIPT',
+    FILE_PATH      VARCHAR2(500)   NOT NULL,
+    THUMBNAIL_PATH VARCHAR2(500),
+    GPS_LATITUDE   NUMBER(10,7),
+    GPS_LONGITUDE  NUMBER(10,7),
+    FILE_SIZE      NUMBER,
+    UPLOADED_AT    TIMESTAMP(6)    DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT PK_PAYMENT_PHOTOS  PRIMARY KEY (PHOTO_ID),
+    CONSTRAINT FK_PAYMENT_PHOTOS  FOREIGN KEY (PAYMENT_ID)
+        REFERENCES SALESAPP.PAYMENTS (PAYMENT_ID) ON DELETE CASCADE
+);
+
+-- ---------------------------------------------------------------------------
+-- WHATSAPP_MESSAGES   (FK → CUSTOMERS, PAYMENTS nullable)
+-- ---------------------------------------------------------------------------
+CREATE TABLE SALESAPP.WHATSAPP_MESSAGES (
+    MESSAGE_ID   NUMBER          NOT NULL,
+    CUSTOMER_ID  NUMBER          NOT NULL,
+    PAYMENT_ID   NUMBER,
+    MESSAGE_TYPE VARCHAR2(50),
+    PHONE_NUMBER VARCHAR2(20)    NOT NULL,
+    MESSAGE_BODY VARCHAR2(4000),
+    TEMPLATE_ID  VARCHAR2(100),
+    STATUS       VARCHAR2(20)    DEFAULT 'PENDING',
+    SENT_AT      TIMESTAMP(6),
+    DELIVERED_AT TIMESTAMP(6),
+    READ_AT      TIMESTAMP(6),
+    ERROR_MESSAGE VARCHAR2(500),
+    CONSTRAINT PK_WHATSAPP_MESSAGES PRIMARY KEY (MESSAGE_ID),
+    CONSTRAINT FK_WHATSAPP_CUSTOMER FOREIGN KEY (CUSTOMER_ID)
+        REFERENCES SALESAPP.CUSTOMERS (CUSTOMER_ID),
+    CONSTRAINT FK_WHATSAPP_PAYMENT  FOREIGN KEY (PAYMENT_ID)
+        REFERENCES SALESAPP.PAYMENTS (PAYMENT_ID)
+);

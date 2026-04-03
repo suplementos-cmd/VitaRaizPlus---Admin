@@ -6,10 +6,10 @@ namespace VitaRaiz.Mobile;
 
 public partial class App : MauiApp
 {
-	// Colores de tema globales accesibles desde cualquier página
-	public static string ThemeColor { get; set; } = "#28A745";
-	public static string ThemeColorLight { get; set; } = "#C8E6C9";
-	public static string ThemeColorLighter { get; set; } = "#E8F5E9";
+	// Colores de tema globales accesibles desde cualquier página (se sobreescriben tras login)
+	public static string ThemeColor { get; set; } = "#607D8B";
+	public static string ThemeColorLight { get; set; } = "#B0BEC5";
+	public static string ThemeColorLighter { get; set; } = "#ECEFF1";
 
 	public App()
 	{
@@ -59,11 +59,12 @@ public partial class App : MauiApp
 	/// </summary>
 	public static void ResetThemeToDefault()
 	{
-		const string defaultColor = "#28A745"; // Verde por defecto
-		string lightColor = LightenColor(defaultColor, 0.7);
-		string lighterColor = LightenColor(defaultColor, 0.85);
-		UpdateThemeColors(defaultColor, lightColor, lighterColor);
-		System.Diagnostics.Debug.WriteLine("[App] Theme reset to default");
+		// Gris neutro — el tema real se aplica tras el próximo login
+		const string neutralColor = "#607D8B";
+		string lightColor = LightenColor(neutralColor, 0.7);
+		string lighterColor = LightenColor(neutralColor, 0.85);
+		UpdateThemeColors(neutralColor, lightColor, lighterColor);
+		System.Diagnostics.Debug.WriteLine("[App] Theme reset to neutral (pending login)");
 	}
 
 	protected override Window CreateWindow(IActivationState? activationState)

@@ -294,6 +294,15 @@ public class ApiService
         }
     }
 
+    /// <summary>
+    /// Obtiene el tema dinámico del perfil por roleId.
+    /// Endpoint dedicado: GET api/Catalogs/theme/role/{roleId}
+    /// </summary>
+    public async Task<Models.ProfileThemeDto?> GetProfileThemeAsync(int roleId)
+    {
+        return await GetAsync<Models.ProfileThemeDto>($"api/Catalogs/theme/role/{roleId}");
+    }
+
     private string BuildQueryString(Dictionary<string, string?> parameters)
     {
         var queryParams = parameters

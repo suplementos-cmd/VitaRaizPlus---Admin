@@ -1,0 +1,100 @@
+-- ===========================================================================
+-- VITARAIZ - MIGRACIÓN ESQUEMA SALESAPP
+-- Parte 06/09: TRIGGERS Y COMENTARIOS ADICIONALES
+-- Generado: 2026-04-03
+-- ===========================================================================
+
+-- ---------------------------------------------------------------------------
+-- TRIGGERS
+-- ---------------------------------------------------------------------------
+
+CREATE OR REPLACE TRIGGER SALESAPP.TRG_CUSTOMERS_TIMESTAMP
+BEFORE UPDATE ON SALESAPP.CUSTOMERS
+FOR EACH ROW
+BEGIN
+    :NEW.UPDATED_AT := SYSTIMESTAMP;
+END;
+/
+ALTER TRIGGER SALESAPP.TRG_CUSTOMERS_TIMESTAMP ENABLE;
+
+CREATE OR REPLACE TRIGGER SALESAPP.TRG_PRODUCTS_TIMESTAMP
+BEFORE UPDATE ON SALESAPP.PRODUCTS
+FOR EACH ROW
+BEGIN
+    :NEW.UPDATED_AT := SYSTIMESTAMP;
+END;
+/
+ALTER TRIGGER SALESAPP.TRG_PRODUCTS_TIMESTAMP ENABLE;
+
+CREATE OR REPLACE TRIGGER SALESAPP.TRG_USERS_TIMESTAMP
+BEFORE UPDATE ON SALESAPP.USERS
+FOR EACH ROW
+BEGIN
+    :NEW.UPDATED_AT := SYSTIMESTAMP;
+END;
+/
+ALTER TRIGGER SALESAPP.TRG_USERS_TIMESTAMP ENABLE;
+
+CREATE OR REPLACE TRIGGER SALESAPP.TRG_SALES_TIMESTAMP
+BEFORE UPDATE ON SALESAPP.SALES
+FOR EACH ROW
+BEGIN
+    :NEW.UPDATED_AT := SYSTIMESTAMP;
+END;
+/
+ALTER TRIGGER SALESAPP.TRG_SALES_TIMESTAMP ENABLE;
+
+CREATE OR REPLACE TRIGGER SALESAPP.TRG_SALES_AUDIT
+AFTER UPDATE ON SALESAPP.SALES
+FOR EACH ROW
+DECLARE
+    PRAGMA AUTONOMOUS_TRANSACTION;
+BEGIN
+    INSERT INTO SALESAPP.AUDIT_LOGS (
+        LOG_ID, TABLE_NAME, RECORD_ID, ACTION,
+        OLD_VALUES, NEW_VALUES, TIMESTAMP
+    ) VALUES (
+        SALESAPP.SEQ_AUDIT_LOGS.NEXTVAL,
+        'SALES',
+        :NEW.SALE_ID,
+        'UPDATE',
+        'status=' || :OLD.STATUS || ',amount=' || :OLD.TOTAL_AMOUNT,
+        'status=' || :NEW.STATUS || ',amount=' || :NEW.TOTAL_AMOUNT,
+        SYSTIMESTAMP
+    );
+    COMMIT;
+END;
+/
+ALTER TRIGGER SALESAPP.TRG_SALES_AUDIT ENABLE;
+
+-- ---------------------------------------------------------------------------
+-- COMENTARIOS ADICIONALES DE TABLAS
+-- (Los de CATALOG_PAYMENT_STATUSES y SALES ya están en sus CREATE TABLE)
+-- ---------------------------------------------------------------------------
+
+COMMENT ON TABLE SALESAPP.CATALOG_APP_SETTINGS IS
+    'Configuraciones generales de la aplicación';
+
+COMMENT ON TABLE SALESAPP.CATALOG_APP_THEMES IS
+    'Temas y colores de la aplicación';
+
+COMMENT ON TABLE SALESAPP.CATALOG_NOTIFICATION_TEMPLATES IS
+    'Plantillas de notificaciones parametrizadas';
+
+COMMENT ON TABLE SALESAPP.CATALOG_RISK_STATUSES IS
+    'Catálogo dinámico de estados de riesgo';
+
+COMMENT ON TABLE SALESAPP.CATALOG_SALE_STATUSES IS
+    'Catálogo dinámico de estados de venta';
+
+COMMENT ON TABLE SALESAPP.PERMISSIONS IS
+    'Permisos atómicos por módulo';
+
+COMMENT ON TABLE SALESAPP.PROFILE_THEMES IS
+    'Configuración de colores y tema por rol (uno por rol)';
+
+COMMENT ON TABLE SALESAPP.ROLES IS
+    'Roles / perfiles de acceso del sistema';
+
+COMMENT ON TABLE SALESAPP.ROLE_PERMISSIONS IS
+    'Asignación de permisos a roles (N:N)';

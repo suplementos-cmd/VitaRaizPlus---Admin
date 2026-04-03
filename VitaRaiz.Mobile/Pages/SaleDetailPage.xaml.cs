@@ -603,7 +603,7 @@ public partial class SaleDetailPage : ContentPage
         if (path != null)
         {
             label.Text = "Foto lista ✓";
-            label.TextColor = Color.FromArgb("#28A745");
+            label.TextColor = Application.Current?.Resources["ThemeColor"] is Color tc ? tc : Colors.Gray;
         }
     }
 
