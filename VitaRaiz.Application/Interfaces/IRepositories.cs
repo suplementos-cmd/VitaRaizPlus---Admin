@@ -46,3 +46,34 @@ public interface IZoneRepository
     
     Task<ZoneDto?> GetZoneByIdAsync(int zoneId);
 }
+
+public interface IUserRepository
+{
+    Task<List<UserDto>> GetUsersAsync(string? searchTerm, int? roleId, bool? isActive);
+
+    Task<UserDto?> GetUserByIdAsync(int userId);
+
+    Task<int> CreateUserAsync(string username, string fullName, string? email, string password,
+        int roleId, int? zoneId, bool isActive, int? createdBy);
+
+    Task<bool> UpdateUserAsync(int userId, string fullName, string? email, int roleId,
+        int? zoneId, bool isActive, int? updatedBy);
+
+    Task<bool> DeleteUserAsync(int userId, int? deletedBy);
+
+    Task<bool> ChangePasswordAsync(int userId, string currentPassword, string newPassword);
+}
+
+public interface IRoleRepository
+{
+    Task<List<RoleDto>> GetRolesAsync();
+
+    Task<List<string>> GetPermissionsAsync();
+
+    Task<bool> UpdateRoleAsync(int roleId, string roleName, string? description,
+        string? defaultThemeColor, int? updatedBy);
+
+    Task<List<string>> GetRolePermissionsAsync(int roleId);
+
+    Task<bool> SetRolePermissionsAsync(int roleId, List<string> permissions, int? updatedBy);
+}

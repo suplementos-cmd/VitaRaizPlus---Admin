@@ -1,5 +1,5 @@
 --Tablas sistema VitaRaiz    user pas  Base datos : salesapp/SalesApp2026@XEPDB1 
-SELECT * FROM all_objects_ae a where a.owner ='SALESAPP' and A.object_type='SEQUENCE'; 
+SELECT * FROM all_objects_ae a where a.owner ='SALESAPP';--and A.object_type='SEQUENCE'; 
 
 --EM_VITARAIZ_AD;
 SELECT * FROM payments;

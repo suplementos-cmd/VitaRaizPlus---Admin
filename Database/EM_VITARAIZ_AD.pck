@@ -269,6 +269,90 @@
   */
   PROCEDURE sp_update_last_login(p_user_id IN NUMBER);
 
+  /**
+  * Obtiene usuarios con filtros opcionales
+  */
+  PROCEDURE sp_get_users(p_search_term IN VARCHAR2 DEFAULT NULL,
+                         p_role_id     IN NUMBER DEFAULT NULL,
+                         p_is_active   IN NUMBER DEFAULT NULL,
+                         p_cursor      OUT SYS_REFCURSOR);
+
+  /**
+  * Obtiene un usuario por ID
+  */
+  PROCEDURE sp_get_user_by_id(p_user_id IN NUMBER,
+                              p_cursor  OUT SYS_REFCURSOR);
+
+  /**
+  * Registra un nuevo usuario
+  */
+  PROCEDURE sp_register_user(p_user_id       OUT NUMBER,
+                             p_username      IN VARCHAR2,
+                             p_full_name     IN VARCHAR2,
+                             p_email         IN VARCHAR2 DEFAULT NULL,
+                             p_password      IN VARCHAR2,
+                             p_role_id       IN NUMBER,
+                             p_zone_id       IN NUMBER DEFAULT NULL,
+                             p_is_active     IN NUMBER DEFAULT 1,
+                             p_created_by    IN NUMBER DEFAULT NULL);
+
+  /**
+  * Actualiza un usuario existente
+  */
+  PROCEDURE sp_update_user(p_user_id    IN NUMBER,
+                           p_full_name  IN VARCHAR2,
+                           p_email      IN VARCHAR2 DEFAULT NULL,
+                           p_role_id    IN NUMBER,
+                           p_zone_id    IN NUMBER DEFAULT NULL,
+                           p_is_active  IN NUMBER DEFAULT 1,
+                           p_updated_by IN NUMBER DEFAULT NULL);
+
+  /**
+  * Elimina (desactiva) un usuario
+  */
+  PROCEDURE sp_delete_user(p_user_id    IN NUMBER,
+                           p_deleted_by IN NUMBER DEFAULT NULL);
+
+  /**
+  * Cambia contraseña validando la actual
+  * @return '1' si se actualizó, '0' si contraseña actual incorrecta o usuario no existe
+  */
+  FUNCTION fn_change_user_password(p_user_id          IN NUMBER,
+                                   p_current_password IN VARCHAR2,
+                                   p_new_password     IN VARCHAR2) RETURN CHAR;
+
+  /**
+  * Obtiene todos los roles
+  */
+  PROCEDURE sp_get_roles(p_cursor OUT SYS_REFCURSOR);
+
+  /**
+  * Actualiza datos de rol
+  */
+  PROCEDURE sp_update_role(p_role_id             IN NUMBER,
+                           p_role_name           IN VARCHAR2,
+                           p_description         IN VARCHAR2 DEFAULT NULL,
+                           p_default_theme_color IN VARCHAR2 DEFAULT NULL,
+                           p_updated_by          IN NUMBER DEFAULT NULL);
+
+  /**
+  * Obtiene permisos por rol
+  */
+  PROCEDURE sp_get_role_permissions(p_role_id IN NUMBER,
+                                    p_cursor  OUT SYS_REFCURSOR);
+
+  /**
+  * Obtiene catálogo completo de permisos
+  */
+  PROCEDURE sp_get_permissions(p_cursor OUT SYS_REFCURSOR);
+
+  /**
+  * Reemplaza permisos del rol usando lista CSV de permission_name
+  */
+  PROCEDURE sp_set_role_permissions(p_role_id         IN NUMBER,
+                                    p_permissions_csv IN CLOB,
+                                    p_updated_by      IN NUMBER DEFAULT NULL);
+
   -- ========================================================================
   -- PROCEDIMIENTOS DE RUTAS Y COBRANZA
   -- ========================================================================
@@ -1410,6 +1494,297 @@ PROCEDURE sp_register_sale(p_sale_id               OUT NUMBER,
     WHEN OTHERS THEN
       ROLLBACK;
   END sp_update_last_login;
+  --
+  PROCEDURE sp_get_users(p_search_term IN VARCHAR2 DEFAULT NULL,
+                         p_role_id     IN NUMBER DEFAULT NULL,
+                         p_is_active   IN NUMBER DEFAULT NULL,
+                         p_cursor      OUT SYS_REFCURSOR) IS
+  BEGIN
+    OPEN p_cursor FOR
+      SELECT u.user_id      AS "userId",
+             u.username     AS "username",
+             u.full_name    AS "fullName",
+             u.email        AS "email",
+             u.role_id      AS "roleId",
+             r.role_name    AS "roleName",
+             u.zone_id      AS "zoneId",
+             z.zone_name    AS "zoneName",
+             CASE
+               WHEN NVL(u.is_active, '1') = '1' THEN
+                1
+               ELSE
+                0
+             END            AS "isActive",
+             u.created_at   AS "createdAt",
+             u.last_login   AS "lastLogin"
+        FROM users u
+        JOIN roles r
+          ON u.role_id = r.role_id
+        LEFT JOIN zones z
+          ON u.zone_id = z.zone_id
+       WHERE (p_search_term IS NULL OR
+             UPPER(u.username) LIKE '%' || UPPER(TRIM(p_search_term)) || '%' OR
+             UPPER(u.full_name) LIKE '%' || UPPER(TRIM(p_search_term)) || '%' OR
+             UPPER(NVL(u.email, '')) LIKE '%' || UPPER(TRIM(p_search_term)) || '%')
+         AND (p_role_id IS NULL OR u.role_id = p_role_id)
+         AND (p_is_active IS NULL OR
+             (p_is_active = 1 AND NVL(u.is_active, '1') = '1') OR
+             (p_is_active = 0 AND NVL(u.is_active, '1') = '0'))
+       ORDER BY u.username;
+  END sp_get_users;
+  --
+  PROCEDURE sp_get_user_by_id(p_user_id IN NUMBER,
+                              p_cursor  OUT SYS_REFCURSOR) IS
+  BEGIN
+    OPEN p_cursor FOR
+      SELECT u.user_id      AS "userId",
+             u.username     AS "username",
+             u.full_name    AS "fullName",
+             u.email        AS "email",
+             u.role_id      AS "roleId",
+             r.role_name    AS "roleName",
+             u.zone_id      AS "zoneId",
+             z.zone_name    AS "zoneName",
+             CASE
+               WHEN NVL(u.is_active, '1') = '1' THEN
+                1
+               ELSE
+                0
+             END            AS "isActive",
+             u.created_at   AS "createdAt",
+             u.last_login   AS "lastLogin"
+        FROM users u
+        JOIN roles r
+          ON u.role_id = r.role_id
+        LEFT JOIN zones z
+          ON u.zone_id = z.zone_id
+       WHERE u.user_id = p_user_id;
+  END sp_get_user_by_id;
+  --
+  PROCEDURE sp_register_user(p_user_id       OUT NUMBER,
+                             p_username      IN VARCHAR2,
+                             p_full_name     IN VARCHAR2,
+                             p_email         IN VARCHAR2 DEFAULT NULL,
+                             p_password      IN VARCHAR2,
+                             p_role_id       IN NUMBER,
+                             p_zone_id       IN NUMBER DEFAULT NULL,
+                             p_is_active     IN NUMBER DEFAULT 1,
+                             p_created_by    IN NUMBER DEFAULT NULL) IS
+  BEGIN
+    INSERT INTO users
+      (user_id,
+       username,
+       password_hash,
+       full_name,
+       email,
+       role_id,
+       zone_id,
+       is_active,
+       created_at)
+    VALUES
+      (seq_users.NEXTVAL,
+       LOWER(TRIM(p_username)),
+       p_password,
+       TRIM(p_full_name),
+       CASE
+         WHEN p_email IS NULL THEN
+          NULL
+         ELSE
+          LOWER(TRIM(p_email))
+       END,
+       p_role_id,
+       p_zone_id,
+       CASE
+         WHEN NVL(p_is_active, 1) = 1 THEN
+          '1'
+         ELSE
+          '0'
+       END,
+       SYSTIMESTAMP)
+    RETURNING user_id INTO p_user_id;
+
+    log_audit('USER',
+              p_user_id,
+              'INSERT',
+              p_created_by,
+              'Usuario: ' || LOWER(TRIM(p_username)));
+    COMMIT;
+  EXCEPTION
+    WHEN OTHERS THEN
+      ROLLBACK;
+      RAISE;
+  END sp_register_user;
+  --
+  PROCEDURE sp_update_user(p_user_id    IN NUMBER,
+                           p_full_name  IN VARCHAR2,
+                           p_email      IN VARCHAR2 DEFAULT NULL,
+                           p_role_id    IN NUMBER,
+                           p_zone_id    IN NUMBER DEFAULT NULL,
+                           p_is_active  IN NUMBER DEFAULT 1,
+                           p_updated_by IN NUMBER DEFAULT NULL) IS
+  BEGIN
+    UPDATE users
+       SET full_name  = TRIM(p_full_name),
+           email      = CASE
+                          WHEN p_email IS NULL THEN
+                           NULL
+                          ELSE
+                           LOWER(TRIM(p_email))
+                        END,
+           role_id    = p_role_id,
+           zone_id    = p_zone_id,
+           is_active  = CASE
+                          WHEN NVL(p_is_active, 1) = 1 THEN
+                           '1'
+                          ELSE
+                           '0'
+                        END,
+           updated_at = SYSTIMESTAMP
+     WHERE user_id = p_user_id;
+
+    log_audit('USER', p_user_id, 'UPDATE', p_updated_by, 'Usuario actualizado');
+    COMMIT;
+  EXCEPTION
+    WHEN OTHERS THEN
+      ROLLBACK;
+      RAISE;
+  END sp_update_user;
+  --
+  PROCEDURE sp_delete_user(p_user_id    IN NUMBER,
+                           p_deleted_by IN NUMBER DEFAULT NULL) IS
+  BEGIN
+    UPDATE users
+       SET is_active  = '0',
+           updated_at = SYSTIMESTAMP
+     WHERE user_id = p_user_id;
+
+    log_audit('USER', p_user_id, 'DELETE', p_deleted_by, 'Usuario desactivado');
+    COMMIT;
+  EXCEPTION
+    WHEN OTHERS THEN
+      ROLLBACK;
+      RAISE;
+  END sp_delete_user;
+  --
+  FUNCTION fn_change_user_password(p_user_id          IN NUMBER,
+                                   p_current_password IN VARCHAR2,
+                                   p_new_password     IN VARCHAR2) RETURN CHAR IS
+    v_password_hash users.password_hash%TYPE;
+  BEGIN
+    SELECT password_hash
+      INTO v_password_hash
+      FROM users
+     WHERE user_id = p_user_id;
+
+    IF v_password_hash != p_current_password THEN
+      RETURN '0';
+    END IF;
+
+    UPDATE users
+       SET password_hash = p_new_password,
+           updated_at    = SYSTIMESTAMP
+     WHERE user_id = p_user_id;
+
+    COMMIT;
+    RETURN '1';
+  EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+      RETURN '0';
+    WHEN OTHERS THEN
+      ROLLBACK;
+      RETURN '0';
+  END fn_change_user_password;
+  --
+  PROCEDURE sp_get_roles(p_cursor OUT SYS_REFCURSOR) IS
+  BEGIN
+    OPEN p_cursor FOR
+      SELECT r.role_id             AS "roleId",
+             r.role_name           AS "roleName",
+             NVL(r.description, r.role_description) AS "description",
+             r.default_theme_color AS "defaultThemeColor"
+        FROM roles r
+       ORDER BY r.role_name;
+  END sp_get_roles;
+  --
+  PROCEDURE sp_update_role(p_role_id             IN NUMBER,
+                           p_role_name           IN VARCHAR2,
+                           p_description         IN VARCHAR2 DEFAULT NULL,
+                           p_default_theme_color IN VARCHAR2 DEFAULT NULL,
+                           p_updated_by          IN NUMBER DEFAULT NULL) IS
+  BEGIN
+    UPDATE roles
+       SET role_name           = TRIM(p_role_name),
+           role_description    = p_description,
+           description         = p_description,
+           default_theme_color = p_default_theme_color
+     WHERE role_id = p_role_id;
+
+    log_audit('ROLE', p_role_id, 'UPDATE', p_updated_by, 'Rol actualizado');
+    COMMIT;
+  EXCEPTION
+    WHEN OTHERS THEN
+      ROLLBACK;
+      RAISE;
+  END sp_update_role;
+  --
+  PROCEDURE sp_get_role_permissions(p_role_id IN NUMBER,
+                                    p_cursor  OUT SYS_REFCURSOR) IS
+  BEGIN
+    OPEN p_cursor FOR
+      SELECT p.permission_name AS "permissionName",
+             p.module          AS "module",
+             p.description     AS "description"
+        FROM role_permissions rp
+        JOIN permissions p
+          ON rp.permission_id = p.permission_id
+       WHERE rp.role_id = p_role_id
+       ORDER BY p.module, p.permission_name;
+  END sp_get_role_permissions;
+    --
+    PROCEDURE sp_get_permissions(p_cursor OUT SYS_REFCURSOR) IS
+    BEGIN
+      OPEN p_cursor FOR
+        SELECT p.permission_name AS "permissionName",
+               p.module          AS "module",
+               p.description     AS "description"
+          FROM permissions p
+         ORDER BY p.module, p.permission_name;
+    END sp_get_permissions;
+  --
+  PROCEDURE sp_set_role_permissions(p_role_id         IN NUMBER,
+                                    p_permissions_csv IN CLOB,
+                                    p_updated_by      IN NUMBER DEFAULT NULL) IS
+    v_permission_name VARCHAR2(200);
+    v_position        NUMBER := 1;
+  BEGIN
+    DELETE FROM role_permissions WHERE role_id = p_role_id;
+
+    LOOP
+      v_permission_name :=
+       TRIM(REGEXP_SUBSTR(p_permissions_csv, '[^,]+', 1, v_position));
+
+      EXIT WHEN v_permission_name IS NULL;
+
+      INSERT INTO role_permissions
+        (role_id, permission_id, granted_at)
+      SELECT p_role_id, p.permission_id, SYSTIMESTAMP
+        FROM permissions p
+       WHERE UPPER(p.permission_name) = UPPER(v_permission_name);
+
+      v_position := v_position + 1;
+    END LOOP;
+
+    log_audit('ROLE',
+              p_role_id,
+              'UPDATE_PERMISSIONS',
+              p_updated_by,
+              'Permisos actualizados');
+    COMMIT;
+  EXCEPTION
+    WHEN OTHERS THEN
+      ROLLBACK;
+      RAISE;
+  END sp_set_role_permissions;
   -- ========================================================================
   -- PROCEDIMIENTOS DE RUTAS
   -- ========================================================================

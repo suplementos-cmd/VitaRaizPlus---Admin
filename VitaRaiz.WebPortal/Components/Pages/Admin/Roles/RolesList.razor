@@ -11,8 +11,8 @@
 @if (_apiNotAvailable)
 {
     <MudAlert Severity="Severity.Info" Class="mb-4">
-        La gestion de roles requiere los endpoints <strong>api/roles</strong> que aun no han sido implementados en la API.
-        Las tarjetas se mostraran en cuanto el servidor exponga dichos endpoints.
+        No se pudieron cargar roles desde la API.
+        Verifica que los endpoints <strong>api/roles</strong> esten disponibles.
     </MudAlert>
 }
 
@@ -125,23 +125,37 @@ else if (!_apiNotAvailable)
     private Dictionary<int, List<string>> _rolePerms = new();
     private RoleDto?     _editingRole;
     private HashSet<string> _selectedPerms = new();
+    private List<string> _availablePerms = new();
 
-    private static readonly string[] _availablePerms =
+    protected override async Task OnInitializedAsync()
     {
-        "sales.create", "sales.view_own", "sales.view_team", "sales.view_all",
-        "sales.edit_own", "sales.edit_team", "sales.annul",
-        "customers.view", "customers.create", "customers.edit",
-        "payments.create", "payments.view", "payments.approve",
-        "reports.view",
-        "admin.users", "admin.roles", "admin.catalogs"
-    };
+        _loading = true;
+        _apiNotAvailable = false;
 
-    protected override Task OnInitializedAsync()
-    {
-        // api/roles endpoint not available in current API version
+        var roles = await Api.GetAsync<List<RoleDto>>("api/roles");
+        var perms = await Api.GetAsync<List<string>>("api/roles/permissions");
+
+        if (roles is null)
+        {
+            _apiNotAvailable = true;
+            _roles = new();
+            _rolePerms = new();
+            _availablePerms = new();
+            _loading = false;
+            return;
+        }
+
+        _roles = roles;
+        _availablePerms = perms?.OrderBy(p => p).ToList() ?? new List<string>();
+        _rolePerms = new Dictionary<int, List<string>>();
+
+        foreach (var role in _roles)
+        {
+            var rolePermissions = await Api.GetAsync<List<string>>($"api/roles/{role.RoleId}/permissions");
+            _rolePerms[role.RoleId] = rolePermissions ?? new List<string>();
+        }
+
         _loading = false;
-        _apiNotAvailable = true;
-        return Task.CompletedTask;
     }
 
     private void OpenEdit(RoleDto r)

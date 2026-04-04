@@ -10,8 +10,8 @@
 @if (_apiNotAvailable)
 {
     <MudAlert Severity="Severity.Info" Class="mb-4">
-        La gestion de usuarios requiere los endpoints <strong>api/users</strong> y <strong>api/roles</strong> que aun no han sido implementados en la API.
-        La tabla de usuarios se mostrara en cuanto el servidor exponga dichos endpoints.
+        No se pudieron cargar usuarios/roles desde la API.
+        Verifica que los endpoints <strong>api/users</strong> y <strong>api/roles</strong> esten disponibles.
     </MudAlert>
 }
 
@@ -22,7 +22,7 @@
 </MudStack>
 
 <MudPaper Class="pa-3 mb-4" Elevation="1">
-    <MudGrid Spacing="2" AlignItems="AlignItems.Center">
+    <MudGrid Spacing="2">
         <MudItem xs="12" sm="5">
             <MudTextField Value="@_search" ValueChanged="@((string s) => OnSearchChanged(s))"
                           Label="Buscar usuario o nombre..." Variant="Variant.Outlined"
@@ -102,8 +102,10 @@
 </MudPaper>
 
 <!-- Create/Edit Dialog -->
-<MudDialog @bind-IsVisible="_dialogOpen">
-    <TitleContent>@(_editing?.UserId > 0 ? "Editar" : "Nuevo") Usuario</TitleContent>
+<MudDialog @bind-Visible="_dialogOpen">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(_editing?.UserId > 0 ? "Editar" : "Nuevo") Usuario</MudText>
+    </TitleContent>
     <DialogContent>
         <MudGrid Spacing="2">
             <MudItem xs="12" sm="6">
@@ -168,15 +170,25 @@
     private async Task LoadAsync()
     {
         _loading = true;
-        // api/users and api/roles endpoints not yet available in current API version
-        // Load zones (available) and show empty users list with informational message
+        _apiNotAvailable = false;
+
+        var users = await Api.GetAsync<List<UserDto>>("api/users");
+        var roles = await Api.GetAsync<List<RoleDto>>("api/roles");
         var z = await Api.GetAsync<List<ZoneDto>>("api/zones");
-        _zones = z ?? new();
-        _all   = new();
-        _roles = new();
+
+        _zones = z ?? new List<ZoneDto>();
+        _all = users ?? new List<UserDto>();
+        _roles = roles ?? new List<RoleDto>();
+
+        if (users is null || roles is null)
+        {
+            _apiNotAvailable = true;
+            _all = new List<UserDto>();
+            _roles = new List<RoleDto>();
+        }
+
         ApplyFilter();
         _loading = false;
-        _apiNotAvailable = true;
     }
 
     private void OnSearchChanged(string s)      { _search       = s; ApplyFilter(); }
@@ -221,7 +233,8 @@
         else
         {
             var req = new { _editing.Username, _editing.FullName, _editing.Email,
-                            Password = _password, _editing.RoleId, _editing.ZoneId };
+                            Password = _password, _editing.RoleId, _editing.ZoneId,
+                            _editing.IsActive };
             ok = await Api.PostAsync<object>("api/users", req);
         }
         if (ok) { Notify.Success("Guardado"); _dialogOpen = false; await LoadAsync(); }

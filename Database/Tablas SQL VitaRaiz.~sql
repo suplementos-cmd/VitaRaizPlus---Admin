@@ -7,7 +7,7 @@ SELECT * FROM v_collector_customers_detail;
 SELECT * FROM ROLES                   ;
 SELECT * FROM PROFILE_THEMES           ;
 SELECT * FROM ZONES                    ;
-SELECT * FROM USERS        FOR UPDATE            ; 
+SELECT * FROM USERS  ;--      FOR UPDATE            ; 
 SELECT * FROM PERMISSIONS              ;
 SELECT * FROM ROLE_PERMISSIONS         ;
 SELECT * FROM USER_SESSIONS            ;
@@ -85,9 +85,10 @@ BEGIN
     COMMIT;
 END;
 /
-     --Pendiente Editar cobro 
-     --Esttus se vea reflejado en venta
-     --importe cuadre  
-     --Al compartir venta * Whatsap envié dealle de venta Coodenada, imagen, nombre, producto zona.
+     --Pendiente Editar cobro: ok 80% 
+     --Estatus se vea reflejado en venta
+     --Importe cuadre  
+     --Al compartir venta * Whatsap envié dealle de venta Coodenada, imagen, nombre, producto zona.    
+     --empleado retardos, días trabajados , antiguedad
      
      

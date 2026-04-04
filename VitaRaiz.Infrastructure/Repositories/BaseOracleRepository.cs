@@ -122,7 +122,7 @@ public abstract class BaseOracleRepository
     /// <summary>
     /// Agrega un parámetro de entrada al comando
     /// </summary>
-    protected void AddInputParameter(DbCommand command, string parameterName, object value, 
+    protected void AddInputParameter(DbCommand command, string parameterName, object? value,
         OracleDbType? dbType = null)
     {
         var param = dbType.HasValue 
