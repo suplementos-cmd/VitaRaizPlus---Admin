@@ -151,6 +151,39 @@ public class CatalogsController : ControllerBase
     /// <summary>
     /// Obtiene el tema específico configurado para un rol. Requiere autenticación.
     /// </summary>
+    /// <summary>
+    /// Guarda (insert o update) el tema de colores de un rol.
+    /// </summary>
+    [HttpPut("theme/role/{roleId:int}")]
+    [Authorize(Roles = "AdminFull,Admin")]
+    public async Task<IActionResult> SaveThemeByRole(int roleId, [FromBody] ProfileThemeDto dto)
+    {
+        try
+        {
+            var theme = new VitaRaiz.Domain.Entities.ProfileTheme
+            {
+                RoleId          = roleId,
+                ThemeName       = dto.ThemeName,
+                PrimaryColor    = dto.PrimaryColor,
+                SecondaryColor  = dto.SecondaryColor,
+                AccentColor     = dto.AccentColor,
+                BackgroundColor = dto.BackgroundColor,
+                TextColor       = dto.TextColor,
+                TitleTextColor  = dto.TitleTextColor,
+                FormTextColor   = dto.FormTextColor,
+                MenuTextColor   = dto.MenuTextColor,
+                IconName        = dto.IconName
+            };
+            await _catalogRepository.SaveThemeByRoleAsync(theme);
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[CatalogsController] Error saving theme for role {RoleId}", roleId);
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
     [HttpGet("theme/role/{roleId:int}")]
     public async Task<IActionResult> GetThemeByRole(int roleId)
     {
@@ -174,6 +207,9 @@ public class CatalogsController : ControllerBase
                 AccentColor     = theme.AccentColor,
                 BackgroundColor = theme.BackgroundColor,
                 TextColor       = theme.TextColor,
+                TitleTextColor  = theme.TitleTextColor,
+                FormTextColor   = theme.FormTextColor,
+                MenuTextColor   = theme.MenuTextColor,
                 IconName        = theme.IconName
             });
         }

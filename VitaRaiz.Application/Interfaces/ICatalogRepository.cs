@@ -10,6 +10,8 @@ public interface ICatalogRepository
     Task<CatalogAppTheme?> GetActiveThemeAsync();
     /// <summary>Obtiene el tema configurado para un rol específico desde PROFILE_THEMES.</summary>
     Task<ProfileTheme?> GetThemeByRoleAsync(int roleId);
+    /// <summary>Guarda (insert o update) el tema de un rol en PROFILE_THEMES.</summary>
+    Task SaveThemeByRoleAsync(ProfileTheme theme);
     Task<List<CatalogNotificationTemplate>> GetNotificationTemplatesAsync(string? templateType = null);
     Task<List<CatalogAppSetting>> GetAppSettingsAsync(string? category = null, bool isPublic = true);
     Task<List<CatalogVisitAction>> GetVisitActionsAsync();

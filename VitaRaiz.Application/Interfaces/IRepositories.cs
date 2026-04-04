@@ -73,6 +73,8 @@ public interface IRoleRepository
     Task<bool> UpdateRoleAsync(int roleId, string roleName, string? description,
         string? defaultThemeColor, int? updatedBy);
 
+    Task<int> CreateRoleAsync(string roleName, string? description, string? defaultThemeColor);
+
     Task<List<string>> GetRolePermissionsAsync(int roleId);
 
     Task<bool> SetRolePermissionsAsync(int roleId, List<string> permissions, int? updatedBy);

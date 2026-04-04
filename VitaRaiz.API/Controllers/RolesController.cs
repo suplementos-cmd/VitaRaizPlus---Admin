@@ -62,6 +62,24 @@ public class RolesController : ControllerBase
         return NoContent();
     }
 
+    [HttpPost]
+    [Authorize(Roles = "AdminFull")]
+    public async Task<IActionResult> CreateRole([FromBody] CreateRoleRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.RoleName))
+            return BadRequest(new { message = "El nombre del rol es requerido" });
+        try
+        {
+            var roleId = await _roleRepository.CreateRoleAsync(
+                request.RoleName, request.Description, request.DefaultThemeColor);
+            return CreatedAtAction(nameof(GetRoles), new { }, new { roleId, message = "Rol creado" });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
     private int? GetCurrentUserId()
     {
         var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
@@ -81,5 +99,12 @@ public class RolesController : ControllerBase
     public class SetRolePermissionsRequest
     {
         public List<string>? Permissions { get; set; }
+    }
+
+    public class CreateRoleRequest
+    {
+        public string  RoleName           { get; set; } = string.Empty;
+        public string? Description        { get; set; }
+        public string? DefaultThemeColor  { get; set; }
     }
 }

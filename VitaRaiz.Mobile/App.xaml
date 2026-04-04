@@ -18,6 +18,11 @@
             <x:String x:Key="ThemeColorLightHex">#B0BEC5</x:String>
             <x:String x:Key="ThemeColorLighterHex">#ECEFF1</x:String>
 
+            <!-- ─── Colores tipográficos dinámicos por rol ─── -->
+            <Color x:Key="ThemeTitleTextColor">#111111</Color>
+            <Color x:Key="ThemeFormTextColor">#444444</Color>
+            <Color x:Key="ThemeMenuTextColor">#FFFFFF</Color>
+
             <!-- ─── Page Backgrounds (theme-derived) ─── -->
             <Color x:Key="PageBackground">#F2F6F3</Color>
             <Color x:Key="PageBackgroundNeutral">#FAFAFA</Color>

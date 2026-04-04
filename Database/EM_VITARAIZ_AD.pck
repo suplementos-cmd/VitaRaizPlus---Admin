@@ -2393,6 +2393,9 @@ PROCEDURE sp_register_sale(p_sale_id               OUT NUMBER,
              pt.ACCENT_COLOR     AS "accentColor",
              pt.BACKGROUND_COLOR AS "backgroundColor",
              pt.TEXT_COLOR       AS "textColor",
+             pt.TITLE_TEXT_COLOR AS "titleTextColor",
+             pt.FORM_TEXT_COLOR  AS "formTextColor",
+             pt.MENU_TEXT_COLOR  AS "menuTextColor",
              pt.ICON_NAME        AS "iconName"
         FROM PROFILE_THEMES pt
         JOIN ROLES r ON pt.ROLE_ID = r.ROLE_ID

@@ -75,6 +75,9 @@ public class PaymentRepository : BaseOracleRepository, IPaymentRepository
             var query = _context.Payments
                 .Include(p => p.Sale)
                     .ThenInclude(s => s.Customer)
+                        .ThenInclude(c => c.Zone)
+                .Include(p => p.Sale)
+                    .ThenInclude(s => s.SalePhotos)
                 .Include(p => p.Collector)
                 .AsQueryable();
 
@@ -113,6 +116,7 @@ public class PaymentRepository : BaseOracleRepository, IPaymentRepository
             {
                 PaymentId     = p.PaymentId,
                 SaleId        = p.SaleId,
+                CollectorId   = p.CollectorId,
                 CustomerName  = p.Sale.Customer.CustomerName,
                 Amount        = p.Amount,
                 PaymentDate   = p.PaymentDate,
@@ -120,7 +124,20 @@ public class PaymentRepository : BaseOracleRepository, IPaymentRepository
                 Status        = statusById.TryGetValue(p.StatusId, out var code) ? code : p.StatusId.ToString(),
                 Notes         = p.Notes,
                 GpsLatitude   = p.GpsLatitude,
-                GpsLongitude  = p.GpsLongitude
+                GpsLongitude  = p.GpsLongitude,
+                ZoneName      = p.Sale.Customer.Zone?.ZoneName,
+                SaleStatus    = p.Sale.Status,
+                SaleBalance   = p.Sale.TotalAmount - p.Sale.PaidAmount,
+                CustomerPhotoUrl = p.Sale.SalePhotos
+                    .Where(ph => ph.PhotoType == "CLIENTE")
+                    .OrderByDescending(ph => ph.UploadedAt)
+                    .Select(ph => ph.ThumbnailPath ?? ph.FilePath)
+                    .FirstOrDefault(),
+                FacadePhotoUrl = p.Sale.SalePhotos
+                    .Where(ph => ph.PhotoType == "FACHADA")
+                    .OrderByDescending(ph => ph.UploadedAt)
+                    .Select(ph => ph.ThumbnailPath ?? ph.FilePath)
+                    .FirstOrDefault(),
             }).ToList();
 
             Console.WriteLine($"[PaymentRepository] Devolviendo {payments.Count} pagos");
@@ -145,6 +162,9 @@ public class PaymentRepository : BaseOracleRepository, IPaymentRepository
             var raw = await _context.Payments
                 .Include(p => p.Sale)
                     .ThenInclude(s => s.Customer)
+                        .ThenInclude(c => c.Zone)
+                .Include(p => p.Sale)
+                    .ThenInclude(s => s.SalePhotos)
                 .Include(p => p.Collector)
                 .Where(p => p.PaymentId == paymentId)
                 .FirstOrDefaultAsync();
@@ -156,6 +176,7 @@ public class PaymentRepository : BaseOracleRepository, IPaymentRepository
             {
                 PaymentId     = raw.PaymentId,
                 SaleId        = raw.SaleId,
+                CollectorId   = raw.CollectorId,
                 CustomerName  = raw.Sale.Customer.CustomerName,
                 Amount        = raw.Amount,
                 PaymentDate   = raw.PaymentDate,
@@ -163,7 +184,20 @@ public class PaymentRepository : BaseOracleRepository, IPaymentRepository
                 Status        = statusById.TryGetValue(raw.StatusId, out var code) ? code : raw.StatusId.ToString(),
                 Notes         = raw.Notes,
                 GpsLatitude   = raw.GpsLatitude,
-                GpsLongitude  = raw.GpsLongitude
+                GpsLongitude  = raw.GpsLongitude,
+                ZoneName      = raw.Sale.Customer.Zone?.ZoneName,
+                SaleStatus    = raw.Sale.Status,
+                SaleBalance   = raw.Sale.TotalAmount - raw.Sale.PaidAmount,
+                CustomerPhotoUrl = raw.Sale.SalePhotos
+                    .Where(ph => ph.PhotoType == "CLIENTE")
+                    .OrderByDescending(ph => ph.UploadedAt)
+                    .Select(ph => ph.ThumbnailPath ?? ph.FilePath)
+                    .FirstOrDefault(),
+                FacadePhotoUrl = raw.Sale.SalePhotos
+                    .Where(ph => ph.PhotoType == "FACHADA")
+                    .OrderByDescending(ph => ph.UploadedAt)
+                    .Select(ph => ph.ThumbnailPath ?? ph.FilePath)
+                    .FirstOrDefault(),
             };
         }
         catch (Exception ex)

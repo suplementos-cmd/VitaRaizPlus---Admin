@@ -1,101 +1,534 @@
 ﻿@page "/admin/temas"
 @attribute [Authorize(Roles = "AdminFull,Admin")]
 @inject ApiService Api
-@inject AuthService Auth
 @inject NotificationService Notify
 @inject ThemeService ThemeSvc
 
 <PageTitle>Temas por Rol – VitaRaiz Admin</PageTitle>
 
-<MudText Typo="Typo.h4" Class="fw-bold mb-2">Temas por Rol</MudText>
-<MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
-    Personaliza los colores de la interfaz para cada perfil de usuario.
-</MudText>
+<!-- ══════════════════════ HEADER ══════════════════════ -->
+<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+        <MudIcon Icon="@Icons.Material.Filled.Palette" Size="Size.Large" Color="Color.Primary" />
+        <div>
+            <MudText Typo="Typo.h4" Class="fw-bold">Temas por Rol</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Personaliza la paleta de colores para cada perfil de usuario
+            </MudText>
+        </div>
+    </MudStack>
+    <MudIconButton Icon="@Icons.Material.Filled.Refresh" Title="Recargar" Color="Color.Primary"
+                   OnClick="LoadAsync" />
+</MudStack>
 
-@if (_loading) { <MudProgressLinear Color="Color.Primary" Indeterminate="true" /> }
+@if (_loading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-4" />
+}
 else
 {
     <MudGrid Spacing="3">
-        @foreach (var t in _themes)
-        {
-            <MudItem xs="12" sm="6" md="4">
-                <MudCard Elevation="3" Style="@($"border-top: 5px solid {t.PrimaryColor}")">
-                    <MudCardHeader>
-                        <CardHeaderContent>
-                            <MudText Typo="Typo.h6">@t.ThemeName</MudText>
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">Rol ID: @t.RoleId</MudText>
-                        </CardHeaderContent>
-                    </MudCardHeader>
-                    <MudCardContent>
-                        <MudGrid Spacing="2">
-                            <MudItem xs="12">
-                                <MudText Typo="Typo.body2" Class="mb-1">Color primario</MudText>
-                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                                    <div style="width:32px;height:32px;border-radius:50%;background:@t.PrimaryColor;border:2px solid #ccc"></div>
-                                    <MudTextField @bind-Value="t.PrimaryColor" Variant="Variant.Outlined"
-                                                  Dense="true" Style="flex:1" Placeholder="#rrggbb" />
-                                </MudStack>
-                            </MudItem>
-                            <MudItem xs="12">
-                                <MudText Typo="Typo.body2" Class="mb-1">Color secundario</MudText>
-                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                                    <div style="width:32px;height:32px;border-radius:50%;background:@t.SecondaryColor;border:2px solid #ccc"></div>
-                                    <MudTextField @bind-Value="t.SecondaryColor" Variant="Variant.Outlined"
-                                                  Dense="true" Style="flex:1" Placeholder="#rrggbb" />
-                                </MudStack>
-                            </MudItem>
-                            <MudItem xs="12">
-                                <MudText Typo="Typo.body2" Class="mb-1">Color de acento</MudText>
-                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                                    <div style="width:32px;height:32px;border-radius:50%;background:@t.AccentColor;border:2px solid #ccc"></div>
-                                    <MudTextField @bind-Value="t.AccentColor" Variant="Variant.Outlined"
-                                                  Dense="true" Style="flex:1" Placeholder="#rrggbb" />
-                                </MudStack>
-                            </MudItem>
+
+        <!-- ══════════════ LEFT: Roles list ══════════════ -->
+        <MudItem xs="12" md="4">
+            <MudPaper Elevation="2" Style="border-radius:12px;overflow:hidden">
+                <!-- Panel header -->
+                <div style="padding:14px 16px;border-bottom:1px solid var(--mud-palette-divider);
+                            display:flex;align-items:center;justify-content:space-between">
+                    <MudText Typo="Typo.subtitle1" Class="fw-bold">Roles (@_roles.Count)</MudText>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                               StartIcon="@Icons.Material.Filled.Add" OnClick="OpenCreateDialog">
+                        Nuevo Rol
+                    </MudButton>
+                </div>
+
+                <!-- Role cards -->
+                <div style="overflow-y:auto;max-height:620px">
+                    @foreach (var role in _roles)
+                    {
+                        var theme   = _themes.GetValueOrDefault(role.RoleId);
+                        var primary = theme?.PrimaryColor ?? role.DefaultThemeColor;
+                        var active  = _selectedRoleId == role.RoleId;
+
+                        <div style="@($"padding:12px 16px;cursor:pointer;display:flex;align-items:center;gap:12px;" +
+                                      $"border-left:4px solid {(active ? primary : "transparent")};" +
+                                      $"background:{(active ? "var(--mud-palette-action-hover)" : "transparent")};" +
+                                      $"transition:background .15s,border-color .15s")"
+                             @onclick="@(() => SelectRole(role.RoleId))">
+
+                            <!-- ID badge -->
+                            <div style="@($"width:40px;height:40px;border-radius:8px;flex-shrink:0;" +
+                                          $"background:{primary};display:flex;align-items:center;justify-content:center;" +
+                                          $"box-shadow:0 2px 6px rgba(0,0,0,.25)")">
+                                <span style="color:white;font-size:.95rem;font-weight:800">@role.RoleId</span>
+                            </div>
+
+                            <!-- Name + description -->
+                            <div style="flex:1;min-width:0">
+                                <div style="font-weight:600;font-size:.9rem;white-space:nowrap;
+                                            overflow:hidden;text-overflow:ellipsis">
+                                    @role.RoleName
+                                </div>
+                                @if (!string.IsNullOrWhiteSpace(role.Description))
+                                {
+                                    <div style="color:var(--mud-palette-text-secondary);font-size:.75rem;
+                                                white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                                        @role.Description
+                                    </div>
+                                }
+                                else if (theme is null)
+                                {
+                                    <div style="color:var(--mud-palette-text-secondary);font-size:.72rem">
+                                        Sin tema configurado
+                                    </div>
+                                }
+                            </div>
+
+                            <!-- Color swatches strip -->
+                            @if (theme is not null)
+                            {
+                                <div style="display:flex;flex-shrink:0;border-radius:4px;overflow:hidden;
+                                            box-shadow:0 1px 3px rgba(0,0,0,.2)">
+                                    <div style="@($"width:10px;height:40px;background:{theme.PrimaryColor}")"
+                                         title="@theme.PrimaryColor" />
+                                    <div style="@($"width:10px;height:40px;background:{theme.SecondaryColor ?? "#ccc"}")"
+                                         title="@(theme.SecondaryColor ?? "—")" />
+                                    <div style="@($"width:10px;height:40px;background:{theme.AccentColor ?? "#eee"}")"
+                                         title="@(theme.AccentColor ?? "—")" />
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </MudPaper>
+        </MudItem>
+
+        <!-- ══════════════ RIGHT: Theme editor ══════════════ -->
+        <MudItem xs="12" md="8">
+            @if (_editing is null)
+            {
+                <!-- Empty state -->
+                <MudPaper Elevation="1" Style="border-radius:12px;padding:80px 20px;text-align:center">
+                    <MudIcon Icon="@Icons.Material.Filled.TouchApp" Size="Size.Large" Color="Color.Secondary" />
+                    <MudText Typo="Typo.h6" Color="Color.Secondary" Class="mt-3">
+                        Selecciona un rol para editar su tema
+                    </MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+                        Haz clic en cualquier rol de la lista izquierda
+                    </MudText>
+                </MudPaper>
+            }
+            else
+            {
+                var selRole = _roles.FirstOrDefault(r => r.RoleId == _selectedRoleId);
+
+                <MudPaper Elevation="2" Style="border-radius:12px;overflow:hidden">
+
+                    <!-- ── Colored header strip ── -->
+                    <div style="@($"padding:16px 20px;background:{_editing.PrimaryColor}")">
+                        <div style="display:flex;align-items:center;gap:14px">
+                            <!-- Large ID badge -->
+                            <div style="width:48px;height:48px;border-radius:10px;flex-shrink:0;
+                                        background:rgba(255,255,255,.2);
+                                        display:flex;align-items:center;justify-content:center">
+                                <span style="color:white;font-weight:800;font-size:1.2rem">
+                                    @_selectedRoleId
+                                </span>
+                            </div>
+                            <!-- Role name + description -->
+                            <div style="flex:1;min-width:0">
+                                <div style="font-size:1.15rem;font-weight:700;color:white">
+                                    @(selRole?.RoleName ?? "Rol desconocido")
+                                </div>
+                                <div style="font-size:.8rem;color:rgba(255,255,255,.8)">
+                                    @(selRole?.Description ?? "Editando paleta de colores")
+                                </div>
+                            </div>
+                            <!-- Mini color bar chart -->
+                            <div style="display:flex;gap:3px;align-items:flex-end;flex-shrink:0">
+                                <div style="@($"width:8px;height:28px;border-radius:3px;opacity:.85;background:{_editing.PrimaryColor}")" title="Primario" />
+                                <div style="@($"width:8px;height:20px;border-radius:3px;opacity:.85;background:{_editing.SecondaryColor ?? "#B0BEC5"}")" title="Secundario" />
+                                <div style="@($"width:8px;height:14px;border-radius:3px;opacity:.85;background:{_editing.AccentColor ?? "#ECEFF1"}")" title="Acento" />
+                                <div style="@($"width:8px;height:20px;border-radius:3px;opacity:.85;background:{_editing.BackgroundColor ?? "#FAFAFA"}")" title="Fondo" />
+                                <div style="@($"width:8px;height:16px;border-radius:3px;opacity:.85;background:{_editing.TextColor ?? "#333333"}")" title="Texto" />
+                                <div style="@($"width:8px;height:22px;border-radius:3px;opacity:.85;background:{_editing.TitleTextColor ?? "#111111"}")" title="Títulos" />
+                                <div style="@($"width:8px;height:18px;border-radius:3px;opacity:.85;background:{_editing.FormTextColor ?? "#444444"}")" title="Formularios" />
+                                <div style="@($"width:8px;height:16px;border-radius:3px;opacity:.85;background:{_editing.MenuTextColor ?? "#FFFFFF"}")" title="Menú" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ── Editor body ── -->
+                    <div style="padding:20px">
+
+                        <!-- Theme name -->
+                        <MudTextField @bind-Value="_editing.ThemeName"
+                                      Label="Nombre del tema"
+                                      Variant="Variant.Outlined" Dense="true" Class="mb-4"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Label" />
+
+                        <!-- ── Preset palettes ── -->
+                        <MudText Typo="Typo.subtitle2" Class="fw-bold mb-2">Presets rápidos</MudText>
+                        <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px">
+                            @foreach (var p in _presets)
+                            {
+                                <MudTooltip Text="@p.Name">
+                                    <div style="@($"width:32px;height:32px;border-radius:50%;cursor:pointer;" +
+                                                  $"background:{p.Primary};" +
+                                                  $"border:3px solid {(_editing.PrimaryColor == p.Primary ? "white" : "transparent")};" +
+                                                  $"box-shadow:0 0 0 2px {p.Primary};transition:transform .15s")"
+                                         @onclick="@(() => ApplyPreset(p))" />
+                                </MudTooltip>
+                            }
+                        </div>
+
+                        <!-- ── Color pickers grid ── -->
+                        <MudText Typo="Typo.subtitle2" Class="fw-bold mb-3">Paleta de colores</MudText>
+                        <MudGrid Spacing="2" Class="mb-4">
+                            @foreach (var f in GetColorFields())
+                            {
+                                <MudItem xs="12" sm="6">
+                                    <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;
+                                                border:1px solid var(--mud-palette-divider);border-radius:8px">
+                                        <!-- Color swatch -->
+                                        <div style="@($"width:38px;height:38px;border-radius:6px;flex-shrink:0;" +
+                                                      $"background:{f.Value};" +
+                                                      $"border:1px solid rgba(0,0,0,.1);box-shadow:0 1px 3px rgba(0,0,0,.12)")" />
+                                        <!-- Label + controls -->
+                                        <div style="flex:1;min-width:0">
+                                            <MudText Typo="Typo.caption" Class="fw-bold"
+                                                     Style="display:block;margin-bottom:4px">
+                                                @f.Label
+                                            </MudText>
+                                            <div style="display:flex;align-items:center;gap:6px">
+                                                <MudTooltip Text="@f.Hint">
+                                                    <input type="color"
+                                                           value="@f.Value"
+                                                           @onchange="@(e => f.Set(e.Value?.ToString() ?? f.Value))"
+                                                           style="width:36px;height:28px;border:none;border-radius:4px;
+                                                                  cursor:pointer;padding:1px;background:none;flex-shrink:0" />
+                                                </MudTooltip>
+                                                <MudTextField T="string"
+                                                              Value="@f.Value"
+                                                              ValueChanged="@(v => f.Set(v ?? f.Value))"
+                                                              Variant="Variant.Outlined" Dense="true"
+                                                              Style="flex:1" Placeholder="#RRGGBB"
+                                                              Margin="Margin.Dense" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </MudItem>
+                            }
                         </MudGrid>
-                    </MudCardContent>
-                    <MudCardActions>
-                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
-                                   OnClick="() => SaveThemeAsync(t)">Guardar</MudButton>
-                        <MudButton Variant="Variant.Text" Size="Size.Small"
-                                   OnClick="() => PreviewTheme(t)">Vista previa</MudButton>
-                    </MudCardActions>
-                </MudCard>
-            </MudItem>
-        }
+
+                        <!-- ── Live preview ── -->
+                        <MudText Typo="Typo.subtitle2" Class="fw-bold mb-2">Vista previa</MudText>
+                        <div style="@($"border-radius:10px;overflow:hidden;margin-bottom:20px;" +
+                                      $"border:1px solid var(--mud-palette-divider);" +
+                                      $"background:{_editing.BackgroundColor ?? "#FAFAFA"}")">
+                            <!-- App bar mockup -->
+                            <div style="@($"padding:10px 16px;background:{_editing.PrimaryColor};" +
+                                          $"display:flex;align-items:center;gap:8px")">
+                                <MudIcon Icon="@Icons.Material.Filled.Store"
+                                         Style="color:white;font-size:1.1rem" />
+                                <span style="color:white;font-weight:600;font-size:.9rem">
+                                    VitaRaiz — @(selRole?.RoleName ?? "Rol")
+                                </span>
+                                <span style="flex:1"></span>
+                                <div style="@($"width:28px;height:28px;border-radius:50%;" +
+                                              $"background:{_editing.SecondaryColor ?? "#B0BEC5"}")" />
+                            </div>
+                            <!-- Content mockup -->
+                            <div style="padding:14px 16px">
+                                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+                                    <span style="@($"padding:4px 14px;border-radius:20px;font-size:.75rem;font-weight:600;" +
+                                                   $"background:{_editing.PrimaryColor};color:white")">
+                                        Acción principal
+                                    </span>
+                                    <span style="@($"padding:4px 14px;border-radius:20px;font-size:.75rem;" +
+                                                   $"background:{_editing.SecondaryColor ?? "#B0BEC5"};" +
+                                                   $"color:{_editing.TextColor ?? "#333"}")">
+                                        Secundario
+                                    </span>
+                                    <span style="@($"padding:4px 14px;border-radius:20px;font-size:.75rem;" +
+                                                   $"background:{_editing.AccentColor ?? "#ECEFF1"};" +
+                                                   $"color:{_editing.TextColor ?? "#333"}")">
+                                        Acento
+                                    </span>
+                                </div>
+                                <p style="@($"margin:0;font-size:.82rem;line-height:1.5;" +
+                                            $"color:{_editing.TextColor ?? "#333"}")">
+                                    Texto de ejemplo — así se verá el contenido con este tema de colores.
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- ── Actions ── -->
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.Save"
+                                       OnClick="SaveThemeAsync" Disabled="_saving">
+                                @(_saving ? "Guardando…" : "Guardar tema")
+                            </MudButton>
+                            <MudButton Variant="Variant.Outlined"
+                                       StartIcon="@Icons.Material.Filled.Visibility"
+                                       OnClick="PreviewTheme">
+                                Vista previa
+                            </MudButton>
+                            <MudButton Variant="Variant.Text" Color="Color.Default"
+                                       StartIcon="@Icons.Material.Filled.RestartAlt"
+                                       OnClick="ReloadTheme">
+                                Restablecer
+                            </MudButton>
+                        </MudStack>
+                    </div>
+                </MudPaper>
+            }
+        </MudItem>
+
     </MudGrid>
 }
 
-@code {
-    private bool _loading;
-    private List<ProfileThemeDto> _themes = new();
+<!-- ══════════════════════ NEW ROLE DIALOG ══════════════════════ -->
+<MudDialog @bind-IsVisible="_createOpen">
+    <TitleContent>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.GroupAdd" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">Nuevo Rol</MudText>
+        </MudStack>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3" Style="min-width:340px;padding-top:4px">
+            <MudTextField @bind-Value="_newRoleName" Label="Nombre del rol *"
+                          Variant="Variant.Outlined" Required="true" Immediate="true" />
+            <MudTextField @bind-Value="_newRoleDesc" Label="Descripción (opcional)"
+                          Variant="Variant.Outlined" Lines="2" />
+            <MudText Typo="Typo.body2" Class="fw-bold">Color principal</MudText>
+            <div style="display:flex;align-items:center;gap:10px">
+                <div style="@($"width:40px;height:40px;border-radius:8px;flex-shrink:0;" +
+                              $"background:{_newRoleColor};border:1px solid rgba(0,0,0,.15);" +
+                              $"box-shadow:0 1px 3px rgba(0,0,0,.12)")" />
+                <input type="color"
+                       value="@_newRoleColor"
+                       @onchange="@(e => { _newRoleColor = e.Value?.ToString() ?? _newRoleColor; })"
+                       style="width:40px;height:40px;border:none;border-radius:6px;
+                              cursor:pointer;padding:2px;background:none" />
+                <MudTextField @bind-Value="_newRoleColor" Label="Hex"
+                              Variant="Variant.Outlined" Dense="true" Style="flex:1"
+                              Placeholder="#RRGGBB" Margin="Margin.Dense" />
+            </div>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _createOpen = false)">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   OnClick="CreateRoleAsync"
+                   Disabled="@(string.IsNullOrWhiteSpace(_newRoleName) || _saving)">
+            Crear Rol
+        </MudButton>
+    </DialogActions>
+</MudDialog>
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+@code {
+    // ── State ──────────────────────────────────────────────────────────────
+    private bool                             _loading;
+    private bool                             _saving;
+    private List<RoleDto>                    _roles          = new();
+    private Dictionary<int, ProfileThemeDto> _themes         = new();
+    private int                              _selectedRoleId;
+    private ProfileThemeDto?                 _editing;
+    private ProfileThemeDto?                 _editingOriginal;
+
+    // New-role dialog fields
+    private bool   _createOpen;
+    private string _newRoleName  = string.Empty;
+    private string _newRoleDesc  = string.Empty;
+    private string _newRoleColor = "#607D8B";
+
+    // ── Preset palettes ────────────────────────────────────────────────────
+    private record Preset(string Name, string Primary, string Secondary,
+                           string Accent, string Background, string Text,
+                           string TitleText, string FormText, string MenuText);
+
+    private readonly List<Preset> _presets = new()
     {
-        if (!firstRender) return;
+        new("Cielo azul",    "#1976D2", "#42A5F5", "#E3F2FD", "#F5F9FF", "#1A2533", "#0D2137", "#2E4A6A", "#FFFFFF"),
+        new("Verde salud",   "#388E3C", "#81C784", "#E8F5E9", "#F3FAF3", "#1B2E1C", "#0F1F10", "#2D4A2E", "#FFFFFF"),
+        new("Violeta real",  "#6A1B9A", "#AB47BC", "#F3E5F5", "#FAF5FF", "#2D1040", "#1A0828", "#4A1F6E", "#FFFFFF"),
+        new("Naranja vita",  "#E65100", "#FF8F00", "#FFF3E0", "#FFF8F3", "#3E1A00", "#2A1000", "#5E2800", "#FFFFFF"),
+        new("Gris pizarra",  "#37474F", "#78909C", "#ECEFF1", "#F8FAFC", "#1C2831", "#111820", "#2C3E50", "#FFFFFF"),
+        new("Rosado soft",   "#AD1457", "#F06292", "#FCE4EC", "#FFF5F8", "#3D0020", "#280015", "#6D0035", "#FFFFFF"),
+    };
+
+    // ── Color-field descriptors ────────────────────────────────────────────
+    private record ColorField(string Label, string Value, Action<string> Set, string Hint);
+
+    private List<ColorField> GetColorFields()
+    {
+        if (_editing is null) return new();
+        return new()
+        {
+            new("Primario",         _editing.PrimaryColor,                v => _editing.PrimaryColor    = v, "Color principal: barras y botones"),
+            new("Secundario",       _editing.SecondaryColor  ?? "#B0BEC5", v => _editing.SecondaryColor  = v, "Acentos secundarios"),
+            new("Acento",           _editing.AccentColor     ?? "#ECEFF1", v => _editing.AccentColor     = v, "Elementos destacados, chips"),
+            new("Fondo",            _editing.BackgroundColor ?? "#FAFAFA", v => _editing.BackgroundColor = v, "Color de fondo de la aplicación"),
+            new("Texto general",    _editing.TextColor       ?? "#333333", v => _editing.TextColor       = v, "Color del texto principal"),
+            new("Texto títulos",    _editing.TitleTextColor  ?? "#111111", v => _editing.TitleTextColor  = v, "Color de encabezados H1/H2"),
+            new("Texto formularios",_editing.FormTextColor   ?? "#444444", v => _editing.FormTextColor   = v, "Color del texto en labels e inputs"),
+            new("Texto menú",       _editing.MenuTextColor   ?? "#FFFFFF", v => _editing.MenuTextColor   = v, "Color del texto en el menú lateral"),
+        };
+    }
+
+    // ── Lifecycle ──────────────────────────────────────────────────────────
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
         _loading = true;
         StateHasChanged();
-        // Load current user's theme via the existing endpoint
-        var user = await Auth.GetCurrentUserAsync();
-        if (user is not null)
+
+        _roles = await Api.GetAsync<List<RoleDto>>("api/roles") ?? new();
+
+        // Load all role themes in parallel
+        var tasks   = _roles.Select(async r =>
         {
-            var t = await Api.GetAsync<ProfileThemeDto>($"api/catalogs/theme/role/{user.RoleId}");
-            if (t is not null) _themes = new List<ProfileThemeDto> { t };
-        }
+            var t = await Api.GetAsync<ProfileThemeDto>($"api/catalogs/theme/role/{r.RoleId}");
+            return (r.RoleId, t);
+        });
+        var results = await Task.WhenAll(tasks);
+        _themes = results.Where(x => x.t is not null)
+                         .ToDictionary(x => x.RoleId, x => x.t!);
+
+        // Restore selected role if still valid
+        if (_selectedRoleId > 0 && _themes.TryGetValue(_selectedRoleId, out var cached))
+            _editing = Clone(cached);
+
         _loading = false;
-        StateHasChanged();
     }
 
-    private async Task SaveThemeAsync(ProfileThemeDto t)
+    // ── Role selection ─────────────────────────────────────────────────────
+    private void SelectRole(int roleId)
     {
-        var ok = await Api.PutAsync<ProfileThemeDto>($"api/catalogs/theme/role/{t.RoleId}", t);
-        if (ok) Notify.Success($"Tema de '{t.ThemeName}' guardado");
-        else    Notify.Error("Error al guardar tema");
+        _selectedRoleId = roleId;
+        if (_themes.TryGetValue(roleId, out var t))
+        {
+            _editing         = Clone(t);
+            _editingOriginal = Clone(t);
+        }
+        else
+        {
+            var role         = _roles.FirstOrDefault(r => r.RoleId == roleId);
+            _editing         = new ProfileThemeDto
+            {
+                RoleId          = roleId,
+                ThemeName       = $"{role?.RoleName ?? "Rol"} Theme",
+                PrimaryColor    = role?.DefaultThemeColor ?? "#607D8B",
+                SecondaryColor  = "#B0BEC5",
+                AccentColor     = "#ECEFF1",
+                BackgroundColor = "#FAFAFA",
+                TextColor       = "#333333",
+                TitleTextColor  = "#111111",
+                FormTextColor   = "#444444",
+                MenuTextColor   = "#FFFFFF",
+            };
+            _editingOriginal = null;
+        }
     }
 
-    private void PreviewTheme(ProfileThemeDto t)
+    // ── Apply preset ───────────────────────────────────────────────────────
+    private void ApplyPreset(Preset p)
     {
-        ThemeSvc.Apply(t.PrimaryColor, t.SecondaryColor, t.AccentColor);
-        Notify.Info($"Vista previa del tema '{t.ThemeName}' aplicada");
+        if (_editing is null) return;
+        _editing.PrimaryColor    = p.Primary;
+        _editing.SecondaryColor  = p.Secondary;
+        _editing.AccentColor     = p.Accent;
+        _editing.BackgroundColor = p.Background;
+        _editing.TextColor       = p.Text;
+        _editing.TitleTextColor  = p.TitleText;
+        _editing.FormTextColor   = p.FormText;
+        _editing.MenuTextColor   = p.MenuText;
     }
+
+    // ── Save theme ─────────────────────────────────────────────────────────
+    private async Task SaveThemeAsync()
+    {
+        if (_editing is null) return;
+        _saving = true;
+        var ok = await Api.PutAsync<ProfileThemeDto>(
+            $"api/catalogs/theme/role/{_editing.RoleId}", _editing);
+        if (ok)
+        {
+            _themes[_editing.RoleId] = Clone(_editing);
+            _editingOriginal         = Clone(_editing);
+            Notify.Success($"Tema del Rol {_editing.RoleId} guardado correctamente");
+        }
+        else
+        {
+            Notify.Error("Error al guardar el tema");
+        }
+        _saving = false;
+    }
+
+    // ── Preview & reset ────────────────────────────────────────────────────
+    private void PreviewTheme()
+    {
+        if (_editing is null) return;
+        ThemeSvc.Apply(_editing.PrimaryColor, _editing.SecondaryColor, _editing.AccentColor);
+        Notify.Info("Vista previa del tema aplicada");
+    }
+
+    private void ReloadTheme()
+    {
+        if (_editingOriginal is not null)
+            _editing = Clone(_editingOriginal);
+        else if (_selectedRoleId > 0)
+            SelectRole(_selectedRoleId);
+    }
+
+    // ── Create new role ────────────────────────────────────────────────────
+    private void OpenCreateDialog()
+    {
+        _newRoleName  = string.Empty;
+        _newRoleDesc  = string.Empty;
+        _newRoleColor = "#607D8B";
+        _createOpen   = true;
+    }
+
+    private async Task CreateRoleAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_newRoleName)) return;
+        _saving = true;
+        var ok = await Api.PostAsync("api/roles",
+            new { roleName = _newRoleName, description = _newRoleDesc, defaultThemeColor = _newRoleColor });
+        if (ok)
+        {
+            Notify.Success($"Rol '{_newRoleName}' creado exitosamente");
+            _createOpen = false;
+            await LoadAsync();
+        }
+        else
+        {
+            Notify.Error("Error al crear el rol");
+        }
+        _saving = false;
+    }
+
+    // ── Clone helper ───────────────────────────────────────────────────────
+    private static ProfileThemeDto Clone(ProfileThemeDto s) => new()
+    {
+        ThemeId         = s.ThemeId,
+        RoleId          = s.RoleId,
+        ThemeName       = s.ThemeName,
+        RoleName        = s.RoleName,
+        PrimaryColor    = s.PrimaryColor,
+        SecondaryColor  = s.SecondaryColor,
+        AccentColor     = s.AccentColor,
+        BackgroundColor = s.BackgroundColor,
+        TextColor       = s.TextColor,
+        TitleTextColor  = s.TitleTextColor,
+        FormTextColor   = s.FormTextColor,
+        MenuTextColor   = s.MenuTextColor,
+        IconName        = s.IconName,
+    };
 }

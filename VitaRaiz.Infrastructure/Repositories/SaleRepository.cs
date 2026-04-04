@@ -161,7 +161,9 @@ public class SaleRepository : BaseOracleRepository, ISaleRepository
                     ProductName = item.SaleData.SaleDetails != null && item.SaleData.SaleDetails.Any() 
                         ? item.SaleData.SaleDetails.OrderBy(si => si.DetailId).First().Product!.ProductName 
                         : null,
-                    SellerName = item.SaleData.Seller != null ? item.SaleData.Seller.Username : null
+                    SellerName = item.SaleData.Seller != null ? item.SaleData.Seller.Username : null,
+                    IsGoldCustomer = item.SaleData.Customer?.IsGoldCustomer ?? false,
+                    IsBlacklisted  = item.SaleData.Customer?.IsBlacklisted  ?? false
                 };
             }).ToList();
 
@@ -351,6 +353,7 @@ public class SaleRepository : BaseOracleRepository, ISaleRepository
                 .Include(s => s.AssignedCollector)
                 .Include(s => s.SaleDetails).ThenInclude(d => d.Product)
                 .Include(s => s.Payments).ThenInclude(p => p.Collector)
+                .Include(s => s.SalePhotos)
                 .Where(s => s.SaleId == saleId)
                 .FirstOrDefaultAsync();
 
@@ -446,7 +449,18 @@ public class SaleRepository : BaseOracleRepository, ISaleRepository
                     GpsLongitude = p.GpsLongitude,
                     Status = payStatusById.TryGetValue(p.StatusId, out var pCode) ? pCode : p.StatusId.ToString(),
                     Notes = p.Notes
-                }).OrderByDescending(p => p.PaymentDate).ToList()
+                }).OrderByDescending(p => p.PaymentDate).ToList(),
+
+                Photos = (sale.SalePhotos ?? new List<SalePhoto>()).Select(ph => new SalePhotoDto
+                {
+                    PhotoId       = ph.PhotoId,
+                    PhotoType     = ph.PhotoType,
+                    FilePath      = ph.FilePath,
+                    ThumbnailPath = ph.ThumbnailPath,
+                    GpsLatitude   = ph.GpsLatitude,
+                    GpsLongitude  = ph.GpsLongitude,
+                    UploadedAt    = ph.UploadedAt
+                }).ToList()
             };
         }
         catch (Exception ex)

@@ -30,6 +30,39 @@ public class ApiService
         _authProvider = authProvider;
     }
 
+    /// <summary>Resolves a server-relative photo path to an absolute URL using the API base address.</summary>
+    public string GetPhotoUrl(string? relativePath)
+    {
+        if (string.IsNullOrWhiteSpace(relativePath)) return string.Empty;
+        var client = _factory.CreateClient("VitaRaizApi");
+        var baseUrl = client.BaseAddress?.ToString().TrimEnd('/') ?? string.Empty;
+        var path    = relativePath.StartsWith('/') ? relativePath : $"/{relativePath}";
+        return $"{baseUrl}{path}";
+    }
+
+    /// <summary>
+    /// Fetches a sale photo from the API server-side with the bearer token and
+    /// returns a base64 data URL safe for Blazor Server (browser never calls the API directly).
+    /// Returns empty string when <paramref name="photoId"/> is null/zero or on any error.
+    /// </summary>
+    public async Task<string> GetPhotoDataUrlAsync(int? photoId)
+    {
+        if (photoId is null or 0) return string.Empty;
+        try
+        {
+            var client   = await BuildClientAsync();
+            var response = await client.GetAsync($"api/sales/photos/{photoId}/file");
+            if (!response.IsSuccessStatusCode) return string.Empty;
+            var bytes = await response.Content.ReadAsByteArrayAsync();
+            var ct    = response.Content.Headers.ContentType?.MediaType ?? "image/jpeg";
+            return $"data:{ct};base64,{Convert.ToBase64String(bytes)}";
+        }
+        catch
+        {
+            return string.Empty;
+        }
+    }
+
     // -- Helpers -----------------------------------------------------------
 
     private async Task<HttpClient> BuildClientAsync()

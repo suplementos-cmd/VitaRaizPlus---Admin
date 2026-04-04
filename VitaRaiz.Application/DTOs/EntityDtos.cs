@@ -79,7 +79,10 @@ public class ProfileThemeDto
     public string PrimaryColor { get; set; } = string.Empty;
     public string? SecondaryColor { get; set; }
     public string? AccentColor { get; set; }
-    public string? BackgroundColor { get; set; }
-    public string? TextColor { get; set; }
-    public string? IconName { get; set; }
+    public string? BackgroundColor  { get; set; }
+    public string? TextColor         { get; set; }
+    public string? TitleTextColor    { get; set; }
+    public string? FormTextColor     { get; set; }
+    public string? MenuTextColor     { get; set; }
+    public string? IconName          { get; set; }
 }

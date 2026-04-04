@@ -297,10 +297,80 @@ public class CatalogRepository : BaseOracleRepository, ICatalogRepository
                 AccentColor     = reader.IsDBNull("accentColor")     ? null : reader.GetString("accentColor"),
                 BackgroundColor = reader.IsDBNull("backgroundColor") ? null : reader.GetString("backgroundColor"),
                 TextColor       = reader.IsDBNull("textColor")       ? null : reader.GetString("textColor"),
+                TitleTextColor  = reader.IsDBNull("titleTextColor")  ? null : reader.GetString("titleTextColor"),
+                FormTextColor   = reader.IsDBNull("formTextColor")   ? null : reader.GetString("formTextColor"),
+                MenuTextColor   = reader.IsDBNull("menuTextColor")   ? null : reader.GetString("menuTextColor"),
                 IconName        = reader.IsDBNull("iconName")        ? null : reader.GetString("iconName")
             };
         }
 
         return null;
+    }
+
+    public async Task SaveThemeByRoleAsync(ProfileTheme theme)
+    {
+        var connection = await GetOpenConnectionAsync();
+
+        // UPDATE existing theme row
+        using var upd = connection.CreateCommand();
+        upd.CommandType = CommandType.Text;
+        upd.CommandText = @"
+            UPDATE SALESAPP.PROFILE_THEMES
+            SET    THEME_NAME       = :p_name,
+                   PRIMARY_COLOR    = :p_primary,
+                   SECONDARY_COLOR  = :p_secondary,
+                   ACCENT_COLOR     = :p_accent,
+                   BACKGROUND_COLOR = :p_background,
+                   TEXT_COLOR       = :p_text,
+                   TITLE_TEXT_COLOR = :p_title_text,
+                   FORM_TEXT_COLOR  = :p_form_text,
+                   MENU_TEXT_COLOR  = :p_menu_text,
+                   ICON_NAME        = :p_icon
+            WHERE  ROLE_ID = :p_role_id";
+
+        AddInputParameter(upd, "p_name",       theme.ThemeName);
+        AddInputParameter(upd, "p_primary",    theme.PrimaryColor);
+        AddInputParameter(upd, "p_secondary",  theme.SecondaryColor);
+        AddInputParameter(upd, "p_accent",     theme.AccentColor);
+        AddInputParameter(upd, "p_background", theme.BackgroundColor);
+        AddInputParameter(upd, "p_text",       theme.TextColor);
+        AddInputParameter(upd, "p_title_text", theme.TitleTextColor);
+        AddInputParameter(upd, "p_form_text",  theme.FormTextColor);
+        AddInputParameter(upd, "p_menu_text",  theme.MenuTextColor);
+        AddInputParameter(upd, "p_icon",       theme.IconName);
+        AddInputParameter(upd, "p_role_id",    theme.RoleId);
+
+        var rows = await upd.ExecuteNonQueryAsync();
+
+        if (rows == 0)
+        {
+            // No row for this role yet — INSERT
+            using var ins = connection.CreateCommand();
+            ins.CommandType = CommandType.Text;
+            ins.CommandText = @"
+                INSERT INTO SALESAPP.PROFILE_THEMES
+                    (THEME_ID, ROLE_ID, THEME_NAME, PRIMARY_COLOR, SECONDARY_COLOR,
+                     ACCENT_COLOR, BACKGROUND_COLOR, TEXT_COLOR,
+                     TITLE_TEXT_COLOR, FORM_TEXT_COLOR, MENU_TEXT_COLOR,
+                     ICON_NAME, IS_ACTIVE)
+                VALUES
+                    (SEQ_PROFILE_THEMES.NEXTVAL, :p_role_id, :p_name, :p_primary,
+                     :p_secondary, :p_accent, :p_background, :p_text,
+                     :p_title_text, :p_form_text, :p_menu_text,
+                     :p_icon, 1)";
+
+            AddInputParameter(ins, "p_role_id",    theme.RoleId);
+            AddInputParameter(ins, "p_name",       theme.ThemeName);
+            AddInputParameter(ins, "p_primary",    theme.PrimaryColor);
+            AddInputParameter(ins, "p_secondary",  theme.SecondaryColor);
+            AddInputParameter(ins, "p_accent",     theme.AccentColor);
+            AddInputParameter(ins, "p_background", theme.BackgroundColor);
+            AddInputParameter(ins, "p_text",       theme.TextColor);
+            AddInputParameter(ins, "p_title_text", theme.TitleTextColor);
+            AddInputParameter(ins, "p_form_text",  theme.FormTextColor);
+            AddInputParameter(ins, "p_menu_text",  theme.MenuTextColor);
+            AddInputParameter(ins, "p_icon",       theme.IconName);
+            await ins.ExecuteNonQueryAsync();
+        }
     }
 }

@@ -7,165 +7,454 @@
 
 <PageTitle>Ventas - VitaRaiz</PageTitle>
 
-<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
-    <MudText Typo="Typo.h4" Class="fw-bold">Ventas</MudText>
-    <AuthorizeView>
-        <Authorized>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary"
-                       StartIcon="@Icons.Material.Filled.Add"
-                       Href="/ventas/nueva">Nueva Venta</MudButton>
-        </Authorized>
-    </AuthorizeView>
+<!-- ══════════════════════════════════════════
+     HEADER
+══════════════════════════════════════════════ -->
+<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween"
+          Class="mb-4" Wrap="Wrap.Wrap">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+        <MudIcon Icon="@Icons.Material.Filled.ReceiptLong" Size="Size.Large" Color="Color.Primary" />
+        <MudText Typo="Typo.h4" Class="fw-bold">Ventas</MudText>
+        @if (!_loading && _allSales.Any())
+        {
+            <MudChip T="string" Color="Color.Default" Size="Size.Small">@_allSales.Count total</MudChip>
+        }
+    </MudStack>
+    <MudStack Row="true" Spacing="1" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center">
+        <AuthorizeView>
+            <Authorized>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Add"
+                           Href="/ventas/nueva" Size="Size.Small">Nueva</MudButton>
+            </Authorized>
+        </AuthorizeView>
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh" Color="Color.Primary"
+                       Size="Size.Small" Title="Recargar" OnClick="RefreshAsync" />
+    </MudStack>
 </MudStack>
 
-<!-- Filters -->
-<MudPaper Class="pa-3 mb-4" Elevation="1">
+<!-- ══════════════════════════════════════════
+     SUMMARY CARDS
+══════════════════════════════════════════════ -->
+<MudGrid Spacing="2" Class="mb-4">
+    <MudItem xs="6" sm="3">
+        <MudPaper Class="pa-3 cursor-pointer" Elevation="2"
+                  Style="border-radius:12px;border-left:5px solid var(--mud-palette-primary)"
+                  @onclick="@(() => ApplySegmentFilter("active"))">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Filled.TrendingUp" Color="Color.Primary" />
+                <MudStack Spacing="0">
+                    <MudText Typo="Typo.h5" Class="fw-bold">@_allSales.Count(s => IsActive(s.Status))</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Activas</MudText>
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="6" sm="3">
+        <MudPaper Class="pa-3 cursor-pointer" Elevation="2"
+                  Style="border-radius:12px;border-left:5px solid var(--mud-palette-warning)"
+                  @onclick="@(() => ApplySegmentFilter("blacklist"))">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Filled.Block" Color="Color.Error" />
+                <MudStack Spacing="0">
+                    <MudText Typo="Typo.h5" Class="fw-bold">@_allSales.Count(s => s.IsBlacklisted)</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Lista Negra</MudText>
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="6" sm="3">
+        <MudPaper Class="pa-3 cursor-pointer" Elevation="2"
+                  Style="border-radius:12px;border-left:5px solid var(--mud-palette-success)"
+                  @onclick="@(() => ApplySegmentFilter("liquidado"))">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" />
+                <MudStack Spacing="0">
+                    <MudText Typo="Typo.h5" Class="fw-bold">@_allSales.Count(s => s.Status == "liquidado")</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Liquidadas</MudText>
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="6" sm="3">
+        <MudPaper Class="pa-3" Elevation="2"
+                  Style="border-radius:12px;border-left:5px solid var(--mud-palette-info)">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Filled.AccountBalance" Color="Color.Info" />
+                <MudStack Spacing="0">
+                    <MudText Typo="Typo.h5" Class="fw-bold">
+                        @_allSales.Where(s => IsActive(s.Status)).Sum(s => s.Balance).ToString("C0")
+                    </MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Saldo cartera</MudText>
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+<!-- ══════════════════════════════════════════
+     FILTERS
+══════════════════════════════════════════════ -->
+<MudPaper Class="pa-3 mb-4" Elevation="1" Style="border-radius:12px">
     <MudGrid Spacing="2" AlignItems="AlignItems.Center">
-        <MudItem xs="12" sm="4">
-            <MudTextField Value="@_search" ValueChanged="@((string s) => OnSearchChanged(s))"
-                          Label="Buscar cliente..." Variant="Variant.Outlined"
-                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+        <MudItem xs="12" sm="4" md="3">
+            <MudTextField Value="@_search"
+                          ValueChanged="@((string s) => OnSearchChanged(s))"
+                          Label="Buscar cliente, vendedor o producto..."
+                          Variant="Variant.Outlined"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
                           Clearable="true" Dense="true" Immediate="true" />
         </MudItem>
-        <MudItem xs="12" sm="3">
-            <MudSelect T="string" @bind-Value="_statusFilter" Label="Estatus" Variant="Variant.Outlined"
+        <MudItem xs="6" sm="3" md="2">
+            <MudSelect T="string" @bind-Value="_statusFilter"
+                       Label="Estatus" Variant="Variant.Outlined"
                        Dense="true" AnchorOrigin="Origin.BottomLeft">
                 <MudSelectItem Value="@("")">Todos</MudSelectItem>
-                <MudSelectItem Value="@("activa")">Activa</MudSelectItem>
-                <MudSelectItem Value="@("completada")">Completada</MudSelectItem>
-                <MudSelectItem Value="@("cancelada")">Cancelada</MudSelectItem>
+                <MudSelectItem Value="@("por_iniciar")">Por Iniciar</MudSelectItem>
+                <MudSelectItem Value="@("en_proceso")">En Proceso</MudSelectItem>
+                <MudSelectItem Value="@("liquidado")">Liquidado</MudSelectItem>
+                <MudSelectItem Value="@("anulado")">Anulado</MudSelectItem>
+                <MudSelectItem Value="@("cancelado")">Cancelado</MudSelectItem>
             </MudSelect>
         </MudItem>
-        <MudItem xs="12" sm="3">
-            <MudSelect T="string" @bind-Value="_riskFilter" Label="Riesgo" Variant="Variant.Outlined"
+        <MudItem xs="6" sm="3" md="2">
+            <MudSelect T="string" @bind-Value="_sellerFilter"
+                       Label="Vendedor/a" Variant="Variant.Outlined"
                        Dense="true" AnchorOrigin="Origin.BottomLeft">
                 <MudSelectItem Value="@("")">Todos</MudSelectItem>
-                <MudSelectItem Value="@("VERDE")">?? Al corriente</MudSelectItem>
-                <MudSelectItem Value="@("AMARILLO")">?? Atrasada</MudSelectItem>
-                <MudSelectItem Value="@("ROJO")">?? Vencida</MudSelectItem>
+                @foreach (var seller in _sellers)
+                {
+                    <MudSelectItem Value="@seller">@seller</MudSelectItem>
+                }
             </MudSelect>
         </MudItem>
-        <MudItem xs="12" sm="2">
-            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.FilterAltOff"
-                       FullWidth="true" OnClick="ClearFilters">Limpiar</MudButton>
+        <MudItem xs="6" sm="3" md="2">
+            <MudDatePicker @bind-Date="_startDate" Label="Desde"
+                           Variant="Variant.Outlined" Dense="true"
+                           DateFormat="dd/MM/yyyy" />
+        </MudItem>
+        <MudItem xs="6" sm="3" md="2">
+            <MudDatePicker @bind-Date="_endDate" Label="Hasta"
+                           Variant="Variant.Outlined" Dense="true"
+                           DateFormat="dd/MM/yyyy" />
+        </MudItem>
+        <MudItem xs="12" sm="2" md="1">
+            <MudStack Row="true" Spacing="1">
+                <MudIconButton Icon="@Icons.Material.Filled.Search" Variant="Variant.Filled"
+                               Color="Color.Primary" Size="Size.Small"
+                               Title="Aplicar filtros" OnClick="ApplyDateFilter" />
+                <MudIconButton Icon="@Icons.Material.Filled.FilterAltOff"
+                               Variant="Variant.Outlined"
+                               Color="Color.Default" Size="Size.Small"
+                               Title="Limpiar filtros" OnClick="ClearFilters" />
+            </MudStack>
         </MudItem>
     </MudGrid>
 </MudPaper>
 
-<MudPaper Elevation="2">
-    <MudTable @ref="_table" ServerData="LoadServerData" Hover="true" Dense="true"
-              RowsPerPage="15" Loading="_loading" LoadingProgressColor="Color.Primary">
-        <ToolBarContent>
-            <MudText Typo="Typo.subtitle1" Class="fw-medium">@_totalCount ventas</MudText>
-        </ToolBarContent>
-        <HeaderContent>
-            <MudTh><MudTableSortLabel T="SaleDto" SortLabel="id">ID</MudTableSortLabel></MudTh>
-            <MudTh><MudTableSortLabel T="SaleDto" SortLabel="cliente">Cliente</MudTableSortLabel></MudTh>
-            <MudTh>Total</MudTh>
-            <MudTh>Avance</MudTh>
-            <MudTh>Saldo</MudTh>
-            <MudTh>Riesgo</MudTh>
-            <MudTh>Estatus</MudTh>
-            <MudTh>Fecha</MudTh>
-            <MudTh>Acciones</MudTh>
-        </HeaderContent>
-        <RowTemplate>
-            <MudTd>#@context.SaleId</MudTd>
-            <MudTd>
-                <MudText Typo="Typo.body2" Class="fw-medium">@context.CustomerName</MudText>
-                <MudText Typo="Typo.caption" Color="Color.Secondary">@context.SellerName</MudText>
-            </MudTd>
-            <MudTd>@context.TotalAmount.ToString("C0")</MudTd>
-            <MudTd Style="min-width:100px">
-                <MudProgressLinear Value="@(context.PaymentProgress * 100)" Color="Color.Primary"
-                                   Rounded="true" Size="Size.Small" />
-                <MudText Typo="Typo.caption">@((context.PaymentProgress * 100).ToString("F0"))%</MudText>
-            </MudTd>
-            <MudTd>
-                <MudText Typo="Typo.body2" Color="@(context.Balance > 0 ? Color.Warning : Color.Success)">
-                    @context.Balance.ToString("C0")
+@if (_loading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Rounded="true" Class="mb-4" />
+}
+else if (!_filtered.Any())
+{
+    <MudPaper Class="pa-8 text-center" Elevation="1" Style="border-radius:12px">
+        <MudIcon Icon="@Icons.Material.Filled.SearchOff"
+                 Size="Size.Large" Color="Color.Secondary" />
+        <MudText Typo="Typo.h6" Color="Color.Secondary" Class="mt-2">
+            Sin resultados
+        </MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">
+            Ajusta los filtros o carga todas las ventas
+        </MudText>
+    </MudPaper>
+}
+else
+{
+    <!-- ══════════════════════════════════════
+         GROUP VIEW: Día → Vendedora
+    ═══════════════════════════════════════════ -->
+    @foreach (var dayGroup in _dayGroups)
+    {
+        <!-- Day header -->
+        <MudPaper Class="pa-2 px-3 mb-1" Elevation="0"
+                  Style="border-radius:10px;background:var(--mud-palette-primary);color:white">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Filled.CalendarToday"
+                         Style="color:white" Size="Size.Small" />
+                <MudText Typo="Typo.subtitle1" Style="color:white;font-weight:700">
+                    @dayGroup.Date.ToString("dddd dd 'de' MMMM 'de' yyyy",
+                        new System.Globalization.CultureInfo("es-MX"))
                 </MudText>
-            </MudTd>
-            <MudTd>
-                <MudChip T="string" Size="Size.Small" Color="@RiskColor(context.RiskStatus)" Style="font-weight:600">
-                    @RiskEmoji(context.RiskStatus)
+                <MudSpacer />
+                <MudChip T="string" Size="Size.Small"
+                         Style="background:rgba(255,255,255,.2);color:white">
+                    @dayGroup.SellerGroups.Sum(sg => sg.Sales.Count) ventas
                 </MudChip>
-            </MudTd>
-            <MudTd>
-                <MudChip T="string" Size="Size.Small" Color="@StatusColor(context.Status)">@context.Status</MudChip>
-            </MudTd>
-            <MudTd>@context.SaleDate.ToString("dd/MM/yy")</MudTd>
-            <MudTd>
-                <MudIconButton Icon="@Icons.Material.Filled.Visibility" Size="Size.Small"
-                               OnClick="@(() => Nav.NavigateTo("/ventas/" + context.SaleId))" />
-            </MudTd>
-        </RowTemplate>
-        <PagerContent>
-            <MudTablePager />
-        </PagerContent>
-    </MudTable>
-</MudPaper>
+                <MudChip T="string" Size="Size.Small"
+                         Style="background:rgba(255,255,255,.2);color:white">
+                    @dayGroup.SellerGroups.Sum(sg => sg.Sales.Sum(s => s.TotalAmount)).ToString("C0")
+                </MudChip>
+            </MudStack>
+        </MudPaper>
+
+        @foreach (var sg in dayGroup.SellerGroups)
+        {
+            <!-- Seller sub-header -->
+            <MudPaper Class="pa-2 px-3 mb-1 ml-2" Elevation="0"
+                      Style="border-radius:8px;background:var(--mud-palette-surface);
+                             border-left:4px solid var(--mud-palette-primary)">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudIcon Icon="@Icons.Material.Filled.Person"
+                             Color="Color.Primary" Size="Size.Small" />
+                    <MudText Typo="Typo.body1" Class="fw-bold">
+                        @sg.SellerName
+                    </MudText>
+                    <MudSpacer />
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        @sg.Sales.Count venta(s) · Total: @sg.Sales.Sum(s => s.TotalAmount).ToString("C0")
+                        · Saldo: @sg.Sales.Sum(s => s.Balance).ToString("C0")
+                    </MudText>
+                </MudStack>
+            </MudPaper>
+
+            <!-- Sales table -->
+            <MudPaper Class="pa-0 overflow-hidden mb-3 ml-2" Elevation="2"
+                      Style="border-radius:10px">
+                <div style="overflow-x:auto">
+                    <table style="width:100%;border-collapse:collapse;font-size:.83rem">
+                        <thead>
+                            <tr style="background:var(--mud-palette-background-grey)">
+                                <th style="@ThStyle">#</th>
+                                <th style="@ThStyle">Cliente</th>
+                                <th style="@ThStyle">Producto</th>
+                                <th style="@ThStyle;text-align:right">Total</th>
+                                <th style="@ThStyle;min-width:90px">Avance</th>
+                                <th style="@ThStyle;text-align:right">Saldo</th>
+                                <th style="@ThStyle">Estatus</th>
+                                <th style="@ThStyle"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var s in sg.Sales)
+                            {
+                                <tr @onclick="@(() => Nav.NavigateTo("/ventas/" + s.SaleId))"
+                                    style="cursor:pointer" class="sale-row">
+                                    <td style="@TdStyle;white-space:nowrap;color:var(--mud-palette-text-secondary)">
+                                        #@s.SaleId
+                                    </td>
+                                    <td style="@TdStyle;min-width:140px">
+                                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                            @if (s.IsGoldCustomer)
+                                            {
+                                                <MudTooltip Text="Cliente Oro">
+                                                    <MudIcon Icon="@Icons.Material.Filled.Star"
+                                                             Color="Color.Warning" Size="Size.Small" />
+                                                </MudTooltip>
+                                            }
+                                            @if (s.IsBlacklisted)
+                                            {
+                                                <MudTooltip Text="Lista Negra">
+                                                    <MudIcon Icon="@Icons.Material.Filled.Block"
+                                                             Color="Color.Error" Size="Size.Small" />
+                                                </MudTooltip>
+                                            }
+                                            <MudText Typo="Typo.body2" Class="fw-medium">
+                                                @s.CustomerName
+                                            </MudText>
+                                        </MudStack>
+                                    </td>
+                                    <td style="@TdStyle">
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                            @(s.ProductName ?? "—")
+                                        </MudText>
+                                    </td>
+                                    <td style="@TdStyle;text-align:right;white-space:nowrap">
+                                        <MudText Typo="Typo.body2" Class="fw-bold">
+                                            @s.TotalAmount.ToString("C0")
+                                        </MudText>
+                                    </td>
+                                    <td style="@TdStyle;min-width:90px">
+                                        <MudProgressLinear
+                                            Value="@(s.PaymentProgress * 100)"
+                                            Color="@StatusProgressColor(s)"
+                                            Rounded="true" Size="Size.Small" />
+                                        <MudText Typo="Typo.caption">
+                                            @((s.PaymentProgress * 100).ToString("F0"))%
+                                        </MudText>
+                                    </td>
+                                    <td style="@TdStyle;text-align:right;white-space:nowrap">
+                                        <MudText Typo="Typo.body2"
+                                                 Color="@(s.Balance > 0 ? Color.Warning : Color.Success)">
+                                            @s.Balance.ToString("C0")
+                                        </MudText>
+                                    </td>
+                                    <td style="@TdStyle">
+                                        <MudChip T="string" Size="Size.Small"
+                                                 Color="@SaleStatusColor(s.Status)"
+                                                 Style="font-size:.72rem;height:22px">
+                                            @SaleStatusLabel(s.Status)
+                                        </MudChip>
+                                    </td>
+                                    <td style="@TdStyle" @onclick:stopPropagation="true">
+                                        <MudIconButton
+                                            Icon="@Icons.Material.Filled.OpenInNew"
+                                            Size="Size.Small" Color="Color.Default"
+                                            OnClick="@(() => Nav.NavigateTo("/ventas/" + s.SaleId))" />
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </MudPaper>
+        }
+    }
+}
+
+<style>
+    .sale-row:hover { background: var(--mud-palette-action-hover) !important; }
+    .cursor-pointer { cursor: pointer; }
+</style>
 
 @code {
-    private MudTable<SaleDto>? _table;
-    private bool   _loading;
-    private string _search       = string.Empty;
-    private string _statusFilter = string.Empty;
-    private string _riskFilter   = string.Empty;
-    private int    _totalCount;
-    private List<SaleDto> _allSales = new();
+    // ── state ──────────────────────────────────────────────────────────────
+    private bool          _loading;
+    private string        _search        = string.Empty;
+    private string        _statusFilter  = string.Empty;
+    private string        _sellerFilter  = string.Empty;
+    private string        _segment       = string.Empty;
+    private DateTime?     _startDate;
+    private DateTime?     _endDate;
+    private List<SaleDto> _allSales      = new();
+    private List<SaleDto> _filtered      = new();
+    private List<string>  _sellers       = new();
+    private List<DayGroup> _dayGroups    = new();
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender) await RefreshAsync();
-    }
+    private const string ThStyle =
+        "padding:7px 10px;font-size:.78rem;font-weight:600;" +
+        "border-bottom:2px solid var(--mud-palette-divider);text-align:left;white-space:nowrap";
+    private const string TdStyle =
+        "padding:6px 10px;border-bottom:1px solid var(--mud-palette-divider);vertical-align:middle";
+
+    // ── grouping models ────────────────────────────────────────────────────
+    private record SellerGroup(string SellerName, List<SaleDto> Sales);
+    private record DayGroup(DateTime Date, List<SellerGroup> SellerGroups);
+
+    // ── lifecycle ──────────────────────────────────────────────────────────
+    protected override async Task OnInitializedAsync() => await RefreshAsync();
 
     private async Task RefreshAsync()
     {
-        _loading  = true;
+        _loading = true;
         StateHasChanged();
+
         var qs = new Dictionary<string, string?>();
-        if (!string.IsNullOrEmpty(_statusFilter)) qs["status"] = _statusFilter;
-        var result = await Api.GetAsync<List<SaleDto>>("api/sales", qs);
-        _allSales  = result ?? new();
-        FilterSales();
-        _loading   = false;
-        await InvokeAsync(StateHasChanged);
+        if (_startDate.HasValue)
+            qs["startDate"] = _startDate.Value.ToString("yyyy-MM-dd");
+        if (_endDate.HasValue)
+            qs["endDate"] = _endDate.Value.ToString("yyyy-MM-dd");
+
+        _allSales = await Api.GetAsync<List<SaleDto>>("api/sales", qs.Count > 0 ? qs : null) ?? new();
+
+        _sellers = _allSales
+            .Where(s => !string.IsNullOrWhiteSpace(s.SellerName))
+            .Select(s => s.SellerName!)
+            .Distinct()
+            .OrderBy(n => n)
+            .ToList();
+
+        FilterAndGroup();
+        _loading = false;
     }
 
-    private void FilterSales()
+    private Task ApplyDateFilter() => RefreshAsync();
+
+    // ── filtering ──────────────────────────────────────────────────────────
+    private void OnSearchChanged(string s) { _search = s; FilterAndGroup(); }
+
+    private void ClearFilters()
+    {
+        _search = ""; _statusFilter = ""; _sellerFilter = "";
+        _segment = ""; _startDate = null; _endDate = null;
+        _ = RefreshAsync();
+    }
+
+    private void ApplySegmentFilter(string seg)
+    {
+        _segment = seg; _statusFilter = ""; _sellerFilter = "";
+        FilterAndGroup();
+    }
+
+    private void FilterAndGroup()
     {
         var q = _allSales.AsEnumerable();
+
         if (!string.IsNullOrWhiteSpace(_search))
-            q = q.Where(s => s.CustomerName.Contains(_search, StringComparison.OrdinalIgnoreCase));
+            q = q.Where(s =>
+                s.CustomerName.Contains(_search, StringComparison.OrdinalIgnoreCase) ||
+                (s.SellerName ?? "").Contains(_search, StringComparison.OrdinalIgnoreCase) ||
+                (s.ProductName ?? "").Contains(_search, StringComparison.OrdinalIgnoreCase));
+
         if (!string.IsNullOrEmpty(_statusFilter))
             q = q.Where(s => s.Status.Equals(_statusFilter, StringComparison.OrdinalIgnoreCase));
-        if (!string.IsNullOrEmpty(_riskFilter))
-            q = q.Where(s => s.RiskStatus.Equals(_riskFilter, StringComparison.OrdinalIgnoreCase));
-        _filtered    = q.ToList();
-        _totalCount  = _filtered.Count;
-        _table?.ReloadServerData();
-    }
 
-    private List<SaleDto> _filtered = new();
+        if (!string.IsNullOrEmpty(_sellerFilter))
+            q = q.Where(s => (s.SellerName ?? "").Equals(_sellerFilter, StringComparison.OrdinalIgnoreCase));
 
-    private Task<TableData<SaleDto>> LoadServerData(TableState state, CancellationToken ct)
-    {
-        var page = _filtered
-            .Skip(state.Page * state.PageSize)
-            .Take(state.PageSize)
+        // Segment shortcuts from summary cards
+        if (_segment == "active")
+            q = q.Where(s => IsActive(s.Status));
+        else if (_segment == "blacklist")
+            q = q.Where(s => s.IsBlacklisted);
+        else if (_segment == "liquidado")
+            q = q.Where(s => s.Status == "liquidado");
+
+        _filtered = q.OrderByDescending(s => s.SaleDate).ToList();
+
+        // Build Day → Seller groups
+        _dayGroups = _filtered
+            .GroupBy(s => s.SaleDate.Date)
+            .OrderByDescending(g => g.Key)
+            .Select(dayG => new DayGroup(
+                dayG.Key,
+                dayG.GroupBy(s => s.SellerName ?? "Sin vendedor")
+                    .OrderBy(sg => sg.Key)
+                    .Select(sg => new SellerGroup(sg.Key, sg.OrderBy(s => s.CustomerName).ToList()))
+                    .ToList()
+            ))
             .ToList();
-        return Task.FromResult(new TableData<SaleDto> { TotalItems = _totalCount, Items = page });
     }
 
-    private void ClearFilters() { _search = ""; _statusFilter = ""; _riskFilter = ""; FilterSales(); }
+    // ── status helpers (using actual DB codes, no hardcode) ────────────────
+    private static bool IsActive(string status) =>
+        status is "por_iniciar" or "en_proceso" or "anulado";
 
-    private void OnSearchChanged(string s) { _search = s; FilterSales(); }
+    private static string SaleStatusLabel(string s) => s switch
+    {
+        "por_iniciar" => "Por Iniciar",
+        "en_proceso"  => "En Proceso",
+        "liquidado"   => "Liquidado",
+        "anulado"     => "Anulado",
+        "cancelado"   => "Cancelado",
+        _             => s
+    };
 
-    private static Color RiskColor(string r) => r switch
-    { "ROJO" => Color.Error, "AMARILLO" => Color.Warning, _ => Color.Success };
-    private static string RiskEmoji(string r) => r switch
-    { "ROJO" => "?? Vencida", "AMARILLO" => "?? Atrasada", _ => "?? Corriente" };
-    private static Color StatusColor(string s) => s?.ToLower() switch
-    { "activa" => Color.Primary, "completada" => Color.Success, "cancelada" => Color.Error, _ => Color.Default };
+    private static Color SaleStatusColor(string s) => s switch
+    {
+        "por_iniciar" => Color.Default,
+        "en_proceso"  => Color.Primary,
+        "liquidado"   => Color.Success,
+        "anulado"     => Color.Warning,
+        "cancelado"   => Color.Error,
+        _             => Color.Default
+    };
+
+    private static Color StatusProgressColor(SaleDto s)
+    {
+        if (s.IsBlacklisted) return Color.Error;
+        if (s.Balance <= 0)  return Color.Success;
+        return s.PaymentProgress > 0.5 ? Color.Primary : Color.Warning;
+    }
 }

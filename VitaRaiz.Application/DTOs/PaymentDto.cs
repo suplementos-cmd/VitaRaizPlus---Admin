@@ -14,4 +14,11 @@ public class PaymentDto
     public string Status { get; set; } = string.Empty;
     public string? Validation { get; set; }
     public string? Notes { get; set; }
+
+    // Enriched fields for the payment list view
+    public string? ZoneName { get; set; }
+    public string? SaleStatus { get; set; }
+    public decimal? SaleBalance { get; set; }
+    public string? CustomerPhotoUrl { get; set; }
+    public string? FacadePhotoUrl { get; set; }
 }

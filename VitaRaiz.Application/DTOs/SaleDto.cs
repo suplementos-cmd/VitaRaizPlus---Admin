@@ -1,5 +1,16 @@
 namespace VitaRaiz.Application.DTOs;
 
+public class SalePhotoDto
+{
+    public int     PhotoId       { get; set; }
+    public string  PhotoType     { get; set; } = string.Empty; // CLIENTE, FACHADA, CONTRATO, ADICIONAL
+    public string  FilePath      { get; set; } = string.Empty;
+    public string? ThumbnailPath { get; set; }
+    public decimal? GpsLatitude  { get; set; }
+    public decimal? GpsLongitude { get; set; }
+    public DateTime UploadedAt  { get; set; }
+}
+
 public class SaleDto
 {
     public int SaleId { get; set; }
@@ -14,6 +25,8 @@ public class SaleDto
     public string? PaymentTerms { get; set; }
     public string? ProductName { get; set; }  // Primer producto de la venta
     public string? SellerName { get; set; }   // Nombre del vendedor
+    public bool    IsGoldCustomer { get; set; }
+    public bool    IsBlacklisted  { get; set; }
 }
 
 /// <summary>
@@ -66,5 +79,8 @@ public class SaleFullDto
     public List<SaleDetailDto> Items { get; set; } = new();
 
     // Payments
-    public List<PaymentDto> Payments { get; set; } = new();
+    public List<PaymentDto>    Payments { get; set; } = new();
+
+    // Photos (CLIENTE, FACHADA, CONTRATO, ADICIONAL)
+    public List<SalePhotoDto> Photos   { get; set; } = new();
 }

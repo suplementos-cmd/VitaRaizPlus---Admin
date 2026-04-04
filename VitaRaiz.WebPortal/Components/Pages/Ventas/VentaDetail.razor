@@ -17,152 +17,616 @@ else if (_sale is null)
 }
 else
 {
-    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-3">
+    <!-- ── TOP BAR ─────────────────────────────────────────────────────── -->
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween"
+              Class="mb-4" Wrap="Wrap.Wrap">
         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-            <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick="@(() => Nav.NavigateTo("/ventas"))" />
-            <MudText Typo="Typo.h4">Venta #@_sale.SaleId</MudText>
-            <MudChip T="string" Color="@StatusColor(_sale.Status)" Size="Size.Small">@_sale.Status</MudChip>
-            <MudChip T="string" Color="@RiskColor(_sale.RiskStatus)" Size="Size.Small">@RiskLabel(_sale.RiskStatus)</MudChip>
+            <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                           OnClick="@(() => Nav.NavigateTo("/ventas"))" />
+            <MudText Typo="Typo.h5" Class="fw-bold">Venta #@_sale.SaleId</MudText>
+            <MudChip T="string" Color="@SaleStatusColor(_sale.Status)" Size="Size.Small">
+                @_sale.Status
+            </MudChip>
+            <MudChip T="string" Color="@RiskColor(_sale.RiskStatus)" Size="Size.Small"
+                     Icon="@RiskIcon(_sale.RiskStatus)">
+                @RiskLabel(_sale.RiskStatus)
+            </MudChip>
+            @if (_sale.IsGoldCustomer)
+            {
+                <MudChip T="string" Color="Color.Warning" Size="Size.Small"
+                         Icon="@Icons.Material.Filled.Star">Cliente Oro</MudChip>
+            }
+            @if (_sale.IsBlacklisted)
+            {
+                <MudChip T="string" Color="Color.Dark" Size="Size.Small"
+                         Icon="@Icons.Material.Filled.Block">Lista Negra</MudChip>
+            }
         </MudStack>
         <AuthorizeView Roles="AdminFull,Admin">
-            @if (_sale.Status?.ToLower() == "activa")
-            {
-                <MudButton Variant="Variant.Outlined" Color="Color.Error"
-                           StartIcon="@Icons.Material.Filled.Cancel"
-                           OnClick="AnnulSaleAsync">Anular Venta</MudButton>
-            }
+            <Authorized>
+                @if (_sale.Status?.ToLower() == "activa")
+                {
+                    <MudButton Variant="Variant.Outlined" Color="Color.Error"
+                               StartIcon="@Icons.Material.Filled.Cancel"
+                               OnClick="AnnulSaleAsync">Anular</MudButton>
+                }
+            </Authorized>
         </AuthorizeView>
     </MudStack>
 
     <MudGrid Spacing="3">
-        <!-- Customer & Totals -->
-        <MudItem xs="12" md="6">
-            <MudPaper Class="pa-4" Elevation="2">
-                <MudText Typo="Typo.h6" Class="mb-3">Datos del cliente</MudText>
-                <MudGrid>
-                    <MudItem xs="6"><MudText Typo="Typo.caption" Color="Color.Secondary">Cliente</MudText><MudText>@_sale.CustomerName</MudText></MudItem>
-                    <MudItem xs="6"><MudText Typo="Typo.caption" Color="Color.Secondary">Vendedor</MudText><MudText>@_sale.SellerName</MudText></MudItem>
-                    <MudItem xs="6"><MudText Typo="Typo.caption" Color="Color.Secondary">Zona</MudText><MudText>@_sale.CustomerZone</MudText></MudItem>
-                    <MudItem xs="6"><MudText Typo="Typo.caption" Color="Color.Secondary">Fecha</MudText><MudText>@_sale.SaleDate.ToString("dd/MM/yyyy")</MudText></MudItem>
-                </MudGrid>
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             COLUMN LEFT: Customer card + Photos
+        ════════════════════════════════════════════════════════════════════ -->
+        <MudItem xs="12" md="5">
+
+            <!-- Customer Card -->
+            <MudPaper Class="pa-0 overflow-hidden mb-3" Elevation="3"
+                      Style="border-radius:12px">
+                <!-- Avatar / photo strip -->
+                <div style="background:linear-gradient(135deg, var(--mud-palette-primary) 0%,
+                            var(--mud-palette-primary-darken) 100%);
+                            padding:24px 20px 14px 20px;position:relative">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                        <!-- Customer photo -->
+                        @{ var clientPhoto = PhotoOf("CLIENTE"); }
+                        @if (clientPhoto is not null && _photoUrls.ContainsKey(clientPhoto.PhotoId))
+                        {
+                            <MudAvatar Style="width:72px;height:72px;border:3px solid white;
+                                            box-shadow:0 2px 8px rgba(0,0,0,.3)"
+                                       Image="@_photoUrls[clientPhoto.PhotoId]" />
+                        }
+                        else
+                        {
+                            <MudAvatar Style="width:72px;height:72px;border:3px solid white;
+                                            background:rgba(255,255,255,.25)"
+                                       Color="Color.Transparent">
+                                <MudIcon Icon="@Icons.Material.Filled.Person"
+                                         Style="font-size:40px;color:white" />
+                            </MudAvatar>
+                        }
+                        <MudStack Spacing="0">
+                            <MudText Typo="Typo.h6" Style="color:white;font-weight:700">
+                                @_sale.CustomerName
+                            </MudText>
+                            <MudText Typo="Typo.caption" Style="color:rgba(255,255,255,.8)">
+                                @(_sale.CustomerPhone ?? "Sin teléfono")
+                            </MudText>
+                            @if (!string.IsNullOrWhiteSpace(_sale.CustomerZone))
+                            {
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                    <MudIcon Icon="@Icons.Material.Filled.Place"
+                                             Style="font-size:14px;color:rgba(255,255,255,.8)" />
+                                    <MudText Typo="Typo.caption"
+                                             Style="color:rgba(255,255,255,.8)">
+                                        @_sale.CustomerZone
+                                    </MudText>
+                                </MudStack>
+                            }
+                        </MudStack>
+                    </MudStack>
+                </div>
+
+                <!-- Customer details -->
+                <div class="pa-3">
+                    <MudGrid Spacing="1">
+                        <MudItem xs="12">
+                            <MudStack Row="true" AlignItems="AlignItems.Start" Spacing="1">
+                                <MudIcon Icon="@Icons.Material.Filled.Home"
+                                         Size="Size.Small" Color="Color.Secondary"
+                                         Style="margin-top:2px" />
+                                <MudText Typo="Typo.body2">
+                                    @(_sale.CustomerAddress ?? "Sin dirección registrada")
+                                </MudText>
+                            </MudStack>
+                        </MudItem>
+                        @if (_sale.CustomerGpsLatitude.HasValue && _sale.CustomerGpsLongitude.HasValue)
+                        {
+                            <MudItem xs="12">
+                                <MudButton Variant="Variant.Text" Size="Size.Small"
+                                           StartIcon="@Icons.Material.Filled.LocationOn"
+                                           Color="Color.Primary"
+                                           OnClick="OpenCustomerMap">
+                                    Ver ubicación en mapa
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="ml-1">
+                                        (@_sale.CustomerGpsLatitude.Value.ToString("F4"),
+                                         @_sale.CustomerGpsLongitude.Value.ToString("F4"))
+                                    </MudText>
+                                </MudButton>
+                            </MudItem>
+                        }
+                        <MudItem xs="6">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Vendedor</MudText>
+                            <MudText Typo="Typo.body2">@(_sale.SellerName ?? "—")</MudText>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Cobrador</MudText>
+                            <MudText Typo="Typo.body2">@(_sale.CollectorName ?? "—")</MudText>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Fecha venta</MudText>
+                            <MudText Typo="Typo.body2">@_sale.SaleDate.ToString("dd/MM/yyyy")</MudText>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Frecuencia pago</MudText>
+                            <MudText Typo="Typo.body2">
+                                @(_sale.PaymentTerm?.ToUpper() ?? "—")
+                                @if (!string.IsNullOrWhiteSpace(_sale.CollectionDay))
+                                { <span> / @_sale.CollectionDay</span> }
+                            </MudText>
+                        </MudItem>
+                        @if (!string.IsNullOrWhiteSpace(_sale.Notes))
+                        {
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Notas</MudText>
+                                <MudText Typo="Typo.body2">@_sale.Notes</MudText>
+                            </MudItem>
+                        }
+                    </MudGrid>
+                </div>
             </MudPaper>
+
+            <!-- Photos Gallery -->
+            @if (_sale.Photos.Any())
+            {
+                <MudPaper Class="pa-3 mb-3" Elevation="2" Style="border-radius:12px">
+                    <MudText Typo="Typo.subtitle2" Class="mb-2 fw-bold">
+                        <MudIcon Icon="@Icons.Material.Filled.PhotoLibrary"
+                                 Size="Size.Small" Class="mr-1" />
+                        Fotos
+                    </MudText>
+                    <MudGrid Spacing="2">
+                        @foreach (var grp in _sale.Photos
+                            .GroupBy(p => p.PhotoType)
+                            .OrderBy(g => PhotoTypeOrder(g.Key)))
+                        {
+                            @foreach (var photo in grp.Take(3))
+                            {
+                                <MudItem xs="4">
+                                    <MudTooltip Text="@photo.PhotoType">
+                                        <div style="position:relative;border-radius:8px;overflow:hidden;
+                                                    aspect-ratio:1;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.2)"
+                                             @onclick="@(() => OpenPhoto(photo))">
+                                            <img src="@(_photoUrls.GetValueOrDefault(photo.PhotoId, ""))"
+                                                 style="width:100%;height:100%;object-fit:cover@(_photoUrls.ContainsKey(photo.PhotoId)?"":";display:none")"
+                                                 alt="@photo.PhotoType" />
+                                            <div style="display:none;width:100%;height:100%;
+                                                        align-items:center;justify-content:center;
+                                                        background:var(--mud-palette-background-grey)">
+                                                <span style="font-size:.6rem;color:var(--mud-palette-text-secondary);text-align:center;padding:4px">
+                                                    @PhotoTypeLabel(photo.PhotoType)
+                                                </span>
+                                            </div>
+                                            <div style="position:absolute;bottom:0;left:0;right:0;
+                                                        background:rgba(0,0,0,.5);
+                                                        padding:2px 4px;text-align:center">
+                                                <MudText Typo="Typo.caption"
+                                                         Style="color:white;font-size:.65rem">
+                                                    @PhotoTypeLabel(photo.PhotoType)
+                                                </MudText>
+                                            </div>
+                                        </div>
+                                    </MudTooltip>
+                                </MudItem>
+                            }
+                        }
+                    </MudGrid>
+                </MudPaper>
+            }
+
         </MudItem>
 
-        <MudItem xs="12" md="6">
-            <MudPaper Class="pa-4" Elevation="2">
-                <MudText Typo="Typo.h6" Class="mb-3">Resumen financiero</MudText>
-                <MudStack Spacing="1">
-                    <MudStack Row="true" Justify="Justify.SpaceBetween">
-                        <MudText>Total</MudText>
-                        <MudText Class="fw-bold">@_sale.TotalAmount.ToString("C2")</MudText>
-                    </MudStack>
-                    <MudStack Row="true" Justify="Justify.SpaceBetween">
-                        <MudText>Cobrado</MudText>
-                        <MudText Color="Color.Success">@_sale.PaidAmount.ToString("C2")</MudText>
-                    </MudStack>
-                    <MudDivider />
-                    <MudStack Row="true" Justify="Justify.SpaceBetween">
-                        <MudText Class="fw-bold">Saldo</MudText>
-                        <MudText Class="fw-bold" Color="@(_sale.Balance > 0 ? Color.Warning : Color.Success)">
-                            @_sale.Balance.ToString("C2")</MudText>
-                    </MudStack>
+        <!-- ═══════════════════════════════════════════════════════════════
+             COLUMN RIGHT: Financial + Products + Payments
+        ════════════════════════════════════════════════════════════════════ -->
+        <MudItem xs="12" md="7">
+
+            <!-- Financial Summary -->
+            <MudPaper Class="pa-4 mb-3" Elevation="2" Style="border-radius:12px">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mb-3">
+                    <MudIcon Icon="@Icons.Material.Filled.AccountBalance"
+                             Color="Color.Primary" Size="Size.Small" />
+                    <MudText Typo="Typo.subtitle1" Class="fw-bold">Resumen financiero</MudText>
                 </MudStack>
-                <MudProgressLinear Value="@(_sale.PaymentProgress * 100)" Color="Color.Primary"
-                                   Rounded="true" Size="Size.Medium" Class="mt-2" />
-                <MudText Typo="Typo.caption" Class="mt-1">@((_sale.PaymentProgress * 100).ToString("F1"))% cobrado</MudText>
-            </MudPaper>
-        </MudItem>
 
-        <!-- Products -->
-        <MudItem xs="12">
-            <MudPaper Elevation="2">
-                <MudText Typo="Typo.h6" Class="pa-3">Productos</MudText>
-                <MudTable Items="_sale.Items" Dense="true" Hover="true">
-                    <HeaderContent>
-                        <MudTh>Producto</MudTh>
-                        <MudTh>Cantidad</MudTh>
-                        <MudTh>Precio Unit.</MudTh>
-                        <MudTh>Subtotal</MudTh>
-                    </HeaderContent>
-                    <RowTemplate>
-                        <MudTd>@context.ProductName</MudTd>
-                        <MudTd>@context.Quantity</MudTd>
-                        <MudTd>@context.UnitPrice.ToString("C2")</MudTd>
-                        <MudTd>@context.Subtotal.ToString("C2")</MudTd>
-                    </RowTemplate>
-                </MudTable>
-            </MudPaper>
-        </MudItem>
+                <!-- Progress ring area -->
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3" Class="mb-3">
+                    <div style="position:relative;width:90px;height:90px;flex-shrink:0">
+                        <MudProgressCircular Value="@((double)_sale.PaymentPercentage)"
+                                             Size="Size.Large" Color="@RiskColor(_sale.RiskStatus)"
+                                             StrokeWidth="7"
+                                             Style="width:90px;height:90px" />
+                        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+                                    text-align:center">
+                            <MudText Typo="Typo.body2" Class="fw-bold">
+                                @_sale.PaymentPercentage.ToString("F0")%
+                            </MudText>
+                        </div>
+                    </div>
+                    <MudGrid Spacing="1" Style="flex:1">
+                        <MudItem xs="6">
+                            <MudPaper Class="pa-2 text-center" Elevation="0"
+                                      Style="background:var(--mud-palette-success-lighten);border-radius:8px">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Total venta</MudText>
+                                <MudText Typo="Typo.body1" Class="fw-bold">
+                                    @_sale.TotalAmount.ToString("C0")
+                                </MudText>
+                            </MudPaper>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudPaper Class="pa-2 text-center" Elevation="0"
+                                      Style="background:var(--mud-palette-background-grey);border-radius:8px">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Enganche</MudText>
+                                <MudText Typo="Typo.body1" Class="fw-bold">
+                                    @_sale.DownPayment.ToString("C0")
+                                </MudText>
+                            </MudPaper>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudPaper Class="pa-2 text-center" Elevation="0"
+                                      Style="background:var(--mud-palette-success-lighten);border-radius:8px">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Cobrado</MudText>
+                                <MudText Typo="Typo.body1" Class="fw-bold" Color="Color.Success">
+                                    @_sale.PaidAmount.ToString("C0")
+                                </MudText>
+                            </MudPaper>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudPaper Class="pa-2 text-center" Elevation="0"
+                                      Style="@(_sale.Balance > 0 ? "background:var(--mud-palette-warning-lighten);border-radius:8px" : "background:var(--mud-palette-success-lighten);border-radius:8px")">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Saldo</MudText>
+                                <MudText Typo="Typo.body1" Class="fw-bold"
+                                         Color="@(_sale.Balance > 0 ? Color.Warning : Color.Success)">
+                                    @_sale.Balance.ToString("C0")
+                                </MudText>
+                            </MudPaper>
+                        </MudItem>
+                    </MudGrid>
+                </MudStack>
 
-        <!-- Payments -->
-        <MudItem xs="12">
-            <MudPaper Elevation="2">
-                <MudText Typo="Typo.h6" Class="pa-3">Historial de pagos</MudText>
-                @if (_sale.Payments?.Any() == true)
+                <!-- Days since last payment -->
+                @if (_sale.DaysSinceLastPayment > 0 || _sale.PaymentPercentage < 100)
                 {
-                    <MudTable Items="_sale.Payments" Dense="true" Hover="true">
-                        <HeaderContent>
-                            <MudTh>#</MudTh>
-                            <MudTh>Monto</MudTh>
-                            <MudTh>Fecha</MudTh>
-                            <MudTh>Cobrador</MudTh>
-                            <MudTh>GPS</MudTh>
-                            <MudTh>Estatus</MudTh>
-                        </HeaderContent>
-                        <RowTemplate>
-                            <MudTd>@context.PaymentId</MudTd>
-                            <MudTd>@context.Amount.ToString("C2")</MudTd>
-                            <MudTd>@context.PaymentDate.ToString("dd/MM/yyyy HH:mm")</MudTd>
-                            <MudTd>@context.CollectorName</MudTd>
-                            <MudTd>
-                                @if (context.HasGps)
+                    <MudDivider Class="mb-2" />
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3" Wrap="Wrap.Wrap">
+                        <MudStack AlignItems="AlignItems.Center" Spacing="0">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                Días sin cobro
+                            </MudText>
+                            <MudText Typo="Typo.h6" Class="fw-bold"
+                                     Color="@(_sale.DaysSinceLastPayment > 14 ? Color.Error : Color.Default)">
+                                @_sale.DaysSinceLastPayment
+                            </MudText>
+                        </MudStack>
+                        @if (_sale.FirstCollectionDate.HasValue)
+                        {
+                            <MudStack AlignItems="AlignItems.Center" Spacing="0">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    1er cobro
+                                </MudText>
+                                <MudText Typo="Typo.body2">
+                                    @_sale.FirstCollectionDate.Value.ToString("dd/MM/yyyy")
+                                </MudText>
+                            </MudStack>
+                        }
+                        <MudSpacer />
+                        <MudChip T="string" Color="@RiskColor(_sale.RiskStatus)" Size="Size.Small"
+                                 Icon="@RiskIcon(_sale.RiskStatus)">
+                            @RiskLabel(_sale.RiskStatus)
+                        </MudChip>
+                    </MudStack>
+                }
+            </MudPaper>
+
+            <!-- Products -->
+            <MudPaper Class="pa-0 overflow-hidden mb-3" Elevation="2"
+                      Style="border-radius:12px">
+                <div class="pa-3 d-flex align-center gap-2"
+                     style="border-bottom:1px solid var(--mud-palette-divider)">
+                    <MudIcon Icon="@Icons.Material.Filled.Inventory2"
+                             Color="Color.Primary" Size="Size.Small" />
+                    <MudText Typo="Typo.subtitle1" Class="fw-bold">Productos</MudText>
+                    <MudSpacer />
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        Total: @_sale.TotalAmount.ToString("C0")
+                    </MudText>
+                </div>
+                <div style="overflow-x:auto">
+                    <table style="width:100%;border-collapse:collapse;font-size:.83rem">
+                        <thead>
+                            <tr style="background:var(--mud-palette-surface)">
+                                <th style="@ThStyle">Producto</th>
+                                <th style="@ThStyle;text-align:center">Cant.</th>
+                                <th style="@ThStyle;text-align:right">Precio U.</th>
+                                <th style="@ThStyle;text-align:right">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in _sale.Items)
+                            {
+                                <tr>
+                                    <td style="@TdStyle">
+                                        <MudText Typo="Typo.body2" Class="fw-medium">
+                                            @item.ProductName
+                                        </MudText>
+                                    </td>
+                                    <td style="@TdStyle;text-align:center">@item.Quantity</td>
+                                    <td style="@TdStyle;text-align:right">
+                                        @item.UnitPrice.ToString("C2")
+                                    </td>
+                                    <td style="@TdStyle;text-align:right;font-weight:600">
+                                        @item.Subtotal.ToString("C2")
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </MudPaper>
+
+        </MudItem>
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             FULL WIDTH: Payment history timeline
+        ════════════════════════════════════════════════════════════════════ -->
+        <MudItem xs="12">
+            <MudPaper Class="pa-0 overflow-hidden" Elevation="2"
+                      Style="border-radius:12px">
+                <div class="pa-3 d-flex align-center gap-2"
+                     style="border-bottom:1px solid var(--mud-palette-divider)">
+                    <MudIcon Icon="@Icons.Material.Filled.History"
+                             Color="Color.Primary" Size="Size.Small" />
+                    <MudText Typo="Typo.subtitle1" Class="fw-bold">
+                        Historial de cobros
+                    </MudText>
+                    <MudSpacer />
+                    <MudChip T="string" Color="Color.Success" Size="Size.Small">
+                        @_sale.Payments.Count(p => p.Status.ToLower() == "aprobado") aprobados
+                    </MudChip>
+                    <MudChip T="string" Color="Color.Warning" Size="Size.Small">
+                        @_sale.Payments.Count(p => p.Status.ToLower() == "pendiente") pendientes
+                    </MudChip>
+                </div>
+
+                @if (_sale.Payments.Any())
+                {
+                    <div style="overflow-x:auto">
+                        <table style="width:100%;border-collapse:collapse;font-size:.83rem">
+                            <thead>
+                                <tr style="background:var(--mud-palette-surface)">
+                                    <th style="@ThStyle">#</th>
+                                    <th style="@ThStyle">Monto</th>
+                                    <th style="@ThStyle">Fecha</th>
+                                    <th style="@ThStyle">Cobrador</th>
+                                    <th style="@ThStyle">GPS</th>
+                                    <th style="@ThStyle">Estatus</th>
+                                    <th style="@ThStyle">Nota</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var p in _sale.Payments)
                                 {
-                                    <MudIcon Icon="@Icons.Material.Filled.LocationOn" Color="Color.Success" Size="Size.Small" />
+                                    <tr style="@(p.Status.ToLower()=="rechazado"
+                                        ? "opacity:.55" : "")">
+                                        <td style="@TdStyle">
+                                            <MudText Typo="Typo.caption">#@p.PaymentId</MudText>
+                                        </td>
+                                        <td style="@TdStyle">
+                                            <MudText Typo="Typo.body2" Class="fw-bold"
+                                                     Color="@PayStatusColor(p.Status)">
+                                                @p.Amount.ToString("C2")
+                                            </MudText>
+                                        </td>
+                                        <td style="@TdStyle;white-space:nowrap">
+                                            @p.PaymentDate.ToString("dd/MM/yy HH:mm")
+                                        </td>
+                                        <td style="@TdStyle">@p.CollectorName</td>
+                                        <td style="@TdStyle;text-align:center">
+                                            @if (p.HasGps)
+                                            {
+                                                <MudTooltip
+                                                    Text="@($"({p.GpsLatitude:F4},{p.GpsLongitude:F4})")">
+                                                    <MudIconButton
+                                                        Icon="@Icons.Material.Filled.LocationOn"
+                                                        Color="Color.Success" Size="Size.Small"
+                                                        OnClick="@(() => OpenPaymentMap(p))" />
+                                                </MudTooltip>
+                                            }
+                                            else
+                                            {
+                                                <MudIcon Icon="@Icons.Material.Outlined.LocationOff"
+                                                         Color="Color.Default" Size="Size.Small" />
+                                            }
+                                        </td>
+                                        <td style="@TdStyle">
+                                            <MudChip T="string" Size="Size.Small"
+                                                     Color="@PayStatusColor(p.Status)"
+                                                     Style="font-size:.72rem;height:22px">
+                                                @p.Status
+                                            </MudChip>
+                                        </td>
+                                        <td style="@TdStyle;max-width:180px">
+                                            @if (!string.IsNullOrWhiteSpace(p.Notes))
+                                            {
+                                                <MudTooltip Text="@p.Notes" Placement="Placement.Left">
+                                                    <MudText Typo="Typo.caption"
+                                                             Style="overflow:hidden;text-overflow:ellipsis;
+                                                                    white-space:nowrap;display:block;
+                                                                    max-width:160px">
+                                                        @p.Notes
+                                                    </MudText>
+                                                </MudTooltip>
+                                            }
+                                            else
+                                            {
+                                                <MudText Typo="Typo.caption"
+                                                         Color="Color.Secondary">—</MudText>
+                                            }
+                                        </td>
+                                    </tr>
                                 }
-                            </MudTd>
-                            <MudTd><MudChip T="string" Size="Size.Small" Color="@PayStatusColor(context.Status)">@context.Status</MudChip></MudTd>
-                        </RowTemplate>
-                    </MudTable>
+                            </tbody>
+                        </table>
+                    </div>
                 }
                 else
                 {
-                    <MudText Class="pa-3" Color="Color.Secondary">Sin pagos registrados</MudText>
+                    <MudStack AlignItems="AlignItems.Center" Class="pa-5" Spacing="1">
+                        <MudIcon Icon="@Icons.Material.Outlined.MoneyOff"
+                                 Size="Size.Large" Color="Color.Secondary" />
+                        <MudText Color="Color.Secondary">Sin cobros registrados</MudText>
+                    </MudStack>
                 }
             </MudPaper>
         </MudItem>
+
     </MudGrid>
+}
+
+<!-- Photo lightbox dialog -->
+@if (_lightboxPhoto is not null)
+{
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;
+                display:flex;align-items:center;justify-content:center"
+         @onclick="@(() => _lightboxPhoto = null)">
+        <div @onclick:stopPropagation="true"
+             style="position:relative;max-width:90vw;max-height:90vh">
+            <img src="@(_photoUrls.GetValueOrDefault(_lightboxPhoto.PhotoId, ""))"
+                 style="max-width:90vw;max-height:85vh;border-radius:10px;
+                        box-shadow:0 8px 40px rgba(0,0,0,.6)"
+                 alt="@_lightboxPhoto.PhotoType" />
+            <MudText Style="color:white;text-align:center;margin-top:8px">
+                @PhotoTypeLabel(_lightboxPhoto.PhotoType)
+                @if (_lightboxPhoto.GpsLatitude.HasValue)
+                {
+                    <span> — GPS: @_lightboxPhoto.GpsLatitude.Value.ToString("F5"),
+                        @_lightboxPhoto.GpsLongitude!.Value.ToString("F5")
+                    </span>
+                }
+            </MudText>
+            <MudIconButton Icon="@Icons.Material.Filled.Close"
+                           Style="position:absolute;top:-16px;right:-16px;
+                                  background:white;border-radius:50%"
+                           OnClick="@(() => _lightboxPhoto = null)" />
+        </div>
+    </div>
 }
 
 @code {
     [Parameter] public int SaleId { get; set; }
 
-    private SaleFullDto? _sale;
-    private bool _loading = true;
+    private SaleFullDto?           _sale;
+    private bool                   _loading = true;
+    private SalePhotoDto?          _lightboxPhoto;
+    private Dictionary<int,string> _photoUrls = new();
+
+    private const string ThStyle =
+        "padding:7px 10px;font-size:.77rem;font-weight:600;" +
+        "border-bottom:2px solid var(--mud-palette-divider);text-align:left";
+    private const string TdStyle =
+        "padding:6px 10px;border-bottom:1px solid var(--mud-palette-divider);vertical-align:middle";
 
     protected override async Task OnInitializedAsync()
     {
         _loading = true;
-        _sale = await Api.GetAsync<SaleFullDto>($"api/sales/{SaleId}/full");
+        _sale    = await Api.GetAsync<SaleFullDto>($"api/sales/{SaleId}/full");
+
+        if (_sale?.Photos is { Count: > 0 })
+        {
+            var tasks = _sale.Photos.Select(p =>
+                Api.GetPhotoDataUrlAsync(p.PhotoId)
+                   .ContinueWith(t => (p.PhotoId, DataUrl: t.Result)));
+            foreach (var (id, url) in await Task.WhenAll(tasks))
+                if (!string.IsNullOrEmpty(url))
+                    _photoUrls[id] = url;
+        }
+
         _loading = false;
+    }
+
+    // ── helpers ─────────────────────────────────────────────────────────
+    private SalePhotoDto? PhotoOf(string type) =>
+        _sale?.Photos.Where(p => p.PhotoType == type)
+              .OrderByDescending(p => p.UploadedAt)
+              .FirstOrDefault();
+
+    private void OpenPhoto(SalePhotoDto photo) => _lightboxPhoto = photo;
+
+    private void OpenCustomerMap()
+    {
+        if (_sale?.CustomerGpsLatitude is null) return;
+        Nav.NavigateTo(
+            $"https://www.google.com/maps?q={_sale.CustomerGpsLatitude},{_sale.CustomerGpsLongitude}",
+            forceLoad: true);
+    }
+
+    private void OpenPaymentMap(PaymentDto p)
+    {
+        Nav.NavigateTo(
+            $"https://www.google.com/maps?q={p.GpsLatitude},{p.GpsLongitude}",
+            forceLoad: true);
     }
 
     private async Task AnnulSaleAsync()
     {
-        var result = await Dialog.ShowMessageBox("Confirmar", "¿Anular esta venta?", "Sí, anular", cancelText: "Cancelar");
-        if (result == true)
+        var ok = await Dialog.ShowMessageBox("Confirmar", "¿Anular esta venta?",
+                                             "Sí, anular", cancelText: "Cancelar");
+        if (ok == true)
         {
-            var ok = await Api.PutAsync($"api/sales/{SaleId}/cancel", new { SaleId = SaleId });
-            if (ok) { Notify.Success("Venta cancelada"); await OnInitializedAsync(); }
-            else Notify.Error("Error al anular la venta");
+            var r = await Api.PutAsync($"api/sales/{SaleId}/cancel", new { SaleId });
+            if (r) { Notify.Success("Venta cancelada"); await OnInitializedAsync(); }
+            else     Notify.Error("Error al anular la venta");
         }
     }
 
-    private static Color StatusColor(string s) => s?.ToLower() switch
-    { "activa" => Color.Primary, "completada" => Color.Success, "cancelada" => Color.Error, _ => Color.Default };
+    // ── photo meta ───────────────────────────────────────────────────────
+    private static string PhotoTypeLabel(string t) => t switch
+    {
+        "CLIENTE"  => "Cliente",
+        "FACHADA"  => "Fachada",
+        "CONTRATO" => "Contrato",
+        _          => t
+    };
+    private static int PhotoTypeOrder(string t) => t switch
+    {
+        "CLIENTE"  => 0,
+        "FACHADA"  => 1,
+        "CONTRATO" => 2,
+        _          => 9
+    };
+
+    // ── color / label helpers ────────────────────────────────────────────
+    private static Color SaleStatusColor(string s) => s?.ToLower() switch
+    {
+        "activa"     => Color.Primary,
+        "completada" => Color.Success,
+        "cancelada"  => Color.Error,
+        _            => Color.Default
+    };
     private static Color RiskColor(string r) => r switch
-    { "ROJO" => Color.Error, "AMARILLO" => Color.Warning, _ => Color.Success };
+    {
+        "ROJO"     => Color.Error,
+        "AMARILLO" => Color.Warning,
+        _          => Color.Success
+    };
+    private static string RiskIcon(string r) => r switch
+    {
+        "ROJO"     => Icons.Material.Filled.Warning,
+        "AMARILLO" => Icons.Material.Filled.Schedule,
+        _          => Icons.Material.Filled.CheckCircle
+    };
     private static string RiskLabel(string r) => r switch
-    { "ROJO" => "Vencida", "AMARILLO" => "Atrasada", _ => "Al corriente" };
+    {
+        "ROJO"     => "Vencida",
+        "AMARILLO" => "Atrasada",
+        _          => "Al corriente"
+    };
     private static Color PayStatusColor(string s) => s?.ToLower() switch
-    { "aprobado" => Color.Success, "rechazado" => Color.Error, _ => Color.Default };
+    {
+        "aprobado"  => Color.Success,
+        "rechazado" => Color.Error,
+        "pendiente" => Color.Warning,
+        _           => Color.Default
+    };
 }

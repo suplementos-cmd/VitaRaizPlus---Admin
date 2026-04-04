@@ -296,6 +296,42 @@ public class SalesController : ControllerBase
             return BadRequest(new { error = ex.Message });
         }
     }
+
+    /// <summary>
+    /// Servir el archivo binario de una foto de venta directamente (para el portal web)
+    /// </summary>
+    [HttpGet("photos/{photoId}/file")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetSalePhotoFile(int photoId)
+    {
+        try
+        {
+            var photo = await _salePhotoRepository.GetPhotoByIdAsync(photoId);
+            if (photo == null)
+                return NotFound(new { message = "Foto no encontrada" });
+
+            if (!System.IO.File.Exists(photo.FilePath))
+                return NotFound(new { message = "Archivo no encontrado en el servidor" });
+
+            var ext = Path.GetExtension(photo.FilePath).ToLowerInvariant();
+            var contentType = ext switch
+            {
+                ".jpg" or ".jpeg" => "image/jpeg",
+                ".png"            => "image/png",
+                ".gif"            => "image/gif",
+                ".webp"           => "image/webp",
+                _                 => "application/octet-stream"
+            };
+
+            var stream = new FileStream(photo.FilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            return File(stream, contentType);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[SalesController] Error serving photo file {PhotoId}", photoId);
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
 }
 
 public class AddSalePhotoRequest

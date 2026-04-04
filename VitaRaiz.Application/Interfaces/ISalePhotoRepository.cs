@@ -8,6 +8,8 @@ public interface ISalePhotoRepository
         decimal? gpsLat, decimal? gpsLon, long? fileSize, int? uploadedBy);
     
     Task<List<SalePhoto>> GetSalePhotosAsync(int saleId);
-    
+
+    Task<SalePhoto?> GetPhotoByIdAsync(int photoId);
+
     Task<bool> DeleteSalePhotoAsync(int photoId);
 }

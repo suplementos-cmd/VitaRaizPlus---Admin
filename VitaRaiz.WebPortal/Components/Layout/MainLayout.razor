@@ -8,6 +8,9 @@
 <MudSnackbarProvider />
 <MudDialogProvider CloseButton="true" MaxWidth="MaxWidth.Medium" FullWidth="false" />
 
+<!-- CSS custom properties dinámicas por tema de rol -->
+<style>@((MarkupString)ThemeSvc.CssVars)</style>
+
 <MudLayout>
     <!-- -- App Bar -- -->
     <MudAppBar Elevation="2" Fixed="true">
@@ -42,10 +45,9 @@
 
     <!-- -- Sidebar Drawer -- -->
     <MudDrawer @bind-Open="_drawerOpen" Elevation="3" ClipMode="DrawerClipMode.Always">
-        <MudDrawerHeader Class="pa-4" Style="@($"background:{ThemeSvc.PrimaryColor}")">
-            <MudStack Row="false" Spacing="0">
-                <MudText Typo="Typo.h6" Style="color:white;font-weight:700">VitaRaiz</MudText>
-                <MudText Typo="Typo.caption" Style="color:rgba(255,255,255,.7)">Panel de gestion</MudText>
+        <MudDrawerHeader Class="pa-4" Style="@($"background:{ThemeSvc.PrimaryColor}")">            <MudStack Row="false" Spacing="0">
+                <MudText Typo="Typo.h6" Style="@($"color:{ThemeSvc.MenuTextColor};font-weight:700")">VitaRaiz</MudText>
+                <MudText Typo="Typo.caption" Style="@($"color:{ThemeSvc.MenuTextColor};opacity:.75")">Panel de gestion</MudText>
             </MudStack>
         </MudDrawerHeader>
         <NavMenu />

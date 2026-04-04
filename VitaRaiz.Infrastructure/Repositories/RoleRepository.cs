@@ -128,4 +128,29 @@ public class RoleRepository : BaseOracleRepository, IRoleRepository
         await command.ExecuteNonQueryAsync();
         return true;
     }
+
+    public async Task<int> CreateRoleAsync(string roleName, string? description, string? defaultThemeColor)
+    {
+        var connection = await GetOpenConnectionAsync();
+
+        // Get next sequence value
+        using var seqCmd = connection.CreateCommand();
+        seqCmd.CommandType = CommandType.Text;
+        seqCmd.CommandText = "SELECT SEQ_ROLES.NEXTVAL FROM DUAL";
+        var newId = Convert.ToInt32(await seqCmd.ExecuteScalarAsync());
+
+        using var insCmd = connection.CreateCommand();
+        insCmd.CommandType = CommandType.Text;
+        insCmd.CommandText = @"
+            INSERT INTO SALESAPP.ROLES (ROLE_ID, ROLE_NAME, ROLE_DESCRIPTION, DEFAULT_THEME_COLOR)
+            VALUES (:p_id, :p_name, :p_desc, :p_color)";
+
+        AddInputParameter(insCmd, "p_id",    newId);
+        AddInputParameter(insCmd, "p_name",  roleName);
+        AddInputParameter(insCmd, "p_desc",  description);
+        AddInputParameter(insCmd, "p_color", defaultThemeColor);
+        await insCmd.ExecuteNonQueryAsync();
+
+        return newId;
+    }
 }

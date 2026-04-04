@@ -1,29 +1,77 @@
 ﻿@page "/pagos"
 @attribute [Authorize]
 @inject ApiService Api
+@inject NavigationManager Nav
 @inject NotificationService Notify
 @inject IDialogService Dialog
 
 <PageTitle>Cobros - VitaRaiz</PageTitle>
 
-<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
-    <MudText Typo="Typo.h4" Class="fw-bold">Cobros</MudText>
-    <MudStack Row="true" Spacing="2">
-        <MudChip T="string" Color="Color.Warning" OnClick="@(() => SetFilter("pendiente"))">Pendientes @(_pending)</MudChip>
-        <MudChip T="string" Color="Color.Success" OnClick="@(() => SetFilter("aprobado"))">Aprobados</MudChip>
+<!-- ══════════════════════════════════════════
+     HEADER
+══════════════════════════════════════════════ -->
+<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4" Wrap="Wrap.Wrap">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+        <MudIcon Icon="@Icons.Material.Filled.Payments" Size="Size.Large" Color="Color.Primary" />
+        <MudText Typo="Typo.h4" Class="fw-bold">Cobros</MudText>
+    </MudStack>
+    <MudStack Row="true" Spacing="1" Wrap="Wrap.Wrap">
+        <MudChip T="string" Color="Color.Primary" Icon="@Icons.Material.Filled.ReceiptLong">
+            @_filtered.Count registros
+        </MudChip>
+        <MudChip T="string" Color="Color.Warning" Icon="@Icons.Material.Filled.HourglassTop"
+                 OnClick="@(() => { _statusFilter = "pendiente"; ApplyFilter(); })">
+            @_filtered.Count(p => p.Status.ToLower() == "pendiente") Pendientes
+        </MudChip>
+        <MudChip T="string" Color="Color.Success" Icon="@Icons.Material.Filled.CheckCircle">
+            @_filtered.Count(p => p.Status.ToLower() == "aprobado") Aprobados
+        </MudChip>
+        <MudChip T="string" Color="Color.Info" Icon="@Icons.Material.Filled.AttachMoney">
+            @_filtered.Where(p => p.Status.ToLower() == "aprobado").Sum(p => p.Amount).ToString("C0") cobrado
+        </MudChip>
     </MudStack>
 </MudStack>
 
+<!-- ══════════════════════════════════════════
+     FILTER BAR
+══════════════════════════════════════════════ -->
 <MudPaper Class="pa-3 mb-4" Elevation="1">
     <MudGrid Spacing="2" AlignItems="AlignItems.Center">
-        <MudItem xs="12" sm="4">
+        <MudItem xs="12" sm="6" md="3">
+            <MudDatePicker Date="@_filterDate" Label="Fecha" Variant="Variant.Outlined"
+                           Clearable="true" DateFormat="dd/MM/yyyy"
+                           AdornmentIcon="@Icons.Material.Filled.CalendarToday"
+                           PickerVariant="PickerVariant.Dialog" Dense="true"
+                           DateChanged="@(d => { _filterDate = d; ApplyFilter(); })" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
             <MudTextField Value="@_search" ValueChanged="@((string s) => OnSearchChanged(s))"
                           Label="Buscar cliente o cobrador..." Variant="Variant.Outlined"
                           Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
                           Clearable="true" Dense="true" Immediate="true" />
         </MudItem>
-        <MudItem xs="6" sm="3">
-            <MudSelect T="string" Value="@_statusFilter" ValueChanged="@((string s) => OnStatusChanged(s))"
+        <MudItem xs="6" sm="4" md="2">
+            <MudSelect T="string" Value="@_cobradorFilter" ValueChanged="@((string s) => { _cobradorFilter = s; ApplyFilter(); })"
+                       Label="Cobrador" Variant="Variant.Outlined" Dense="true" Clearable="true">
+                <MudSelectItem Value="@("")">Todos</MudSelectItem>
+                @foreach (var c in _cobradores)
+                {
+                    <MudSelectItem Value="@c">@c</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="6" sm="4" md="2">
+            <MudSelect T="string" Value="@_zonaFilter" ValueChanged="@((string s) => { _zonaFilter = s; ApplyFilter(); })"
+                       Label="Zona" Variant="Variant.Outlined" Dense="true" Clearable="true">
+                <MudSelectItem Value="@("")">Todas</MudSelectItem>
+                @foreach (var z in _zonas)
+                {
+                    <MudSelectItem Value="@z">@z</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="6" sm="4" md="1">
+            <MudSelect T="string" Value="@_statusFilter" ValueChanged="@((string s) => { _statusFilter = s; ApplyFilter(); })"
                        Label="Estatus" Variant="Variant.Outlined" Dense="true">
                 <MudSelectItem Value="@("")">Todos</MudSelectItem>
                 <MudSelectItem Value="@("pendiente")">Pendiente</MudSelectItem>
@@ -31,131 +79,460 @@
                 <MudSelectItem Value="@("rechazado")">Rechazado</MudSelectItem>
             </MudSelect>
         </MudItem>
-        <MudItem xs="6" sm="2">
-            <MudCheckBox Value="@_onlyGps" ValueChanged="@((bool v) => OnGpsChanged(v))"
-                         Label="Solo GPS" Color="Color.Primary" />
-        </MudItem>
-        <MudItem xs="12" sm="3">
-            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh"
-                       FullWidth="true" OnClick="LoadAsync">Recargar</MudButton>
+        <MudItem xs="6" sm="4" md="1">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                <MudCheckBox Value="@_onlyGps" ValueChanged="@((bool v) => { _onlyGps = v; ApplyFilter(); })"
+                             Label="GPS" Color="Color.Primary" Dense="true" />
+                <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Small"
+                               Color="Color.Primary" Title="Recargar" OnClick="LoadAsync" />
+            </MudStack>
         </MudItem>
     </MudGrid>
 </MudPaper>
 
-<MudPaper Elevation="2">
-    <MudTable Items="_filtered" Hover="true" Dense="true" Loading="_loading"
-              RowsPerPage="20" LoadingProgressColor="Color.Primary">
-        <ToolBarContent>
-            <MudText Typo="Typo.subtitle1">@_filtered.Count cobros</MudText>
-        </ToolBarContent>
-        <HeaderContent>
-            <MudTh>ID</MudTh>
-            <MudTh>Cliente</MudTh>
-            <MudTh>Cobrador</MudTh>
-            <MudTh>Monto</MudTh>
-            <MudTh>Fecha</MudTh>
-            <MudTh>GPS</MudTh>
-            <MudTh>Estatus</MudTh>
-            <MudTh>Acciones</MudTh>
-        </HeaderContent>
-        <RowTemplate>
-            <MudTd>#@context.PaymentId</MudTd>
-            <MudTd>@context.CustomerName</MudTd>
-            <MudTd>@context.CollectorName</MudTd>
-            <MudTd Class="fw-bold">@context.Amount.ToString("C2")</MudTd>
-            <MudTd>@context.PaymentDate.ToString("dd/MM/yy HH:mm")</MudTd>
-            <MudTd>
-                @if (context.HasGps)
-                {
-                    <MudTooltip Text="@($"Lat:{context.GpsLatitude}, Lng:{context.GpsLongitude}")">
-                        <MudIcon Icon="@Icons.Material.Filled.LocationOn" Color="Color.Success" Size="Size.Small" />
-                    </MudTooltip>
-                }
-                else
-                {
-                    <MudIcon Icon="@Icons.Material.Outlined.LocationOff" Color="Color.Default" Size="Size.Small" />
-                }
-            </MudTd>
-            <MudTd>
-                <MudChip T="string" Size="Size.Small" Color="@StatusColor(context.Status)">@context.Status</MudChip>
-            </MudTd>
-            <MudTd>
-                <AuthorizeView Roles="AdminFull,Admin,Supervisor" Context="authCtx">
-                    <Authorized>
-                        @if (context.Status?.ToLower() == "pendiente")
-                        {
-                            <MudIconButton Icon="@Icons.Material.Filled.CheckCircle"
-                                           Color="Color.Success" Size="Size.Small"
-                                           Title="Aprobar"
-                                           OnClick="@(() => ApproveAsync(context))" />
-                            <MudIconButton Icon="@Icons.Material.Filled.Cancel"
-                                           Color="Color.Error" Size="Size.Small"
-                                           Title="Rechazar"
-                                           OnClick="@(() => RejectAsync(context))" />
-                        }
-                    </Authorized>
-                </AuthorizeView>
-            </MudTd>
-        </RowTemplate>
-        <PagerContent><MudTablePager /></PagerContent>
-    </MudTable>
-</MudPaper>
+<!-- ══════════════════════════════════════════
+     LOADING / EMPTY
+══════════════════════════════════════════════ -->
+@if (_loading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Rounded="true" Class="mb-4" />
+}
+else if (!_grouped.Any())
+{
+    <MudPaper Class="pa-6 text-center" Elevation="1">
+        <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="Size.Large" Color="Color.Secondary" />
+        <MudText Typo="Typo.h6" Color="Color.Secondary" Class="mt-2">Sin resultados</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">
+            No hay cobros que coincidan con los filtros seleccionados.
+        </MudText>
+    </MudPaper>
+}
+else
+{
+    <!-- ══════════════════════════════════════
+         GROUPS: Día → Cobrador → Zona
+    ═══════════════════════════════════════════ -->
+    <MudExpansionPanels MultiExpansion="true" Elevation="2">
+        @foreach (var dayGroup in _grouped)
+        {
+            <MudExpansionPanel IsInitiallyExpanded="@dayGroup.IsToday" Class="mb-1">
+                <TitleContent>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Wrap="Wrap.Wrap">
+                        <MudIcon Icon="@Icons.Material.Filled.CalendarMonth" Color="Color.Primary" Size="Size.Small" />
+                        <MudText Typo="Typo.subtitle1" Class="fw-bold">
+                            @(dayGroup.IsToday ? "HOY — " : "")@dayGroup.Date.ToString("dddd, dd 'de' MMMM yyyy",
+                                new System.Globalization.CultureInfo("es-MX"))
+                        </MudText>
+                        <MudSpacer />
+                        <MudChip T="string" Size="Size.Small" Color="Color.Default">@dayGroup.Count cobros</MudChip>
+                        <MudChip T="string" Size="Size.Small" Color="Color.Success">+@dayGroup.ApprovedTotal.ToString("C0")</MudChip>
+                        <MudChip T="string" Size="Size.Small" Color="Color.Warning">@dayGroup.PendingCount pend.</MudChip>
+                    </MudStack>
+                </TitleContent>
+                <ChildContent>
+                    @foreach (var cobGroup in dayGroup.ByCollector)
+                    {
+                        <!-- ── Cobrador header ──────────────────────────── -->
+                        <div style="background:var(--mud-palette-primary-lighten);
+                                    border-radius:6px;padding:6px 12px;margin:8px 0 4px 0;">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Wrap="Wrap.Wrap">
+                                <MudAvatar Size="Size.Small" Color="Color.Primary">
+                                    @(cobGroup.CollectorName.Length > 0
+                                        ? cobGroup.CollectorName[0].ToString().ToUpper() : "?")
+                                </MudAvatar>
+                                <MudText Typo="Typo.subtitle2" Class="fw-bold">@cobGroup.CollectorName</MudText>
+                                <MudSpacer />
+                                <MudChip T="string" Size="Size.Small" Color="Color.Primary">@cobGroup.Count cobros</MudChip>
+                                <MudChip T="string" Size="Size.Small" Color="Color.Success">@cobGroup.Total.ToString("C0")</MudChip>
+                            </MudStack>
+                        </div>
+
+                        <!-- ── Table with inline zona rows ─────────────── -->
+                        <div style="overflow-x:auto;margin-bottom:12px;">
+                            <table style="width:100%;border-collapse:collapse;font-size:.82rem;">
+                                <thead>
+                                    <tr style="background:var(--mud-palette-surface);">
+                                        <th style="@ThStyle">#</th>
+                                        <th style="@ThStyle">Cliente</th>
+                                        <th style="@ThStyle;width:46px">F.Cliente</th>
+                                        <th style="@ThStyle;width:46px">F.Fachada</th>
+                                        <th style="@ThStyle">Cobrador</th>
+                                        <th style="@ThStyle;text-align:right">Abono</th>
+                                        <th style="@ThStyle;text-align:right">Restante</th>
+                                        <th style="@ThStyle">Est.Venta</th>
+                                        <th style="@ThStyle">Est.Cobro</th>
+                                        <th style="@ThStyle;width:46px">GPS</th>
+                                        <th style="@ThStyle">Acciones</th>
+                                        <th style="@ThStyle">Nota</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var zonaGroup in cobGroup.ByZone)
+                                    {
+                                        <!-- Zona separator row -->
+                                        <tr style="background:var(--mud-palette-background-grey);">
+                                            <td colspan="12" style="padding:3px 10px;">
+                                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                                    <MudIcon Icon="@Icons.Material.Filled.Place"
+                                                             Size="Size.Small" Color="Color.Secondary" />
+                                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                        <b>@zonaGroup.ZoneName</b>
+                                                        &nbsp;— @zonaGroup.Payments.Count cobros
+                                                        | @zonaGroup.Payments.Sum(p => p.Amount).ToString("C0")
+                                                    </MudText>
+                                                </MudStack>
+                                            </td>
+                                        </tr>
+
+                                        <!-- Payment rows (click → sale detail) -->
+                                        @foreach (var pago in zonaGroup.Payments)
+                                        {
+                                            <tr @onclick="@(() => Nav.NavigateTo("/ventas/" + pago.SaleId))"
+                                                style="cursor:pointer" class="payment-row">
+                                                <!-- ID -->
+                                                <td style="@TdStyle;white-space:nowrap">
+                                                    <MudText Typo="Typo.caption">#@pago.PaymentId</MudText>
+                                                    <MudText Typo="Typo.caption" Color="Color.Secondary"
+                                                             Style="font-size:.7rem">V#@pago.SaleId</MudText>
+                                                </td>
+                                                <!-- Cliente + hora -->
+                                                <td style="@TdStyle;min-width:130px">
+                                                    <MudText Typo="Typo.body2" Class="fw-medium">@pago.CustomerName</MudText>
+                                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                        @pago.PaymentDate.ToString("HH:mm")
+                                                    </MudText>
+                                                </td>
+                                                <!-- Foto cliente -->
+                                                <td style="@TdStyle;text-align:center;padding:4px">
+                                                    @if (!string.IsNullOrWhiteSpace(pago.CustomerPhotoUrl))
+                                                    {
+                                                        <MudTooltip>
+                                                            <ChildContent>
+                                                                <MudAvatar Size="Size.Small"
+                                                                           Image="@Api.GetPhotoUrl(pago.CustomerPhotoUrl)"
+                                                                           Style="border:2px solid var(--mud-palette-primary)" />
+                                                            </ChildContent>
+                                                            <TooltipContent>
+                                                                <img src="@Api.GetPhotoUrl(pago.CustomerPhotoUrl)"
+                                                                     style="max-width:180px;max-height:180px;border-radius:6px"
+                                                                     alt="foto cliente" />
+                                                            </TooltipContent>
+                                                        </MudTooltip>
+                                                    }
+                                                    else
+                                                    {
+                                                        <MudAvatar Size="Size.Small" Color="Color.Primary"
+                                                                   Variant="Variant.Outlined">
+                                                            <MudIcon Icon="@Icons.Material.Outlined.Person"
+                                                                     Size="Size.Small" />
+                                                        </MudAvatar>
+                                                    }
+                                                </td>
+                                                <!-- Foto fachada -->
+                                                <td style="@TdStyle;text-align:center;padding:4px">
+                                                    @if (!string.IsNullOrWhiteSpace(pago.FacadePhotoUrl))
+                                                    {
+                                                        <MudTooltip>
+                                                            <ChildContent>
+                                                                <MudAvatar Size="Size.Small"
+                                                                           Image="@Api.GetPhotoUrl(pago.FacadePhotoUrl)"
+                                                                           Style="border:2px solid var(--mud-palette-secondary);border-radius:4px" />
+                                                            </ChildContent>
+                                                            <TooltipContent>
+                                                                <img src="@Api.GetPhotoUrl(pago.FacadePhotoUrl)"
+                                                                     style="max-width:200px;max-height:200px;border-radius:6px"
+                                                                     alt="foto fachada" />
+                                                            </TooltipContent>
+                                                        </MudTooltip>
+                                                    }
+                                                    else
+                                                    {
+                                                        <MudAvatar Size="Size.Small" Color="Color.Secondary"
+                                                                   Variant="Variant.Outlined"
+                                                                   Style="border-radius:4px">
+                                                            <MudIcon Icon="@Icons.Material.Outlined.Home"
+                                                                     Size="Size.Small" />
+                                                        </MudAvatar>
+                                                    }
+                                                </td>
+                                                <!-- Cobrador -->
+                                                <td style="@TdStyle">
+                                                    <MudText Typo="Typo.caption">@pago.CollectorName</MudText>
+                                                </td>
+                                                <!-- Monto abono -->
+                                                <td style="@TdStyle;text-align:right">
+                                                    <MudText Typo="Typo.body2" Class="fw-bold" Color="Color.Success">
+                                                        @pago.Amount.ToString("C2")
+                                                    </MudText>
+                                                </td>
+                                                <!-- Monto restante -->
+                                                <td style="@TdStyle;text-align:right">
+                                                    @if (pago.SaleBalance.HasValue)
+                                                    {
+                                                        <MudText Typo="Typo.body2"
+                                                                 Color="@(pago.SaleBalance.Value > 0
+                                                                     ? Color.Warning : Color.Success)">
+                                                            @pago.SaleBalance.Value.ToString("C2")
+                                                        </MudText>
+                                                    }
+                                                    else
+                                                    {
+                                                        <MudText Typo="Typo.caption" Color="Color.Secondary">—</MudText>
+                                                    }
+                                                </td>
+                                                <!-- Estatus venta -->
+                                                <td style="@TdStyle">
+                                                    @if (!string.IsNullOrEmpty(pago.SaleStatus))
+                                                    {
+                                                        <MudChip T="string" Size="Size.Small"
+                                                                 Color="@SaleStatusColor(pago.SaleStatus)"
+                                                                 Style="font-size:.7rem;height:22px">
+                                                            @pago.SaleStatus
+                                                        </MudChip>
+                                                    }
+                                                </td>
+                                                <!-- Estatus cobro -->
+                                                <td style="@TdStyle">
+                                                    <MudChip T="string" Size="Size.Small"
+                                                             Color="@PayStatusColor(pago.Status)"
+                                                             Style="font-size:.7rem;height:22px">
+                                                        @pago.Status
+                                                    </MudChip>
+                                                </td>
+                                                <!-- GPS (stopPropagation so click doesn't navigate) -->
+                                                <td style="@TdStyle;text-align:center"
+                                                    @onclick:stopPropagation="true">
+                                                    @if (pago.HasGps)
+                                                    {
+                                                        <MudTooltip
+                                                            Text="@($"Ver en mapa ({pago.GpsLatitude:F5}, {pago.GpsLongitude:F5})")">
+                                                            <MudIconButton Icon="@Icons.Material.Filled.LocationOn"
+                                                                           Color="Color.Success" Size="Size.Small"
+                                                                           OnClick="@(() => OpenMap(pago))" />
+                                                        </MudTooltip>
+                                                    }
+                                                    else
+                                                    {
+                                                        <MudIcon Icon="@Icons.Material.Outlined.LocationOff"
+                                                                 Color="Color.Default" Size="Size.Small" />
+                                                    }
+                                                </td>
+                                                <!-- Acciones -->
+                                                <td style="@TdStyle;white-space:nowrap"
+                                                    @onclick:stopPropagation="true">
+                                                    <AuthorizeView Roles="AdminFull,Admin,Supervisor" Context="auth">
+                                                        <Authorized>
+                                                            @if (pago.Status.ToLower() == "pendiente")
+                                                            {
+                                                                <MudTooltip Text="Aprobar">
+                                                                    <MudIconButton
+                                                                        Icon="@Icons.Material.Filled.CheckCircle"
+                                                                        Color="Color.Success" Size="Size.Small"
+                                                                        OnClick="@(() => ApproveAsync(pago))" />
+                                                                </MudTooltip>
+                                                                <MudTooltip Text="Rechazar">
+                                                                    <MudIconButton
+                                                                        Icon="@Icons.Material.Filled.Cancel"
+                                                                        Color="Color.Error" Size="Size.Small"
+                                                                        OnClick="@(() => RejectAsync(pago))" />
+                                                                </MudTooltip>
+                                                            }
+                                                        </Authorized>
+                                                    </AuthorizeView>
+                                                    <MudTooltip Text="Ver detalle de venta">
+                                                        <MudIconButton Icon="@Icons.Material.Filled.OpenInNew"
+                                                                       Size="Size.Small" Color="Color.Default"
+                                                                       OnClick="@(() => Nav.NavigateTo("/ventas/" + pago.SaleId))" />
+                                                    </MudTooltip>
+                                                </td>
+                                                <!-- Nota -->
+                                                <td style="@TdStyle;max-width:160px">
+                                                    @if (!string.IsNullOrWhiteSpace(pago.Notes))
+                                                    {
+                                                        <MudTooltip Text="@pago.Notes" Placement="Placement.Left">
+                                                            <MudStack Row="true" AlignItems="AlignItems.Center"
+                                                                      Spacing="1">
+                                                                <MudIcon Icon="@Icons.Material.Filled.StickyNote2"
+                                                                         Size="Size.Small" Color="Color.Info" />
+                                                                <MudText Typo="Typo.caption"
+                                                                         Style="overflow:hidden;text-overflow:ellipsis;
+                                                                                white-space:nowrap;max-width:120px">
+                                                                    @pago.Notes
+                                                                </MudText>
+                                                            </MudStack>
+                                                        </MudTooltip>
+                                                    }
+                                                    else
+                                                    {
+                                                        <MudText Typo="Typo.caption" Color="Color.Secondary">—</MudText>
+                                                    }
+                                                </td>
+                                            </tr>
+                                        }
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </ChildContent>
+            </MudExpansionPanel>
+        }
+    </MudExpansionPanels>
+}
+
+<style>
+    .payment-row:hover { background: var(--mud-palette-action-hover) !important; }
+</style>
 
 @code {
-    private bool _loading;
-    private bool _onlyGps;
-    private string _search       = string.Empty;
-    private string _statusFilter = string.Empty;
-    private List<PaymentDto> _all      = new();
-    private List<PaymentDto> _filtered = new();
-    private int _pending => _all.Count(p => p.Status?.ToLower() == "pendiente");
+    // ── state ──────────────────────────────────────────────────────────────
+    private bool             _loading;
+    private bool             _onlyGps;
+    private string           _search         = string.Empty;
+    private string           _statusFilter   = string.Empty;
+    private string           _cobradorFilter = string.Empty;
+    private string           _zonaFilter     = string.Empty;
+    private DateTime?        _filterDate     = DateTime.Today;
+    private List<PaymentDto> _all            = new();
+    private List<PaymentDto> _filtered       = new();
+    private List<string>     _cobradores     = new();
+    private List<string>     _zonas          = new();
+    private List<DayGroup>   _grouped        = new();
 
+    // ── layout constants ───────────────────────────────────────────────────
+    private const string ThStyle =
+        "padding:6px 8px;text-align:left;font-size:.78rem;font-weight:600;" +
+        "border-bottom:2px solid var(--mud-palette-divider);white-space:nowrap";
+    private const string TdStyle =
+        "padding:5px 8px;border-bottom:1px solid var(--mud-palette-divider);vertical-align:middle";
+
+    // ── grouping model ─────────────────────────────────────────────────────
+    private record ZonaGroup(string ZoneName, List<PaymentDto> Payments);
+    private record CobradorGroup(string CollectorName, List<ZonaGroup> ByZone, decimal Total, int Count);
+    private record DayGroup(
+        DateTime            Date,
+        List<CobradorGroup> ByCollector,
+        decimal             Total,
+        int                 Count,
+        decimal             ApprovedTotal,
+        int                 PendingCount)
+    {
+        public bool IsToday => Date.Date == DateTime.Today;
+    }
+
+    // ── lifecycle ──────────────────────────────────────────────────────────
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
     private async Task LoadAsync()
     {
         _loading = true;
-        _all     = await Api.GetAsync<List<PaymentDto>>("api/payments") ?? new();
+        _all = await Api.GetAsync<List<PaymentDto>>("api/payments") ?? new();
+        _cobradores = _all.Select(p => p.CollectorName).Where(c => !string.IsNullOrEmpty(c))
+                         .Distinct().Order().ToList();
+        _zonas = _all.Select(p => p.ZoneName ?? "").Where(z => !string.IsNullOrEmpty(z))
+                     .Distinct().Order().ToList();
         ApplyFilter();
         _loading = false;
     }
 
-    private void OnSearchChanged(string s)  { _search       = s; ApplyFilter(); }
-    private void OnStatusChanged(string s)  { _statusFilter = s; ApplyFilter(); }
-    private void OnGpsChanged(bool v)        { _onlyGps      = v; ApplyFilter(); }
-    private void SetFilter(string status)   { _statusFilter = status; ApplyFilter(); }
+    // ── filtering + grouping ───────────────────────────────────────────────
+    private void OnSearchChanged(string s) { _search = s; ApplyFilter(); }
 
     private void ApplyFilter()
     {
         var q = _all.AsEnumerable();
+
         if (!string.IsNullOrWhiteSpace(_search))
-            q = q.Where(p => p.CustomerName.Contains(_search, StringComparison.OrdinalIgnoreCase)
-                          || p.CollectorName.Contains(_search, StringComparison.OrdinalIgnoreCase));
+            q = q.Where(p =>
+                p.CustomerName.Contains(_search, StringComparison.OrdinalIgnoreCase) ||
+                p.CollectorName.Contains(_search, StringComparison.OrdinalIgnoreCase));
+
         if (!string.IsNullOrEmpty(_statusFilter))
             q = q.Where(p => p.Status.Equals(_statusFilter, StringComparison.OrdinalIgnoreCase));
-        if (_onlyGps) q = q.Where(p => p.HasGps);
+
+        if (!string.IsNullOrEmpty(_cobradorFilter))
+            q = q.Where(p => p.CollectorName == _cobradorFilter);
+
+        if (!string.IsNullOrEmpty(_zonaFilter))
+            q = q.Where(p => (p.ZoneName ?? "") == _zonaFilter);
+
+        if (_onlyGps)
+            q = q.Where(p => p.HasGps);
+
+        if (_filterDate.HasValue)
+            q = q.Where(p => p.PaymentDate.Date == _filterDate.Value.Date);
+
         _filtered = q.ToList();
+
+        _grouped = _filtered
+            .GroupBy(p => p.PaymentDate.Date)
+            .OrderByDescending(g => g.Key)
+            .Select(dayG => new DayGroup(
+                Date: dayG.Key,
+                ByCollector: dayG
+                    .GroupBy(p => p.CollectorName)
+                    .OrderBy(g => g.Key)
+                    .Select(cobG => new CobradorGroup(
+                        CollectorName: cobG.Key,
+                        ByZone: cobG
+                            .GroupBy(p => p.ZoneName ?? "Sin zona")
+                            .OrderBy(g => g.Key)
+                            .Select(zG => new ZonaGroup(
+                                ZoneName: zG.Key,
+                                Payments: zG.OrderBy(p => p.CustomerName).ToList()))
+                            .ToList(),
+                        Total: cobG.Sum(p => p.Amount),
+                        Count: cobG.Count()))
+                    .ToList(),
+                Total:         dayG.Sum(p => p.Amount),
+                Count:         dayG.Count(),
+                ApprovedTotal: dayG.Where(p => p.Status.ToLower() == "aprobado").Sum(p => p.Amount),
+                PendingCount:  dayG.Count(p => p.Status.ToLower() == "pendiente")))
+            .ToList();
     }
 
+    // ── actions ────────────────────────────────────────────────────────────
     private async Task ApproveAsync(PaymentDto p)
     {
         var ok = await Api.PutAsync<object>($"api/payments/{p.PaymentId}/approve", new { });
         if (ok) { Notify.Success($"Cobro #{p.PaymentId} aprobado"); await LoadAsync(); }
-        else    Notify.Error("Error al aprobar");
+        else      Notify.Error("Error al aprobar");
     }
 
     private async Task RejectAsync(PaymentDto p)
     {
-        var result = await Dialog.ShowMessageBox("Rechazar cobro",
-            $"Rechazar cobro #{p.PaymentId} de {p.CustomerName}?", "Si", cancelText: "Cancelar");
-        if (result == true)
+        var confirmed = await Dialog.ShowMessageBox(
+            "Rechazar cobro",
+            $"¿Rechazar cobro #{p.PaymentId} de {p.CustomerName}?",
+            yesText: "Sí, rechazar", cancelText: "Cancelar");
+        if (confirmed == true)
         {
             var ok = await Api.PutAsync<object>($"api/payments/{p.PaymentId}/reject", new { });
             if (ok) { Notify.Success("Cobro rechazado"); await LoadAsync(); }
-            else    Notify.Error("Error al rechazar");
+            else      Notify.Error("Error al rechazar");
         }
     }
 
-    private static Color StatusColor(string s) => s?.ToLower() switch
-    { "aprobado" => Color.Success, "rechazado" => Color.Error, "pendiente" => Color.Warning, _ => Color.Default };
+    private void OpenMap(PaymentDto p)
+    {
+        var url = $"https://www.google.com/maps?q={p.GpsLatitude},{p.GpsLongitude}";
+        Nav.NavigateTo(url, forceLoad: true);
+    }
+
+    // ── color helpers ──────────────────────────────────────────────────────
+    private static Color PayStatusColor(string s) => s?.ToLower() switch
+    {
+        "aprobado"  => Color.Success,
+        "rechazado" => Color.Error,
+        "pendiente" => Color.Warning,
+        _           => Color.Default
+    };
+
+    private static Color SaleStatusColor(string s) => s?.ToLower() switch
+    {
+        "activa"     => Color.Primary,
+        "completada" => Color.Success,
+        "cancelada"  => Color.Error,
+        _            => Color.Default
+    };
 }

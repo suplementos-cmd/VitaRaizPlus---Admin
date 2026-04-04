@@ -73,6 +73,11 @@ public class SalePhotoRepository : BaseOracleRepository, ISalePhotoRepository
         return photos;
     }
 
+    public async Task<SalePhoto?> GetPhotoByIdAsync(int photoId)
+    {
+        return await _context.SalePhotos.FindAsync(photoId);
+    }
+
     public async Task<bool> DeleteSalePhotoAsync(int photoId)
     {
         var connection = await GetOpenConnectionAsync();

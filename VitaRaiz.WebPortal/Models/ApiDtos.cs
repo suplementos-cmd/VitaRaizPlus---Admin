@@ -61,10 +61,10 @@ public class ProductDto
 
 public class RoleDto
 {
-    public int    RoleId      { get; set; }
-    public string RoleName    { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
-    public string DefaultThemeColor   { get; set; } = "#607D8B";
+    public int     RoleId            { get; set; }
+    public string  RoleName          { get; set; } = string.Empty;
+    public string? Description       { get; set; }
+    public string  DefaultThemeColor { get; set; } = "#607D8B";
 }
 
 public class UserDto
@@ -111,6 +111,7 @@ public class SaleDto
     public decimal  PaidAmount      { get; set; }
     public decimal  Balance         { get; set; }
     public DateTime SaleDate        { get; set; }
+    public DateTime? FirstPaymentDate { get; set; }
     public string   Status          { get; set; } = string.Empty;
     public string   PaymentTerm     { get; set; } = string.Empty;
     public int      PaymentTermDays { get; set; }
@@ -119,6 +120,9 @@ public class SaleDto
     public string   Notes           { get; set; } = string.Empty;
     public string   RiskStatus      { get; set; } = "VERDE";
     public double   PaymentProgress => TotalAmount > 0 ? (double)(PaidAmount / TotalAmount) : 0;
+    public bool     IsGoldCustomer  { get; set; }
+    public bool     IsBlacklisted   { get; set; }
+    public string?  ProductName     { get; set; }
 }
 
 public class SaleDetailDto
@@ -132,13 +136,27 @@ public class SaleDetailDto
     public decimal Subtotal    { get; set; }
 }
 
+public class SalePhotoDto
+{
+    public int     PhotoId       { get; set; }
+    public string  PhotoType     { get; set; } = string.Empty; // CLIENTE, FACHADA, CONTRATO, ADICIONAL
+    public string  FilePath      { get; set; } = string.Empty;
+    public string? ThumbnailPath { get; set; }
+    public decimal? GpsLatitude  { get; set; }
+    public decimal? GpsLongitude { get; set; }
+    public DateTime UploadedAt  { get; set; }
+}
+
 public class SaleFullDto : SaleDto
 {
     public string?  CustomerPhone        { get; set; }
     public string?  CustomerAddress      { get; set; }
+    public decimal? CustomerGpsLatitude  { get; set; }
+    public decimal? CustomerGpsLongitude { get; set; }
+    public string?  PaymentTerms         { get; set; }
     // API property names differ from WebPortal names — map with JsonPropertyName
-    [JsonPropertyName("customerIsGold")]        public bool     IsGoldCustomer       { get; set; }
-    [JsonPropertyName("customerIsBlacklisted")] public bool     IsBlacklisted        { get; set; }
+    [JsonPropertyName("customerIsGold")]        public new bool  IsGoldCustomer       { get; set; }
+    [JsonPropertyName("customerIsBlacklisted")] public new bool  IsBlacklisted        { get; set; }
     [JsonPropertyName("zoneName")]              public string   CustomerZone         { get; set; } = string.Empty;
     public int?     AssignedCollectorId  { get; set; }
     public string?  CollectorName        { get; set; }
@@ -147,6 +165,7 @@ public class SaleFullDto : SaleDto
     public DateTime? FirstCollectionDate { get; set; }
     public List<SaleDetailDto> Items    { get; set; } = new();
     public List<PaymentDto>    Payments { get; set; } = new();
+    public List<SalePhotoDto>  Photos   { get; set; } = new();
 }
 
 public class PaymentDto
@@ -164,16 +183,30 @@ public class PaymentDto
     public string   Validation    { get; set; } = string.Empty;
     public string   Notes         { get; set; } = string.Empty;
     public bool     HasGps        => GpsLatitude.HasValue && GpsLongitude.HasValue;
+
+    // Enriched
+    public string?  ZoneName         { get; set; }
+    public string?  SaleStatus       { get; set; }
+    public decimal? SaleBalance      { get; set; }
+    public string?  CustomerPhotoUrl { get; set; }
+    public string?  FacadePhotoUrl   { get; set; }
 }
 
 public class ProfileThemeDto
 {
-    public int    ThemeId        { get; set; }
-    public int    RoleId         { get; set; }
-    public string ThemeName      { get; set; } = string.Empty;
-    public string PrimaryColor   { get; set; } = "#607D8B";
-    public string SecondaryColor { get; set; } = "#B0BEC5";
-    public string AccentColor    { get; set; } = "#ECEFF1";
+    public int     ThemeId          { get; set; }
+    public int     RoleId           { get; set; }
+    public string  ThemeName        { get; set; } = string.Empty;
+    public string? RoleName         { get; set; }
+    public string  PrimaryColor     { get; set; } = "#607D8B";
+    public string? SecondaryColor   { get; set; } = "#B0BEC5";
+    public string? AccentColor      { get; set; } = "#ECEFF1";
+    public string? BackgroundColor  { get; set; } = "#FAFAFA";
+    public string? TextColor        { get; set; } = "#333333";
+    public string? TitleTextColor   { get; set; } = "#111111";
+    public string? FormTextColor    { get; set; } = "#444444";
+    public string? MenuTextColor    { get; set; } = "#FFFFFF";
+    public string? IconName         { get; set; }
 }
 
 public class CatalogAppSetting

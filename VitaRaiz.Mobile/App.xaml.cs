@@ -7,9 +7,12 @@ namespace VitaRaiz.Mobile;
 public partial class App : MauiApp
 {
 	// Colores de tema globales accesibles desde cualquier página (se sobreescriben tras login)
-	public static string ThemeColor { get; set; } = "#607D8B";
+	public static string ThemeColor      { get; set; } = "#607D8B";
 	public static string ThemeColorLight { get; set; } = "#B0BEC5";
 	public static string ThemeColorLighter { get; set; } = "#ECEFF1";
+	public static string ThemeTitleTextColor { get; set; } = "#111111";
+	public static string ThemeFormTextColor  { get; set; } = "#444444";
+	public static string ThemeMenuTextColor  { get; set; } = "#FFFFFF";
 
 	public App()
 	{
@@ -21,11 +24,15 @@ public partial class App : MauiApp
 	/// <summary>
 	/// Actualiza los colores del tema globalmente y notifica a todas las páginas
 	/// </summary>
-	public static void UpdateThemeColors(string primary, string light, string lighter)
+	public static void UpdateThemeColors(string primary, string light, string lighter,
+		string? titleText = null, string? formText = null, string? menuText = null)
 	{
-		ThemeColor = primary;
-		ThemeColorLight = light;
-		ThemeColorLighter = lighter;
+		ThemeColor           = primary;
+		ThemeColorLight      = light;
+		ThemeColorLighter    = lighter;
+		ThemeTitleTextColor  = titleText ?? "#111111";
+		ThemeFormTextColor   = formText  ?? "#444444";
+		ThemeMenuTextColor   = menuText  ?? "#FFFFFF";
 
 		// Actualizar recursos globales para que todas las páginas los usen
 		if (Current?.Resources != null)
@@ -38,6 +45,9 @@ public partial class App : MauiApp
 			Current.Resources["ThemeColorHex"]        = primary;
 			Current.Resources["ThemeColorLightHex"]   = light;
 			Current.Resources["ThemeColorLighterHex"] = lighter;
+			Current.Resources["ThemeTitleTextColor"]  = Color.FromArgb(ThemeTitleTextColor);
+			Current.Resources["ThemeFormTextColor"]   = Color.FromArgb(ThemeFormTextColor);
+			Current.Resources["ThemeMenuTextColor"]   = Color.FromArgb(ThemeMenuTextColor);
 
 			// Update Shell tab bar title color when navigation is already active
 			MainThread.BeginInvokeOnMainThread(() =>

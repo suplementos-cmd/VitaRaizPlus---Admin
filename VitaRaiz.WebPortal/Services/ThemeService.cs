@@ -9,10 +9,16 @@ public class ThemeService
     private static readonly Logger _log = LogManager.GetCurrentClassLogger();
 
     // Current applied theme
-    public string PrimaryColor   { get; private set; } = "#607D8B";
-    public string SecondaryColor { get; private set; } = "#B0BEC5";
-    public string AccentColor    { get; private set; } = "#ECEFF1";
-    public string PrimaryDark    => DarkenColor(PrimaryColor, 20);
+    public string PrimaryColor    { get; private set; } = "#607D8B";
+    public string SecondaryColor  { get; private set; } = "#B0BEC5";
+    public string AccentColor     { get; private set; } = "#ECEFF1";
+    public string BackgroundColor { get; private set; } = "#FAFAFA";
+    public string TextColor       { get; private set; } = "#333333";
+    public string TitleTextColor  { get; private set; } = "#111111";
+    public string FormTextColor   { get; private set; } = "#444444";
+    public string MenuTextColor   { get; private set; } = "#FFFFFF";
+    public string IconName        { get; private set; } = string.Empty;
+    public string PrimaryDark     => DarkenColor(PrimaryColor, 20);
 
     public event Action? ThemeChanged;
 
@@ -23,7 +29,11 @@ public class ThemeService
         try
         {
             var theme = await _api.GetAsync<ProfileThemeDto>($"api/catalogs/theme/role/{roleId}");
-            if (theme is not null) Apply(theme.PrimaryColor, theme.SecondaryColor, theme.AccentColor);
+            if (theme is not null)
+                Apply(theme.PrimaryColor, theme.SecondaryColor, theme.AccentColor,
+                      theme.BackgroundColor, theme.TextColor,
+                      theme.TitleTextColor, theme.FormTextColor, theme.MenuTextColor,
+                      theme.IconName);
         }
         catch (Exception ex)
         {
@@ -31,11 +41,20 @@ public class ThemeService
         }
     }
 
-    public void Apply(string primary, string? secondary = null, string? accent = null)
+    public void Apply(string primary, string? secondary = null, string? accent = null,
+                       string? background = null, string? text = null,
+                       string? titleText = null, string? formText = null,
+                       string? menuText = null, string? icon = null)
     {
-        PrimaryColor   = primary;
-        SecondaryColor = secondary ?? DarkenColor(primary, -30);
-        AccentColor    = accent    ?? DarkenColor(primary, -60);
+        PrimaryColor    = primary;
+        SecondaryColor  = secondary   ?? DarkenColor(primary, -30);
+        AccentColor     = accent      ?? DarkenColor(primary, -60);
+        BackgroundColor = background  ?? "#FAFAFA";
+        TextColor       = text        ?? "#333333";
+        TitleTextColor  = titleText   ?? "#111111";
+        FormTextColor   = formText    ?? "#444444";
+        MenuTextColor   = menuText    ?? "#FFFFFF";
+        IconName        = icon        ?? string.Empty;
         ThemeChanged?.Invoke();
     }
 
@@ -57,10 +76,16 @@ public class ThemeService
     {
         PaletteLight = new MudBlazor.PaletteLight
         {
-            Primary      = PrimaryColor,
-            PrimaryDarken  = PrimaryDark,
-            Secondary    = SecondaryColor,
+            Primary          = PrimaryColor,
+            PrimaryDarken    = PrimaryDark,
+            Secondary        = SecondaryColor,
+            Tertiary         = AccentColor,
+            Background       = BackgroundColor,
             AppbarBackground = PrimaryColor,
+            AppbarText       = MenuTextColor,
+            DrawerBackground = PrimaryColor,
+            DrawerText       = MenuTextColor,
+            TextPrimary      = TextColor,
         },
         PaletteDark = new MudBlazor.PaletteDark
         {
@@ -68,4 +93,17 @@ public class ThemeService
             Secondary = SecondaryColor,
         }
     };
+
+    /// <summary>Genera un bloque &lt;style&gt; con CSS custom properties para usar en Razor con @@ThemeSvc.CssVars</summary>
+    public string CssVars =>
+        $":root{{" +
+        $"--theme-primary:{PrimaryColor};" +
+        $"--theme-secondary:{SecondaryColor};" +
+        $"--theme-accent:{AccentColor};" +
+        $"--theme-background:{BackgroundColor};" +
+        $"--theme-text:{TextColor};" +
+        $"--theme-title-text:{TitleTextColor};" +
+        $"--theme-form-text:{FormTextColor};" +
+        $"--theme-menu-text:{MenuTextColor};" +
+        $"}}";
 }
