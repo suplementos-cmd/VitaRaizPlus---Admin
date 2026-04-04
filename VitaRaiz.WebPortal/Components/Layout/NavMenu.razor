@@ -1,98 +1,43 @@
-﻿@inject CustomAuthenticationStateProvider AuthStateProvider
-@inject NavigationManager NavigationManager
+﻿@inject NavigationManager Nav
+@inject PermissionsService Perms
+@inject AuthService AuthSvc
 
-<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">🌿 VitaRaiz Admin</a>
-        <AuthorizeView>
-            <Authorized>
-                <div class="user-info">
-                    <span class="user-icon">👤</span>
-                    <span class="username">@context.User.Identity?.Name</span>
-                    <button class="btn btn-sm btn-outline-light ms-2" @onclick="Logout">
-                        <span class="bi bi-box-arrow-right"></span> Salir
-                    </button>
-                </div>
-            </Authorized>
-        </AuthorizeView>
-    </div>
-</div>
+<MudNavMenu>
+    <!-- -- Dashboard -- -->
+    <MudNavLink Href="/dashboard" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">
+        Dashboard
+    </MudNavLink>
 
-<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+    <!-- -- Operaciones -- -->
+    <MudNavGroup Title="Operaciones" Icon="@Icons.Material.Filled.Business" Expanded="true">
+        <MudNavLink Href="/ventas" Icon="@Icons.Material.Filled.ShoppingCart">Ventas</MudNavLink>
+        <MudNavLink Href="/clientes" Icon="@Icons.Material.Filled.People">Clientes</MudNavLink>
+        <MudNavLink Href="/pagos" Icon="@Icons.Material.Filled.Payment">Cobros</MudNavLink>
+    </MudNavGroup>
 
-<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
-    <nav class="flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="dashboard" Match="NavLinkMatch.All">
-                <span class="bi bi-speedometer2" aria-hidden="true"></span> Dashboard
-            </NavLink>
-        </div>
+    <!-- -- Anlisis -- -->
+    <MudNavGroup Title="Anlisis" Icon="@Icons.Material.Filled.BarChart" Expanded="false">
+        <MudNavLink Href="/reportes" Icon="@Icons.Material.Filled.Assessment">Reportes</MudNavLink>
+    </MudNavGroup>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="clientes">
-                <span class="bi bi-people-fill" aria-hidden="true"></span> Clientes
-            </NavLink>
-        </div>
+    <!-- -- Administracin (admin only) -- -->
+    <AuthorizeView Roles="AdminFull,Admin,admin,adminfull">
+        <Authorized>
+            <MudNavGroup Title="Administracin" Icon="@Icons.Material.Filled.AdminPanelSettings" Expanded="false">
+                <MudNavLink Href="/admin/usuarios" Icon="@Icons.Material.Filled.ManageAccounts">Usuarios</MudNavLink>
+                <MudNavLink Href="/admin/roles" Icon="@Icons.Material.Filled.WorkspacePremium">Roles y Permisos</MudNavLink>
+                <MudNavLink Href="/admin/temas" Icon="@Icons.Material.Filled.Palette">Temas por Rol</MudNavLink>
+                <MudDivider Class="my-1" />
+                <MudText Typo="Typo.overline" Class="px-4 pt-1" Style="opacity:.5">Catlogos</MudText>
+                <MudNavLink Href="/admin/productos" Icon="@Icons.Material.Filled.Inventory">Productos</MudNavLink>
+                <MudNavLink Href="/admin/zonas" Icon="@Icons.Material.Filled.Map">Zonas</MudNavLink>
+                <MudNavLink Href="/admin/estatuses-venta" Icon="@Icons.Material.Filled.Label">Estatus Venta</MudNavLink>
+                <MudNavLink Href="/admin/configuracion" Icon="@Icons.Material.Filled.Settings">Configuracion</MudNavLink>
+            </MudNavGroup>
+        </Authorized>
+    </AuthorizeView>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="ventas">
-                <span class="bi bi-cart-fill" aria-hidden="true"></span> Ventas
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="pagos">
-                <span class="bi bi-cash-coin" aria-hidden="true"></span> Pagos
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="reportes">
-                <span class="bi bi-bar-chart-fill" aria-hidden="true"></span> Reportes
-            </NavLink>
-        </div>
-
-        <AuthorizeView Roles="Admin">
-            <Authorized>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="profile">
-                        <span class="bi bi-person-circle" aria-hidden="true"></span> Mi Perfil
-                    </NavLink>
-                </div>
-            </Authorized>
-        </AuthorizeView>
-    </nav>
-</div>
-
-<style>
-    .user-info {
-        display: flex;
-        align-items: center;
-        color: white;
-        font-size: 14px;
-    }
-
-    .user-icon {
-        font-size: 20px;
-        margin-right: 8px;
-    }
-
-    .username {
-        font-weight: 600;
-    }
-
-    @@media (max-width: 768px) {
-        .user-info {
-            display: none;
-        }
-    }
-</style>
-
-@code {
-    private async Task Logout()
-    {
-        await AuthStateProvider.MarkUserAsLoggedOutAsync();
-        NavigationManager.NavigateTo("/login", forceLoad: true);
-    }
-}
-
+    <!-- -- Mi Perfil -- -->
+    <MudDivider Class="my-2" />
+    <MudNavLink Href="/perfil" Icon="@Icons.Material.Filled.AccountCircle">Mi Perfil</MudNavLink>
+</MudNavMenu>

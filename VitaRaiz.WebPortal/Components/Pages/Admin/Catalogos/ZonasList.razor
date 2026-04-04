@@ -1,0 +1,99 @@
+﻿@page "/admin/zonas"
+@attribute [Authorize(Roles = "AdminFull,Admin")]
+@inject ApiService Api
+@inject NotificationService Notify
+@inject IDialogService Dialog
+
+<PageTitle>Zonas – VitaRaiz</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+    <MudText Typo="Typo.h4" Class="fw-bold">Zonas</MudText>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.AddLocation" OnClick="OpenCreate">Nueva Zona</MudButton>
+</MudStack>
+
+<MudPaper Elevation="2">
+    <MudTable Items="_zones" Hover="true" Dense="true" Loading="_loading" RowsPerPage="20">
+        <HeaderContent>
+            <MudTh>Código</MudTh><MudTh>Nombre</MudTh><MudTh>Descripción</MudTh><MudTh>Estado</MudTh><MudTh>Acciones</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd><MudChip T="string" Size="Size.Small" Color="Color.Primary">@context.ZoneCode</MudChip></MudTd>
+            <MudTd Class="fw-medium">@context.ZoneName</MudTd>
+            <MudTd>@context.Description</MudTd>
+            <MudTd>
+                <MudChip T="string" Size="Size.Small" Color="@(context.IsActive ? Color.Success : Color.Default)">
+                    @(context.IsActive ? "Activa" : "Inactiva")</MudChip>
+            </MudTd>
+            <MudTd>
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="() => OpenEdit(context)" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                               OnClick="() => DeleteAsync(context)" />
+            </MudTd>
+        </RowTemplate>
+        <PagerContent><MudTablePager /></PagerContent>
+    </MudTable>
+</MudPaper>
+
+<MudDialog @bind-IsVisible="_dialogOpen">
+    <TitleContent>@(_editing?.ZoneId > 0 ? "Editar" : "Nueva") Zona</TitleContent>
+    <DialogContent>
+        <MudGrid Spacing="2">
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="_editing!.ZoneCode" Label="Código*" Variant="Variant.Outlined" Required="true" />
+            </MudItem>
+            <MudItem xs="12" sm="8">
+                <MudTextField @bind-Value="_editing.ZoneName" Label="Nombre*" Variant="Variant.Outlined" Required="true" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField @bind-Value="_editing.Description" Label="Descripción" Variant="Variant.Outlined" Lines="2" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudCheckBox @bind-Value="_editing.IsActive" Label="Zona activa" Color="Color.Primary" />
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => _dialogOpen = false">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAsync">Guardar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private bool _loading, _dialogOpen;
+    private List<ZoneDto> _zones = new();
+    private ZoneDto? _editing;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loading = true;
+        _zones   = await Api.GetAsync<List<ZoneDto>>("api/zones") ?? new();
+        _loading = false;
+    }
+
+    private void OpenCreate() { _editing = new ZoneDto { IsActive = true }; _dialogOpen = true; }
+    private void OpenEdit(ZoneDto z)
+    {
+        _editing = new ZoneDto { ZoneId = z.ZoneId, ZoneCode = z.ZoneCode, ZoneName = z.ZoneName,
+                                  Description = z.Description, IsActive = z.IsActive };
+        _dialogOpen = true;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_editing?.ZoneName)) { Notify.Warning("Nombre requerido"); return; }
+        bool ok = _editing.ZoneId > 0
+            ? await Api.PutAsync<ZoneDto>($"api/zones/{_editing.ZoneId}", _editing)
+            : await Api.PostAsync<ZoneDto>("api/zones", _editing);
+        if (ok) { Notify.Success("Guardado"); _dialogOpen = false; await OnInitializedAsync(); }
+        else    Notify.Error("Error al guardar");
+    }
+
+    private async Task DeleteAsync(ZoneDto z)
+    {
+        var ok = await Dialog.ShowMessageBox("Confirmar", $"¿Eliminar zona '{z.ZoneName}'?", "Eliminar", cancelText: "Cancelar");
+        if (ok == true && await Api.DeleteAsync($"api/zones/{z.ZoneId}"))
+        { Notify.Success("Eliminado"); await OnInitializedAsync(); }
+        else if (ok == true) Notify.Error("No se pudo eliminar");
+    }
+}

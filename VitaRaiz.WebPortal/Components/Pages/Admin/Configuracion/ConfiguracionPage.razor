@@ -1,0 +1,82 @@
+﻿@page "/admin/configuracion"
+@attribute [Authorize(Roles = "AdminFull,Admin")]
+@inject ApiService Api
+@inject NotificationService Notify
+
+<PageTitle>Configuracion - VitaRaiz Admin</PageTitle>
+
+<MudText Typo="Typo.h4" Class="fw-bold mb-2">Configuracion del sistema</MudText>
+<MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+    Ajustes globales de la aplicacion. Los cambios se aplican inmediatamente.
+</MudText>
+
+@if (_loading) { <MudProgressLinear Color="Color.Primary" Indeterminate="true" /> }
+else if (!_settings.Any())
+{
+    <MudAlert Severity="Severity.Info">No hay ajustes configurados.</MudAlert>
+}
+else
+{
+    @foreach (var grp in _settings.GroupBy(s => s.Category).OrderBy(g => g.Key))
+    {
+        <MudPaper Elevation="2" Class="mb-4">
+            <MudExpansionPanels>
+                <MudExpansionPanel>
+                    <TitleContent>
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudIcon Icon="@Icons.Material.Filled.Settings" Color="Color.Primary" />
+                            <MudText Typo="Typo.h6">@(string.IsNullOrEmpty(grp.Key) ? "General" : grp.Key)</MudText>
+                            <MudChip T="string" Size="Size.Small" Color="Color.Default">@grp.Count() ajustes</MudChip>
+                        </MudStack>
+                    </TitleContent>
+                    <ChildContent>
+                        <MudDivider />
+                        @foreach (var s in grp)
+                        {
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="pa-2">
+                                <div style="flex:1">
+                                    <MudText Typo="Typo.body2" Class="fw-medium">@s.SettingKey</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">@s.Description</MudText>
+                                </div>
+                                @if (s.SettingType?.ToLower() == "boolean")
+                                {
+                                    var bval = s.SettingValue?.ToLower() == "true";
+                                    <MudSwitch Value="@bval"
+                                               ValueChanged="@((bool v) => { s.SettingValue = v.ToString().ToLower(); })"
+                                               Color="Color.Primary" />
+                                }
+                                else
+                                {
+                                    <MudTextField @bind-Value="s.SettingValue" Variant="Variant.Outlined"
+                                                  Dense="true" Style="min-width:200px" />
+                                }
+                                <MudIconButton Icon="@Icons.Material.Filled.Save" Size="Size.Small"
+                                               Color="Color.Primary" OnClick="() => SaveSettingAsync(s)" />
+                            </MudStack>
+                            <MudDivider />
+                        }
+                    </ChildContent>
+                </MudExpansionPanel>
+            </MudExpansionPanels>
+        </MudPaper>
+    }
+}
+
+@code {
+    private bool _loading;
+    private List<CatalogAppSetting> _settings = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loading  = true;
+        _settings = await Api.GetAsync<List<CatalogAppSetting>>("api/catalogs/settings") ?? new();
+        _loading  = false;
+    }
+
+    private async Task SaveSettingAsync(CatalogAppSetting s)
+    {
+        var ok = await Api.PutAsync<CatalogAppSetting>($"api/catalogs/settings/{s.SettingKey}", s);
+        if (ok) Notify.Success($"'{s.SettingKey}' guardado");
+        else    Notify.Error("Error al guardar");
+    }
+}

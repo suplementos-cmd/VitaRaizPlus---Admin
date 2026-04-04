@@ -1,0 +1,148 @@
+﻿@page "/reportes"
+@attribute [Authorize]
+@inject ApiService Api
+
+<PageTitle>Reportes – VitaRaiz</PageTitle>
+
+<MudText Typo="Typo.h4" Class="fw-bold mb-4">Reportes</MudText>
+
+<MudGrid Spacing="3">
+    <!-- Filters bar -->
+    <MudItem xs="12">
+        <MudPaper Class="pa-3" Elevation="1">
+            <MudGrid Spacing="2" AlignItems="AlignItems.Center">
+                <MudItem xs="12" sm="3">
+                    <MudDatePicker @bind-Date="_from" Label="Desde" Variant="Variant.Outlined" Dense="true" />
+                </MudItem>
+                <MudItem xs="12" sm="3">
+                    <MudDatePicker @bind-Date="_to" Label="Hasta" Variant="Variant.Outlined" Dense="true" />
+                </MudItem>
+                <MudItem xs="12" sm="2">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
+                               StartIcon="@Icons.Material.Filled.BarChart" OnClick="LoadAsync">Generar</MudButton>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+    </MudItem>
+
+    <!-- KPI cards -->
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pa-4 d-flex flex-column align-center" Elevation="3" Style="border-top:4px solid #1976D2">
+            <MudIcon Icon="@Icons.Material.Filled.ShoppingCart" Size="Size.Large" Color="Color.Primary" />
+            <MudText Typo="Typo.h4" Class="mt-2 fw-bold">@_stats?.TotalSalesToday</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">Ventas del período</MudText>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pa-4 d-flex flex-column align-center" Elevation="3" Style="border-top:4px solid #388E3C">
+            <MudIcon Icon="@Icons.Material.Filled.Payments" Size="Size.Large" Color="Color.Success" />
+            <MudText Typo="Typo.h4" Class="mt-2 fw-bold">@_stats?.TotalCollectedToday.ToString("C0")</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">Cobrado en período</MudText>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pa-4 d-flex flex-column align-center" Elevation="3" Style="border-top:4px solid #F57C00">
+            <MudIcon Icon="@Icons.Material.Filled.Warning" Size="Size.Large" Color="Color.Warning" />
+            <MudText Typo="Typo.h4" Class="mt-2 fw-bold">@_stats?.PendingApprovals</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">Cobros pendientes</MudText>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pa-4 d-flex flex-column align-center" Elevation="3" Style="border-top:4px solid #D32F2F">
+            <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Size="Size.Large" Color="Color.Error" />
+            <MudText Typo="Typo.h4" Class="mt-2 fw-bold">@_stats?.OverdueAccounts</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">Cuentas vencidas</MudText>
+        </MudPaper>
+    </MudItem>
+
+    <!-- Sales by Status -->
+    <MudItem xs="12" md="6">
+        <MudPaper Elevation="2">
+            <MudText Typo="Typo.h6" Class="pa-3">Ventas por estatus</MudText>
+            @if (_sales.Any())
+            {
+                @foreach (var grp in _sales.GroupBy(s => s.Status).OrderBy(g => g.Key))
+                {
+                    var pct = _sales.Count > 0 ? (double)grp.Count() / _sales.Count * 100 : 0;
+                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="px-3 py-1">
+                        <MudChip T="string" Size="Size.Small" Color="@StatusColor(grp.Key)">@grp.Key</MudChip>
+                        <MudProgressLinear Value="@pct" Color="@StatusColor(grp.Key)" Rounded="true" Size="Size.Small" Style="flex:1" />
+                        <MudText Typo="Typo.body2" Style="min-width:60px;text-align:right">@grp.Count() (@pct.ToString("F0")%)</MudText>
+                    </MudStack>
+                }
+            }
+            else { <MudText Class="pa-3" Color="Color.Secondary">Sin datos</MudText> }
+        </MudPaper>
+    </MudItem>
+
+    <!-- Risk Distribution -->
+    <MudItem xs="12" md="6">
+        <MudPaper Elevation="2">
+            <MudText Typo="Typo.h6" Class="pa-3">Distribución de riesgo</MudText>
+            @{ var active = _sales.Where(s => s.Status?.ToLower() == "activa").ToList(); }
+            @foreach (var (risk, color) in new[] { ("VERDE","success"), ("AMARILLO","warning"), ("ROJO","error") })
+            {
+                var count = active.Count(s => s.RiskStatus == risk);
+                var pct   = active.Count > 0 ? (double)count / active.Count * 100 : 0;
+                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="px-3 py-1">
+                    <MudText Style="min-width:80px">@RiskLabel(risk)</MudText>
+                    <MudProgressLinear Value="@pct" Color="@RiskColor(risk)" Rounded="true" Size="Size.Small" Style="flex:1" />
+                    <MudText Typo="Typo.body2" Style="min-width:60px;text-align:right">@count (@pct.ToString("F0")%)</MudText>
+                </MudStack>
+            }
+        </MudPaper>
+    </MudItem>
+
+    <!-- Recent sales table -->
+    <MudItem xs="12">
+        <MudPaper Elevation="2">
+            <MudText Typo="Typo.h6" Class="pa-3">Detalle de ventas</MudText>
+            <MudTable Items="_sales" Dense="true" Hover="true" RowsPerPage="15">
+                <HeaderContent>
+                    <MudTh>ID</MudTh><MudTh>Cliente</MudTh><MudTh>Vendedor</MudTh>
+                    <MudTh>Total</MudTh><MudTh>Cobrado</MudTh><MudTh>Saldo</MudTh>
+                    <MudTh>Riesgo</MudTh><MudTh>Estatus</MudTh><MudTh>Fecha</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>#@context.SaleId</MudTd>
+                    <MudTd>@context.CustomerName</MudTd>
+                    <MudTd>@context.SellerName</MudTd>
+                    <MudTd>@context.TotalAmount.ToString("C2")</MudTd>
+                    <MudTd>@context.PaidAmount.ToString("C2")</MudTd>
+                    <MudTd>@context.Balance.ToString("C2")</MudTd>
+                    <MudTd><MudChip T="string" Size="Size.Small" Color="@RiskColor(context.RiskStatus)">@context.RiskStatus</MudChip></MudTd>
+                    <MudTd><MudChip T="string" Size="Size.Small" Color="@StatusColor(context.Status)">@context.Status</MudChip></MudTd>
+                    <MudTd>@context.SaleDate.ToString("dd/MM/yy")</MudTd>
+                </RowTemplate>
+                <PagerContent><MudTablePager /></PagerContent>
+            </MudTable>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@code {
+    private DateTime? _from = DateTime.Today.AddDays(-30);
+    private DateTime? _to   = DateTime.Today;
+    private DashboardStats? _stats;
+    private List<SaleDto>   _sales = new();
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        var qs = new Dictionary<string, string?>();
+        if (_from.HasValue) qs["startDate"] = _from.Value.ToString("yyyy-MM-dd");
+        if (_to.HasValue)   qs["endDate"]   = _to.Value.ToString("yyyy-MM-dd");
+        var statsTask = Api.GetAsync<DashboardStats>("api/sales/stats", qs);
+        var salesTask = Api.GetAsync<List<SaleDto>>("api/sales", qs);
+        _stats = await statsTask;
+        _sales = await salesTask ?? new();
+    }
+
+    private static Color StatusColor(string s) => s?.ToLower() switch
+    { "activa" => Color.Primary, "completada" => Color.Success, "cancelada" => Color.Error, _ => Color.Default };
+    private static Color RiskColor(string r) => r switch
+    { "ROJO" => Color.Error, "AMARILLO" => Color.Warning, _ => Color.Success };
+    private static string RiskLabel(string r) => r switch
+    { "ROJO" => "🔴 Vencida", "AMARILLO" => "🟡 Atrasada", _ => "🟢 Corriente" };
+}

@@ -1,0 +1,135 @@
+﻿@page "/admin/productos"
+@attribute [Authorize(Roles = "AdminFull,Admin")]
+@inject ApiService Api
+@inject NotificationService Notify
+@inject IDialogService Dialog
+
+<PageTitle>Productos – VitaRaiz</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+    <MudText Typo="Typo.h4" Class="fw-bold">Productos</MudText>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Add" OnClick="OpenCreate">Nuevo Producto</MudButton>
+</MudStack>
+
+<MudPaper Class="pa-3 mb-4" Elevation="1">
+    <MudTextField Value="@_search" ValueChanged="@((string s) => OnSearchChanged(s))"
+                  Label="Buscar producto..." Variant="Variant.Outlined"
+                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                  Clearable="true" Dense="true" Immediate="true" />
+</MudPaper>
+
+<MudPaper Elevation="2">
+    <MudTable Items="_filtered" Hover="true" Dense="true" Loading="_loading" RowsPerPage="20">
+        <ToolBarContent>
+            <MudText Typo="Typo.subtitle1">@_filtered.Count productos</MudText>
+        </ToolBarContent>
+        <HeaderContent>
+            <MudTh>Producto</MudTh><MudTh>Descripción</MudTh><MudTh>Categoría</MudTh>
+            <MudTh>Precio</MudTh><MudTh>Stock</MudTh><MudTh>Estado</MudTh><MudTh>Acciones</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd Class="fw-medium">@context.ProductName</MudTd>
+            <MudTd>@context.Description</MudTd>
+            <MudTd><MudChip T="string" Size="Size.Small" Color="Color.Info">@context.Category</MudChip></MudTd>
+            <MudTd Class="fw-bold">@context.UnitPrice.ToString("C2")</MudTd>
+            <MudTd>
+                <MudText Color="@(context.Stock < 5 ? Color.Error : Color.Default)">@context.Stock</MudText>
+            </MudTd>
+            <MudTd>
+                <MudChip T="string" Size="Size.Small" Color="@(context.IsActive ? Color.Success : Color.Default)">
+                    @(context.IsActive ? "Activo" : "Inactivo")
+                </MudChip>
+            </MudTd>
+            <MudTd>
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="() => OpenEdit(context)" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                               OnClick="() => DeleteAsync(context)" />
+            </MudTd>
+        </RowTemplate>
+        <PagerContent><MudTablePager /></PagerContent>
+    </MudTable>
+</MudPaper>
+
+<MudDialog @bind-IsVisible="_dialogOpen">
+    <TitleContent>@(_editing?.ProductId > 0 ? "Editar" : "Nuevo") Producto</TitleContent>
+    <DialogContent>
+        <MudGrid Spacing="2">
+            <MudItem xs="12">
+                <MudTextField @bind-Value="_editing!.ProductName" Label="Nombre*" Variant="Variant.Outlined" Required="true" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField @bind-Value="_editing.Description" Label="Descripción" Variant="Variant.Outlined" Lines="2" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="_editing.Category" Label="Categoría" Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudNumericField @bind-Value="_editing.UnitPrice" Label="Precio unitario*" Variant="Variant.Outlined"
+                                 Format="F2" Min="0" Required="true" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudNumericField @bind-Value="_editing.Stock" Label="Stock" Variant="Variant.Outlined" Min="0" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudCheckBox @bind-Value="_editing.IsActive" Label="Producto activo" Color="Color.Primary" />
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => _dialogOpen = false">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAsync">Guardar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private bool _loading, _dialogOpen;
+    private string _search = "";
+    private List<ProductDto> _all = new(), _filtered = new();
+    private ProductDto? _editing;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _all = await Api.GetAsync<List<ProductDto>>("api/products") ?? new();
+        ApplyFilter();
+        _loading = false;
+    }
+
+    private void OnSearchChanged(string s) { _search = s; ApplyFilter(); }
+
+    private void ApplyFilter()
+    {
+        _filtered = string.IsNullOrWhiteSpace(_search) ? _all.ToList()
+            : _all.Where(p => p.ProductName.Contains(_search, StringComparison.OrdinalIgnoreCase)
+                           || p.Category.Contains(_search, StringComparison.OrdinalIgnoreCase)).ToList();
+    }
+
+    private void OpenCreate() { _editing = new ProductDto { IsActive = true }; _dialogOpen = true; }
+    private void OpenEdit(ProductDto p)
+    {
+        _editing = new ProductDto { ProductId = p.ProductId, ProductName = p.ProductName, Description = p.Description,
+            Category = p.Category, UnitPrice = p.UnitPrice, Stock = p.Stock, IsActive = p.IsActive };
+        _dialogOpen = true;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_editing?.ProductName)) { Notify.Warning("Nombre requerido"); return; }
+        bool ok = _editing.ProductId > 0
+            ? await Api.PutAsync<ProductDto>($"api/products/{_editing.ProductId}", _editing)
+            : await Api.PostAsync<ProductDto>("api/products", _editing);
+        if (ok) { Notify.Success("Guardado"); _dialogOpen = false; await LoadAsync(); }
+        else    Notify.Error("Error al guardar");
+    }
+
+    private async Task DeleteAsync(ProductDto p)
+    {
+        var ok = await Dialog.ShowMessageBox("Confirmar", $"¿Eliminar '{p.ProductName}'?", "Eliminar", cancelText: "Cancelar");
+        if (ok == true && await Api.DeleteAsync($"api/products/{p.ProductId}"))
+        { Notify.Success("Eliminado"); await LoadAsync(); }
+        else if (ok == true) Notify.Error("No se pudo eliminar");
+    }
+}

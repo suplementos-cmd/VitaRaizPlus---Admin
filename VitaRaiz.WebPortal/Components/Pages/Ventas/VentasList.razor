@@ -1,0 +1,171 @@
+﻿@page "/ventas"
+@attribute [Authorize]
+@inject ApiService Api
+@inject IDialogService Dialog
+@inject NotificationService Notify
+@inject NavigationManager Nav
+
+<PageTitle>Ventas - VitaRaiz</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+    <MudText Typo="Typo.h4" Class="fw-bold">Ventas</MudText>
+    <AuthorizeView>
+        <Authorized>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       Href="/ventas/nueva">Nueva Venta</MudButton>
+        </Authorized>
+    </AuthorizeView>
+</MudStack>
+
+<!-- Filters -->
+<MudPaper Class="pa-3 mb-4" Elevation="1">
+    <MudGrid Spacing="2" AlignItems="AlignItems.Center">
+        <MudItem xs="12" sm="4">
+            <MudTextField Value="@_search" ValueChanged="@((string s) => OnSearchChanged(s))"
+                          Label="Buscar cliente..." Variant="Variant.Outlined"
+                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                          Clearable="true" Dense="true" Immediate="true" />
+        </MudItem>
+        <MudItem xs="12" sm="3">
+            <MudSelect T="string" @bind-Value="_statusFilter" Label="Estatus" Variant="Variant.Outlined"
+                       Dense="true" AnchorOrigin="Origin.BottomLeft">
+                <MudSelectItem Value="@("")">Todos</MudSelectItem>
+                <MudSelectItem Value="@("activa")">Activa</MudSelectItem>
+                <MudSelectItem Value="@("completada")">Completada</MudSelectItem>
+                <MudSelectItem Value="@("cancelada")">Cancelada</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="3">
+            <MudSelect T="string" @bind-Value="_riskFilter" Label="Riesgo" Variant="Variant.Outlined"
+                       Dense="true" AnchorOrigin="Origin.BottomLeft">
+                <MudSelectItem Value="@("")">Todos</MudSelectItem>
+                <MudSelectItem Value="@("VERDE")">?? Al corriente</MudSelectItem>
+                <MudSelectItem Value="@("AMARILLO")">?? Atrasada</MudSelectItem>
+                <MudSelectItem Value="@("ROJO")">?? Vencida</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="2">
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.FilterAltOff"
+                       FullWidth="true" OnClick="ClearFilters">Limpiar</MudButton>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+<MudPaper Elevation="2">
+    <MudTable @ref="_table" ServerData="LoadServerData" Hover="true" Dense="true"
+              RowsPerPage="15" Loading="_loading" LoadingProgressColor="Color.Primary">
+        <ToolBarContent>
+            <MudText Typo="Typo.subtitle1" Class="fw-medium">@_totalCount ventas</MudText>
+        </ToolBarContent>
+        <HeaderContent>
+            <MudTh><MudTableSortLabel T="SaleDto" SortLabel="id">ID</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel T="SaleDto" SortLabel="cliente">Cliente</MudTableSortLabel></MudTh>
+            <MudTh>Total</MudTh>
+            <MudTh>Avance</MudTh>
+            <MudTh>Saldo</MudTh>
+            <MudTh>Riesgo</MudTh>
+            <MudTh>Estatus</MudTh>
+            <MudTh>Fecha</MudTh>
+            <MudTh>Acciones</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>#@context.SaleId</MudTd>
+            <MudTd>
+                <MudText Typo="Typo.body2" Class="fw-medium">@context.CustomerName</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">@context.SellerName</MudText>
+            </MudTd>
+            <MudTd>@context.TotalAmount.ToString("C0")</MudTd>
+            <MudTd Style="min-width:100px">
+                <MudProgressLinear Value="@(context.PaymentProgress * 100)" Color="Color.Primary"
+                                   Rounded="true" Size="Size.Small" />
+                <MudText Typo="Typo.caption">@((context.PaymentProgress * 100).ToString("F0"))%</MudText>
+            </MudTd>
+            <MudTd>
+                <MudText Typo="Typo.body2" Color="@(context.Balance > 0 ? Color.Warning : Color.Success)">
+                    @context.Balance.ToString("C0")
+                </MudText>
+            </MudTd>
+            <MudTd>
+                <MudChip T="string" Size="Size.Small" Color="@RiskColor(context.RiskStatus)" Style="font-weight:600">
+                    @RiskEmoji(context.RiskStatus)
+                </MudChip>
+            </MudTd>
+            <MudTd>
+                <MudChip T="string" Size="Size.Small" Color="@StatusColor(context.Status)">@context.Status</MudChip>
+            </MudTd>
+            <MudTd>@context.SaleDate.ToString("dd/MM/yy")</MudTd>
+            <MudTd>
+                <MudIconButton Icon="@Icons.Material.Filled.Visibility" Size="Size.Small"
+                               OnClick="@(() => Nav.NavigateTo("/ventas/" + context.SaleId))" />
+            </MudTd>
+        </RowTemplate>
+        <PagerContent>
+            <MudTablePager />
+        </PagerContent>
+    </MudTable>
+</MudPaper>
+
+@code {
+    private MudTable<SaleDto>? _table;
+    private bool   _loading;
+    private string _search       = string.Empty;
+    private string _statusFilter = string.Empty;
+    private string _riskFilter   = string.Empty;
+    private int    _totalCount;
+    private List<SaleDto> _allSales = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await RefreshAsync();
+    }
+
+    private async Task RefreshAsync()
+    {
+        _loading  = true;
+        StateHasChanged();
+        var qs = new Dictionary<string, string?>();
+        if (!string.IsNullOrEmpty(_statusFilter)) qs["status"] = _statusFilter;
+        var result = await Api.GetAsync<List<SaleDto>>("api/sales", qs);
+        _allSales  = result ?? new();
+        FilterSales();
+        _loading   = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void FilterSales()
+    {
+        var q = _allSales.AsEnumerable();
+        if (!string.IsNullOrWhiteSpace(_search))
+            q = q.Where(s => s.CustomerName.Contains(_search, StringComparison.OrdinalIgnoreCase));
+        if (!string.IsNullOrEmpty(_statusFilter))
+            q = q.Where(s => s.Status.Equals(_statusFilter, StringComparison.OrdinalIgnoreCase));
+        if (!string.IsNullOrEmpty(_riskFilter))
+            q = q.Where(s => s.RiskStatus.Equals(_riskFilter, StringComparison.OrdinalIgnoreCase));
+        _filtered    = q.ToList();
+        _totalCount  = _filtered.Count;
+        _table?.ReloadServerData();
+    }
+
+    private List<SaleDto> _filtered = new();
+
+    private Task<TableData<SaleDto>> LoadServerData(TableState state, CancellationToken ct)
+    {
+        var page = _filtered
+            .Skip(state.Page * state.PageSize)
+            .Take(state.PageSize)
+            .ToList();
+        return Task.FromResult(new TableData<SaleDto> { TotalItems = _totalCount, Items = page });
+    }
+
+    private void ClearFilters() { _search = ""; _statusFilter = ""; _riskFilter = ""; FilterSales(); }
+
+    private void OnSearchChanged(string s) { _search = s; FilterSales(); }
+
+    private static Color RiskColor(string r) => r switch
+    { "ROJO" => Color.Error, "AMARILLO" => Color.Warning, _ => Color.Success };
+    private static string RiskEmoji(string r) => r switch
+    { "ROJO" => "?? Vencida", "AMARILLO" => "?? Atrasada", _ => "?? Corriente" };
+    private static Color StatusColor(string s) => s?.ToLower() switch
+    { "activa" => Color.Primary, "completada" => Color.Success, "cancelada" => Color.Error, _ => Color.Default };
+}

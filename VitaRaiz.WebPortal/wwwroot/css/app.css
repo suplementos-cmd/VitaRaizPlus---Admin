@@ -1,0 +1,92 @@
+﻿/* VitaRaiz WebPortal - Custom styles */
+
+/* ── KPI Cards ─────────────────────────────────────────────────────── */
+.vr-kpi-card {
+    border-radius: 12px;
+    overflow: hidden;
+    transition: transform .15s ease, box-shadow .15s ease;
+}
+
+.vr-kpi-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0,0,0,.15) !important;
+}
+
+.vr-kpi-body {
+    padding: 1.25rem;
+}
+
+.vr-kpi-value {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.1;
+}
+
+.vr-kpi-label {
+    font-size: .8125rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    opacity: .75;
+    margin-top: .25rem;
+}
+
+.vr-kpi-accent {
+    background: linear-gradient(135deg, currentColor 0%, rgba(0,0,0,.08) 100%);
+    padding: .5rem .75rem;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+}
+
+/* ── Tables ─────────────────────────────────────────────────────────── */
+.vr-table .mud-table-row:hover td {
+    background: rgba(var(--mud-palette-primary-rgb), .04);
+}
+
+/* ── Sidebar ─────────────────────────────────────────────────────────── */
+.mud-nav-link {
+    border-radius: 6px !important;
+    margin: 2px 4px !important;
+}
+
+.mud-nav-link:hover,
+.mud-nav-link.active {
+    background: rgba(var(--mud-palette-primary-rgb), .12) !important;
+}
+
+/* ── Login page ───────────────────────────────────────────────────────── */
+.vr-login-bg {
+    min-height: 100vh;
+    background: linear-gradient(135deg,
+        var(--mud-palette-primary) 0%,
+        var(--mud-palette-primary-darken) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ── Status chips ─────────────────────────────────────────────────────── */
+.vr-risk-verde    { background-color: #43A047 !important; color: #fff !important; }
+.vr-risk-amarillo { background-color: #FB8C00 !important; color: #fff !important; }
+.vr-risk-rojo     { background-color: #E53935 !important; color: #fff !important; }
+
+/* ── Animations ───────────────────────────────────────────────────────── */
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in-up {
+    animation: fadeInUp .3s ease both;
+}
+
+/* ── Dark mode support ────────────────────────────────────────────────── */
+.mud-theme-dark .vr-kpi-card {
+    background-color: var(--mud-palette-surface);
+}
+
+/* ── Responsive tweaks ────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+    .vr-kpi-value { font-size: 1.5rem; }
+}

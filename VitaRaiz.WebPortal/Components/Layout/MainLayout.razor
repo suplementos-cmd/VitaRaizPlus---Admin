@@ -1,23 +1,87 @@
 ﻿@inherits LayoutComponentBase
+@inject ThemeService ThemeSvc
+@inject AuthService AuthSvc
+@inject NavigationManager Nav
 
-<div class="page">
-    <div class="sidebar">
+<MudThemeProvider Theme="_theme" />
+<MudPopoverProvider />
+<MudSnackbarProvider />
+<MudDialogProvider CloseButton="true" MaxWidth="MaxWidth.Medium" FullWidth="false" />
+
+<MudLayout>
+    <!-- -- App Bar -- -->
+    <MudAppBar Elevation="2" Fixed="true">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu"
+                       Color="Color.Inherit"
+                       Edge="Edge.Start"
+                       OnClick="@ToggleDrawer" />
+
+        <MudText Typo="Typo.h6" Class="ml-2 fw-bold">
+            <span style="color:white">VitaRaiz</span>
+            <span style="opacity:.7;font-weight:300"> Portal</span>
+        </MudText>
+
+        <MudSpacer />
+
+        <!-- Role badge -->
+        <AuthorizeView>
+            <Authorized>
+                <MudChip T="string" Color="Color.Dark" Size="Size.Small" Class="mr-2 d-none d-md-flex">
+                    @context.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value?.ToUpper()
+                </MudChip>
+                <MudText Typo="Typo.body2" Class="mr-3 d-none d-md-block" Style="opacity:.85">
+                    @context.User.Identity?.Name
+                </MudText>
+                <MudIconButton Icon="@Icons.Material.Filled.Logout"
+                               Color="Color.Inherit"
+                               Title="Cerrar sesion"
+                               OnClick="LogoutAsync" />
+            </Authorized>
+        </AuthorizeView>
+    </MudAppBar>
+
+    <!-- -- Sidebar Drawer -- -->
+    <MudDrawer @bind-Open="_drawerOpen" Elevation="3" ClipMode="DrawerClipMode.Always">
+        <MudDrawerHeader Class="pa-4" Style="@($"background:{ThemeSvc.PrimaryColor}")">
+            <MudStack Row="false" Spacing="0">
+                <MudText Typo="Typo.h6" Style="color:white;font-weight:700">VitaRaiz</MudText>
+                <MudText Typo="Typo.caption" Style="color:rgba(255,255,255,.7)">Panel de gestion</MudText>
+            </MudStack>
+        </MudDrawerHeader>
         <NavMenu />
-    </div>
+    </MudDrawer>
 
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
-
-        <article class="content px-4">
+    <!-- -- Main Content -- -->
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.ExtraExtraLarge" Class="pa-4" Style="padding-top:80px">
             @Body
-        </article>
-    </main>
-</div>
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
 
-<div id="blazor-error-ui">
-    An unhandled error has occurred.
-    <a href="" class="reload">Reload</a>
-    <a class="dismiss">🗙</a>
-</div>
+@code {
+    private bool _drawerOpen = true;
+    private MudBlazor.MudTheme _theme = new();
+
+    protected override void OnInitialized()
+    {
+        _theme = ThemeSvc.BuildMudTheme();
+        ThemeSvc.ThemeChanged += OnThemeChanged;
+    }
+
+    private void OnThemeChanged()
+    {
+        _theme = ThemeSvc.BuildMudTheme();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
+
+    private async Task LogoutAsync()
+    {
+        await AuthSvc.LogoutAsync();
+        Nav.NavigateTo("/login", forceLoad: true);
+    }
+
+    public void Dispose() => ThemeSvc.ThemeChanged -= OnThemeChanged;
+}

@@ -1,0 +1,292 @@
+﻿@page "/dashboard"
+@attribute [Authorize]
+@inject ApiService Api
+@inject AuthService AuthSvc
+@inject ThemeService ThemeSvc
+@inject NavigationManager Nav
+
+<PageTitle>Dashboard - VitaRaiz</PageTitle>
+
+<!-- -- Page Header -- -->
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-5" Justify="Justify.SpaceBetween">
+    <div>
+        <MudText Typo="Typo.h4" Class="fw-bold">Dashboard</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">@_greeting · @DateTime.Now.ToString("dddd, d MMMM yyyy")</MudText>
+    </div>
+    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh"
+               OnClick="LoadDataAsync" Disabled="_loading" Size="Size.Small">
+        Actualizar
+    </MudButton>
+</MudStack>
+
+@if (_loading)
+{
+    <MudGrid>
+        @for (int i = 0; i < 4; i++)
+        {
+            <MudItem xs="12" sm="6" lg="3">
+                <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="110px" Class="mud-border-r" />
+            </MudItem>
+        }
+    </MudGrid>
+}
+else
+{
+    <!-- -- KPI Cards -- -->
+    <MudGrid Spacing="3" Class="mb-5">
+
+        <MudItem xs="12" sm="6" lg="3">
+            <MudPaper Class="vr-kpi-card" Elevation="2">
+                <div class="vr-kpi-accent" style="background:#1976D2"></div>
+                <div class="vr-kpi-body">
+                    <MudIcon Icon="@Icons.Material.Filled.ShoppingCart" Style="color:#1976D2;font-size:2rem" />
+                    <div>
+                        <MudText Typo="Typo.h4" Class="fw-bold">@_stats.TotalSalesToday</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Ventas hoy</MudText>
+                    </div>
+                </div>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" lg="3">
+            <MudPaper Class="vr-kpi-card" Elevation="2">
+                <div class="vr-kpi-accent" style="@($"background:{ThemeSvc.PrimaryColor}")"></div>
+                <div class="vr-kpi-body">
+                    <MudIcon Icon="@Icons.Material.Filled.AttachMoney" Style="@($"color:{ThemeSvc.PrimaryColor};font-size:2rem")" />
+                    <div>
+                        <MudText Typo="Typo.h5" Class="fw-bold">@_stats.TotalCollectedToday.ToString("C0")</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Cobrado hoy</MudText>
+                    </div>
+                </div>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" lg="3">
+            <MudPaper Class="vr-kpi-card" Elevation="2">
+                <div class="vr-kpi-accent" style="background:#FF9800"></div>
+                <div class="vr-kpi-body">
+                    <MudIcon Icon="@Icons.Material.Filled.HourglassEmpty" Style="color:#FF9800;font-size:2rem" />
+                    <div>
+                        <MudText Typo="Typo.h5" Class="fw-bold">@_stats.TotalPending.ToString("C0")</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Cartera pendiente</MudText>
+                    </div>
+                </div>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" lg="3">
+            <MudPaper Class="vr-kpi-card" Elevation="2">
+                <div class="vr-kpi-accent" style="background:#9C27B0"></div>
+                <div class="vr-kpi-body">
+                    <MudIcon Icon="@Icons.Material.Filled.PeopleAlt" Style="color:#9C27B0;font-size:2rem" />
+                    <div>
+                        <MudText Typo="Typo.h4" Class="fw-bold">@_stats.ActiveCustomers</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Clientes activos</MudText>
+                    </div>
+                </div>
+            </MudPaper>
+        </MudItem>
+
+        <!-- Admin-only row -->
+        <AuthorizeView Roles="AdminFull,Admin,admin,adminfull">
+            <Authorized>
+                <MudItem xs="12" sm="6" lg="3">
+                    <MudPaper Class="vr-kpi-card" Elevation="2">
+                        <div class="vr-kpi-accent" style="background:#D84315"></div>
+                        <div class="vr-kpi-body">
+                            <MudIcon Icon="@Icons.Material.Filled.Warning" Style="color:#D84315;font-size:2rem" />
+                            <div>
+                                <MudText Typo="Typo.h4" Class="fw-bold">@_stats.OverdueAccounts</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Cuentas vencidas</MudText>
+                            </div>
+                        </div>
+                    </MudPaper>
+                </MudItem>
+
+                <MudItem xs="12" sm="6" lg="3">
+                    <MudPaper Class="vr-kpi-card" Elevation="2">
+                        <div class="vr-kpi-accent" style="background:#F57C00"></div>
+                        <div class="vr-kpi-body">
+                            <MudIcon Icon="@Icons.Material.Filled.Pending" Style="color:#F57C00;font-size:2rem" />
+                            <div>
+                                <MudText Typo="Typo.h4" Class="fw-bold">@_stats.PendingApprovals</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Cobros por aprobar</MudText>
+                            </div>
+                        </div>
+                    </MudPaper>
+                </MudItem>
+
+                <MudItem xs="12" sm="6" lg="3">
+                    <MudPaper Class="vr-kpi-card" Elevation="2">
+                        <div class="vr-kpi-accent" style="background:#2E7D32"></div>
+                        <div class="vr-kpi-body">
+                            <MudIcon Icon="@Icons.Material.Filled.TrendingUp" Style="color:#2E7D32;font-size:2rem" />
+                            <div>
+                                <MudText Typo="Typo.h5" Class="fw-bold">@_stats.MonthlyRevenue.ToString("C0")</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Ingresos del mes</MudText>
+                            </div>
+                        </div>
+                    </MudPaper>
+                </MudItem>
+            </Authorized>
+        </AuthorizeView>
+
+    </MudGrid>
+
+    <!-- -- Recent Sales -- -->
+    <MudGrid Spacing="3">
+        <MudItem xs="12" md="7">
+            <MudPaper Elevation="2" Class="pa-4">
+                <MudText Typo="Typo.h6" Class="fw-bold mb-3">
+                    <MudIcon Icon="@Icons.Material.Filled.ShoppingBag" Class="mr-1" Style="vertical-align:sub" />
+                    Ventas recientes
+                </MudText>
+                <MudTable Items="_recentSales" Hover="true" Dense="true" Striped="true"
+                          Loading="_loading" LoadingProgressColor="Color.Primary"
+                          Class="vr-table">
+                    <HeaderContent>
+                        <MudTh>Cliente</MudTh>
+                        <MudTh>Total</MudTh>
+                        <MudTh>Avance</MudTh>
+                        <MudTh>Estatus</MudTh>
+                        <MudTh></MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>
+                            <MudText Typo="Typo.body2" Class="fw-medium">@context.CustomerName</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@context.SaleDate.ToString("dd/MM/yyyy")</MudText>
+                        </MudTd>
+                        <MudTd>@context.TotalAmount.ToString("C0")</MudTd>
+                        <MudTd Style="min-width:120px">
+                            <MudProgressLinear Color="@GetProgressColor(context.PaymentProgress)"
+                                              Value="@(context.PaymentProgress * 100)"
+                                              Class="my-1" Rounded="true" Size="Size.Small" />
+                            <MudText Typo="Typo.caption">@((context.PaymentProgress * 100).ToString("F0"))%</MudText>
+                        </MudTd>
+                        <MudTd><MudChip T="string" Size="Size.Small" Color="@GetStatusColor(context.Status)">@context.Status</MudChip></MudTd>
+                        <MudTd>
+                            <MudIconButton Icon="@Icons.Material.Filled.OpenInNew"
+                                           Size="Size.Small"
+                                           OnClick="@(() => Nav.NavigateTo("/ventas/" + context.SaleId))" />
+                        </MudTd>
+                    </RowTemplate>
+                    <NoRecordsContent>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="pa-4 text-center">Sin ventas recientes</MudText>
+                    </NoRecordsContent>
+                </MudTable>
+            </MudPaper>
+        </MudItem>
+
+        <!-- -- Pending Payments -- -->
+        <MudItem xs="12" md="5">
+            <MudPaper Elevation="2" Class="pa-4">
+                <MudText Typo="Typo.h6" Class="fw-bold mb-3">
+                    <MudIcon Icon="@Icons.Material.Filled.Pending" Class="mr-1" Style="vertical-align:sub" />
+                    Cobros pendientes de aprobacion
+                </MudText>
+                @if (_pendingPayments.Count == 0)
+                {
+                    <MudAlert Severity="Severity.Success" Dense="true">Todo al dia ?</MudAlert>
+                }
+                else
+                {
+                    @foreach (var p in _pendingPayments.Take(6))
+                    {
+                        <MudPaper Outlined="true" Class="pa-3 mb-2 d-flex align-center justify-space-between">
+                            <div>
+                                <MudText Typo="Typo.body2" Class="fw-medium">@p.CustomerName</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@p.CollectorName · @p.PaymentDate.ToString("dd/MM")</MudText>
+                            </div>
+                            <MudChip T="string" Size="Size.Small" Color="Color.Warning">@p.Amount.ToString("C0")</MudChip>
+                        </MudPaper>
+                    }
+                    @if (_pendingPayments.Count > 6)
+                    {
+                        <MudLink Href="/pagos" Class="mt-1">Ver todos (@_pendingPayments.Count)</MudLink>
+                    }
+                }
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+
+<style>
+    .vr-kpi-card { display:flex; flex-direction:column; overflow:hidden; border-radius:12px !important; }
+    .vr-kpi-accent { height:4px; }
+    .vr-kpi-body { display:flex; align-items:center; gap:16px; padding:16px; }
+    .vr-table .mud-table-cell { padding: 8px 12px !important; }
+</style>
+
+@code {
+    private bool _loading = true;
+    private string _greeting = string.Empty;
+    private DashboardStats _stats = new();
+    private List<SaleDto> _recentSales = new();
+    private List<PaymentDto> _pendingPayments = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var user = await AuthSvc.GetCurrentUserAsync();
+            if (user is not null) await ThemeSvc.LoadForRoleAsync(user.RoleId);
+            SetGreeting(user?.Username ?? "Usuario");
+            await LoadDataAsync();
+        }
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _loading = true;
+        StateHasChanged();
+
+        var user  = await AuthSvc.GetCurrentUserAsync();
+        var today = DateTime.Today.ToString("yyyy-MM-dd");
+
+        // Sales today
+        var sales = await Api.GetAsync<List<SaleDto>>("api/sales", new() {
+            { "startDate", today }, { "endDate", today } });
+        _recentSales = sales ?? new();
+        _stats.TotalSalesToday = _recentSales.Count;
+
+        // Payments today
+        var payments = await Api.GetAsync<List<PaymentDto>>("api/payments", new() {
+            { "startDate", today }, { "endDate", today } });
+        _stats.TotalCollectedToday = payments?
+            .Where(p => p.Status.Equals("approved", StringComparison.OrdinalIgnoreCase))
+            .Sum(p => p.Amount) ?? 0;
+
+        // Pending approvals
+        var pending = await Api.GetAsync<List<PaymentDto>>("api/payments", new() {
+            { "status", "pending" } });
+        _pendingPayments  = pending ?? new();
+        _stats.PendingApprovals = _pendingPayments.Count;
+
+        // Active sales cartera
+        var active = await Api.GetAsync<List<SaleDto>>("api/sales/active", new());
+        _stats.TotalPending    = active?.Sum(s => s.Balance) ?? 0;
+        _stats.ActiveCustomers = active?.Select(s => s.CustomerId).Distinct().Count() ?? 0;
+        _stats.OverdueAccounts = active?
+            .Count(s => s.RiskStatus.Equals("ROJO", StringComparison.OrdinalIgnoreCase)) ?? 0;
+
+        _loading = false;
+    }
+
+    private void SetGreeting(string firstName)
+    {
+        var h     = DateTime.Now.Hour;
+        var salud = h < 12 ? "Buenos dias" : h < 19 ? "Buenas tardes" : "Buenas noches";
+        _greeting = $"{salud}, {firstName.Split(' ')[0]} ??";
+    }
+
+    private static Color GetProgressColor(double pct) =>
+        pct >= .9 ? Color.Success : pct >= .5 ? Color.Warning : Color.Error;
+
+    private static Color GetStatusColor(string status) => status?.ToLower() switch
+    {
+        "activa"     => Color.Primary,
+        "completada" => Color.Success,
+        "cancelada"  => Color.Error,
+        _            => Color.Default,
+    };
+}

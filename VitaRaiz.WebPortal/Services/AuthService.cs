@@ -1,133 +1,65 @@
-using System.Net.Http.Headers;
-using System.Text;
-using System.Text.Json;
+using VitaRaiz.WebPortal.Models;
+using NLog;
 
 namespace VitaRaiz.WebPortal.Services;
 
 public class AuthService
 {
-    private readonly HttpClient _httpClient;
-    private readonly IConfiguration _configuration;
-    private readonly ILogger<AuthService> _logger;
-    private const string TOKEN_KEY = "authToken";
-    private const string USER_KEY = "currentUser";
+    private readonly ApiService _api;
+    private readonly CustomAuthenticationStateProvider _authProvider;
+    private static readonly Logger _log = LogManager.GetCurrentClassLogger();
 
-    public event EventHandler? AuthenticationStateChanged;
-
-    public AuthService(IConfiguration configuration, ILogger<AuthService> logger)
+    public AuthService(ApiService api, CustomAuthenticationStateProvider authProvider)
     {
-        _configuration = configuration;
-        _logger = logger;
-        var apiBaseUrl = _configuration["ApiSettings:BaseUrl"] ?? "https://localhost:7001";
-        _logger.LogInformation("[AuthService] Initialized with API base URL: {ApiBaseUrl}", apiBaseUrl);
-        
-        _httpClient = new HttpClient
-        {
-            BaseAddress = new Uri(apiBaseUrl)
-        };
+        _api          = api;
+        _authProvider = authProvider;
     }
 
-    public async Task<AuthResponse> LoginAsync(string username, string password)
+    public async Task<(bool Success, string Message)> LoginAsync(string username, string password)
     {
-        _logger.LogInformation("[LoginAsync] Login attempt for user: {Username}", username);
         try
         {
-            var loginRequest = new { username, password };
-            var jsonContent = JsonSerializer.Serialize(loginRequest);
-            var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+            var response = await _api.PostUnauthAsync<LoginRequest, AuthResponse>(
+                "api/auth/login",
+                new LoginRequest(username, password));
 
-            var response = await _httpClient.PostAsync("/api/auth/login", content);
-            _logger.LogDebug("[LoginAsync] API response status: {StatusCode}", response.StatusCode);
+            if (response is null)
+                return (false, "No se pudo conectar con el servidor");
 
-            if (response.IsSuccessStatusCode)
+            if (string.IsNullOrWhiteSpace(response.Token))
             {
-                var responseContent = await response.Content.ReadAsStringAsync();
-                var loginResponse = JsonSerializer.Deserialize<LoginResponseDto>(responseContent, new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                });
-
-                if (loginResponse != null && !string.IsNullOrEmpty(loginResponse.Token))
-                {
-                    _logger.LogInformation("[LoginAsync] Login successful for user: {Username}, Role: {Role}", loginResponse.Username, loginResponse.Role);
-                    
-                    // Guardar token y usuario en sessionStorage (se implementará en el componente)
-                    var authResponse = new AuthResponse
-                    {
-                        Success = true,
-                        Token = loginResponse.Token,
-                        UserId = loginResponse.UserId,
-                        Username = loginResponse.Username,
-                        Role = loginResponse.Role,
-                        Message = "Login exitoso"
-                    };
-
-                    AuthenticationStateChanged?.Invoke(this, EventArgs.Empty);
-                    return authResponse;
-                }
+                var msg = !string.IsNullOrEmpty(response.Error)   ? response.Error
+                        : !string.IsNullOrEmpty(response.Message) ? response.Message
+                        : "Credenciales incorrectas";
+                return (false, msg);
             }
 
-            _logger.LogWarning("[LoginAsync] Login failed for user: {Username} - Invalid credentials", username);
-            return new AuthResponse
+            var user = new CurrentUser
             {
-                Success = false,
-                Message = "Usuario o contraseña incorrectos"
+                UserId   = response.UserId,
+                Username = response.Username,
+                Role     = response.Role,
+                RoleId   = response.RoleId,
+                Token    = response.Token,
             };
+
+            await _authProvider.MarkAuthenticatedAsync(user);
+            _log.Info("User {Username} ({Role}) logged in", user.Username, user.Role);
+            return (true, "OK");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[LoginAsync] Error during login for user: {Username}", username);
-            return new AuthResponse
-            {
-                Success = false,
-                Message = $"Error de conexión: {ex.Message}"
-            };
+            _log.Error(ex, "LoginAsync error");
+            return (false, "Error inesperado al iniciar sesi�n");
         }
     }
 
-    public void Logout()
+    public async Task LogoutAsync()
     {
-        AuthenticationStateChanged?.Invoke(this, EventArgs.Empty);
+        await _authProvider.MarkLoggedOutAsync();
+        _log.Info("User logged out");
     }
 
-    public async Task<bool> ValidateTokenAsync(string token)
-    {
-        try
-        {
-            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-            var response = await _httpClient.GetAsync("/api/auth/validate");
-            return response.IsSuccessStatusCode;
-        }
-        catch
-        {
-            return false;
-        }
-    }
-}
-
-public class LoginResponseDto
-{
-    public string Token { get; set; } = string.Empty;
-    public int UserId { get; set; }
-    public string Username { get; set; } = string.Empty;
-    public string Role { get; set; } = string.Empty;
-}
-
-public class AuthResponse
-{
-    public bool Success { get; set; }
-    public string Message { get; set; } = string.Empty;
-    public string Token { get; set; } = string.Empty;
-    public int UserId { get; set; }
-    public string Username { get; set; } = string.Empty;
-    public string Role { get; set; } = string.Empty;
-}
-
-public class CurrentUser
-{
-    public int UserId { get; set; }
-    public string Username { get; set; } = string.Empty;
-    public string Role { get; set; } = string.Empty;
-    public string Token { get; set; } = string.Empty;
-    public bool IsAuthenticated => !string.IsNullOrEmpty(Token);
+    public async Task<CurrentUser?> GetCurrentUserAsync()
+        => await _authProvider.GetCurrentUserAsync();
 }

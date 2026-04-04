@@ -1,0 +1,241 @@
+﻿@page "/admin/usuarios"
+@attribute [Authorize(Roles = "AdminFull,Admin")]
+@inject ApiService Api
+@inject IDialogService Dialog
+@inject NotificationService Notify
+@inject AuthService AuthSvc
+
+<PageTitle>Usuarios – VitaRaiz Admin</PageTitle>
+
+@if (_apiNotAvailable)
+{
+    <MudAlert Severity="Severity.Info" Class="mb-4">
+        La gestion de usuarios requiere los endpoints <strong>api/users</strong> y <strong>api/roles</strong> que aun no han sido implementados en la API.
+        La tabla de usuarios se mostrara en cuanto el servidor exponga dichos endpoints.
+    </MudAlert>
+}
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+    <MudText Typo="Typo.h4" Class="fw-bold">Usuarios</MudText>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.PersonAdd" OnClick="OpenCreate">Nuevo Usuario</MudButton>
+</MudStack>
+
+<MudPaper Class="pa-3 mb-4" Elevation="1">
+    <MudGrid Spacing="2" AlignItems="AlignItems.Center">
+        <MudItem xs="12" sm="5">
+            <MudTextField Value="@_search" ValueChanged="@((string s) => OnSearchChanged(s))"
+                          Label="Buscar usuario o nombre..." Variant="Variant.Outlined"
+                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                          Clearable="true" Dense="true" Immediate="true" />
+        </MudItem>
+        <MudItem xs="6" sm="3">
+            <MudSelect T="string" Value="@_roleFilter" ValueChanged="@((string s) => OnRoleFilterChanged(s))"
+                       Label="Rol" Variant="Variant.Outlined" Dense="true">
+                <MudSelectItem Value="@("")">Todos los roles</MudSelectItem>
+                @foreach (var r in _roles)
+                {
+                    <MudSelectItem Value="@r.RoleId.ToString()">@r.RoleName</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="6" sm="2">
+            <MudSelect T="string" Value="@_activeFilter" ValueChanged="@((string s) => OnActiveFilterChanged(s))"
+                       Label="Estado" Variant="Variant.Outlined" Dense="true">
+                <MudSelectItem Value="@("")">Todos</MudSelectItem>
+                <MudSelectItem Value="@("active")">Activos</MudSelectItem>
+                <MudSelectItem Value="@("inactive")">Inactivos</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="2">
+            <MudButton Variant="Variant.Outlined" FullWidth="true"
+                       StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync">Recargar</MudButton>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+<MudPaper Elevation="2">
+    <MudTable Items="_filtered" Hover="true" Dense="true" Loading="_loading" RowsPerPage="20">
+        <ToolBarContent>
+            <MudText Typo="Typo.subtitle1">@_filtered.Count usuarios</MudText>
+        </ToolBarContent>
+        <HeaderContent>
+            <MudTh>Usuario</MudTh>
+            <MudTh>Nombre completo</MudTh>
+            <MudTh>Email</MudTh>
+            <MudTh>Rol</MudTh>
+            <MudTh>Zona</MudTh>
+            <MudTh>Estado</MudTh>
+            <MudTh>Último acceso</MudTh>
+            <MudTh>Acciones</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                    <MudAvatar Size="Size.Small" Color="Color.Primary">@context.Username[0].ToString().ToUpper()</MudAvatar>
+                    <MudText Typo="Typo.body2" Class="fw-medium">@context.Username</MudText>
+                </MudStack>
+            </MudTd>
+            <MudTd>@context.FullName</MudTd>
+            <MudTd>@context.Email</MudTd>
+            <MudTd><MudChip T="string" Size="Size.Small" Color="Color.Primary">@context.RoleName</MudChip></MudTd>
+            <MudTd>@context.ZoneName</MudTd>
+            <MudTd>
+                <MudChip T="string" Size="Size.Small"
+                         Color="@(context.IsActive ? Color.Success : Color.Default)">
+                    @(context.IsActive ? "Activo" : "Inactivo")
+                </MudChip>
+            </MudTd>
+            <MudTd>
+                @if (context.LastLogin.HasValue)
+                { <MudText Typo="Typo.caption">@context.LastLogin.Value.ToString("dd/MM/yy HH:mm")</MudText> }
+                else { <MudText Typo="Typo.caption" Color="Color.Secondary">Nunca</MudText> }
+            </MudTd>
+            <MudTd>
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="() => OpenEdit(context)" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                               OnClick="() => DeleteAsync(context)" />
+            </MudTd>
+        </RowTemplate>
+        <PagerContent><MudTablePager /></PagerContent>
+    </MudTable>
+</MudPaper>
+
+<!-- Create/Edit Dialog -->
+<MudDialog @bind-IsVisible="_dialogOpen">
+    <TitleContent>@(_editing?.UserId > 0 ? "Editar" : "Nuevo") Usuario</TitleContent>
+    <DialogContent>
+        <MudGrid Spacing="2">
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="_editing!.Username" Label="Usuario*" Variant="Variant.Outlined"
+                              Required="true" ReadOnly="@(_editing.UserId > 0)" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="_editing.FullName" Label="Nombre completo*" Variant="Variant.Outlined" Required="true" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="_editing.Email" Label="Email" Variant="Variant.Outlined" InputType="InputType.Email" />
+            </MudItem>
+            @if (_editing.UserId == 0)
+            {
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="_password" Label="Contraseña*" Variant="Variant.Outlined"
+                                  InputType="InputType.Password" Required="true" />
+                </MudItem>
+            }
+            <MudItem xs="12" sm="6">
+                <MudSelect T="int" @bind-Value="_editing.RoleId" Label="Rol*" Variant="Variant.Outlined" Required="true">
+                    @foreach (var r in _roles)
+                    {
+                        <MudSelectItem Value="@r.RoleId">@r.RoleName</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudSelect T="int?" @bind-Value="_editing.ZoneId" Label="Zona" Variant="Variant.Outlined">
+                    <MudSelectItem T="int?" Value="@null">Sin zona</MudSelectItem>
+                    @foreach (var z in _zones)
+                    {
+                        <MudSelectItem T="int?" Value="@((int?)z.ZoneId)">@z.ZoneName</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12">
+                <MudCheckBox @bind-Value="_editing.IsActive" Label="Usuario activo" Color="Color.Primary" />
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => _dialogOpen = false">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAsync">Guardar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private bool _loading, _dialogOpen, _apiNotAvailable;
+    private string _search = "", _roleFilter = "", _activeFilter = "";
+    private string _password = string.Empty;
+    private List<UserDto>  _all = new(), _filtered = new();
+    private List<RoleDto>  _roles = new();
+    private List<ZoneDto>  _zones = new();
+    private UserDto? _editing;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        // api/users and api/roles endpoints not yet available in current API version
+        // Load zones (available) and show empty users list with informational message
+        var z = await Api.GetAsync<List<ZoneDto>>("api/zones");
+        _zones = z ?? new();
+        _all   = new();
+        _roles = new();
+        ApplyFilter();
+        _loading = false;
+        _apiNotAvailable = true;
+    }
+
+    private void OnSearchChanged(string s)      { _search       = s; ApplyFilter(); }
+    private void OnRoleFilterChanged(string s)   { _roleFilter   = s; ApplyFilter(); }
+    private void OnActiveFilterChanged(string s) { _activeFilter = s; ApplyFilter(); }
+
+    private void ApplyFilter()
+    {
+        var q = _all.AsEnumerable();
+        if (!string.IsNullOrWhiteSpace(_search))
+            q = q.Where(u => u.Username.Contains(_search, StringComparison.OrdinalIgnoreCase)
+                          || u.FullName.Contains(_search, StringComparison.OrdinalIgnoreCase));
+        if (!string.IsNullOrEmpty(_roleFilter) && int.TryParse(_roleFilter, out var rid))
+            q = q.Where(u => u.RoleId == rid);
+        if (_activeFilter == "active")   q = q.Where(u => u.IsActive);
+        if (_activeFilter == "inactive") q = q.Where(u => !u.IsActive);
+        _filtered = q.ToList();
+    }
+
+    private void OpenCreate() { _editing = new UserDto { IsActive = true }; _password = ""; _dialogOpen = true; }
+    private void OpenEdit(UserDto u)
+    {
+        _editing = new UserDto
+        {
+            UserId = u.UserId, Username = u.Username, FullName = u.FullName,
+            Email = u.Email, RoleId = u.RoleId, ZoneId = u.ZoneId, IsActive = u.IsActive
+        };
+        _password  = "";
+        _dialogOpen = true;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_editing?.Username) || string.IsNullOrWhiteSpace(_editing.FullName))
+        { Notify.Warning("Usuario y nombre son requeridos"); return; }
+        if (_editing.UserId == 0 && string.IsNullOrWhiteSpace(_password))
+        { Notify.Warning("Contraseña requerida para usuario nuevo"); return; }
+
+        bool ok;
+        if (_editing.UserId > 0)
+            ok = await Api.PutAsync<UserDto>($"api/users/{_editing.UserId}", _editing);
+        else
+        {
+            var req = new { _editing.Username, _editing.FullName, _editing.Email,
+                            Password = _password, _editing.RoleId, _editing.ZoneId };
+            ok = await Api.PostAsync<object>("api/users", req);
+        }
+        if (ok) { Notify.Success("Guardado"); _dialogOpen = false; await LoadAsync(); }
+        else    Notify.Error("Error al guardar");
+    }
+
+    private async Task DeleteAsync(UserDto u)
+    {
+        var ok = await Dialog.ShowMessageBox("Confirmar", $"¿Eliminar usuario {u.Username}?", "Eliminar", cancelText: "Cancelar");
+        if (ok == true)
+        {
+            if (await Api.DeleteAsync($"api/users/{u.UserId}"))
+            { Notify.Success("Eliminado"); await LoadAsync(); }
+            else Notify.Error("No se pudo eliminar");
+        }
+    }
+}

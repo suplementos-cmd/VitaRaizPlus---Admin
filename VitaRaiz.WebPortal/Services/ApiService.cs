@@ -1,194 +1,157 @@
 using System.Net.Http.Headers;
-using System.Text;
+using System.Net.Http.Json;
 using System.Text.Json;
-using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
+using VitaRaiz.WebPortal.Models;
+using NLog;
 
 namespace VitaRaiz.WebPortal.Services;
 
+/// <summary>
+/// Thin HTTP client wrapper. Reads the bearer token from the
+/// <see cref="CustomAuthenticationStateProvider"/> so every request
+/// is automatically authenticated.
+/// </summary>
 public class ApiService
 {
-    private readonly HttpClient _httpClient;
-    private readonly ProtectedSessionStorage _sessionStorage;
-    private readonly IConfiguration _configuration;
-    private readonly ILogger<ApiService> _logger;
-    private readonly JsonSerializerOptions _jsonOptions;
+    private readonly IHttpClientFactory _factory;
+    private readonly CustomAuthenticationStateProvider _authProvider;
+    private static readonly Logger _log = LogManager.GetCurrentClassLogger();
 
-    public ApiService(IConfiguration configuration, ProtectedSessionStorage sessionStorage, ILogger<ApiService> logger)
+    private static readonly JsonSerializerOptions _json = new()
     {
-        _configuration = configuration;
-        _sessionStorage = sessionStorage;
-        _logger = logger;
-        var apiBaseUrl = _configuration["ApiSettings:BaseUrl"] ?? "https://localhost:7001";
-        _logger.LogInformation("[ApiService] Initialized with API base URL: {ApiBaseUrl}", apiBaseUrl);
-        
-        _httpClient = new HttpClient
-        {
-            BaseAddress = new Uri(apiBaseUrl)
-        };
+        PropertyNameCaseInsensitive = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
 
-        _jsonOptions = new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true
-        };
+    public ApiService(IHttpClientFactory factory,
+                      CustomAuthenticationStateProvider authProvider)
+    {
+        _factory      = factory;
+        _authProvider = authProvider;
     }
 
-    private async Task SetAuthorizationHeaderAsync()
+    // -- Helpers -----------------------------------------------------------
+
+    private async Task<HttpClient> BuildClientAsync()
+    {
+        var client = _factory.CreateClient("VitaRaizApi");
+        var user   = await _authProvider.GetCurrentUserAsync();
+        if (!string.IsNullOrWhiteSpace(user?.Token))
+            client.DefaultRequestHeaders.Authorization =
+                new AuthenticationHeaderValue("Bearer", user.Token);
+        return client;
+    }
+
+    private static string BuildUrl(string endpoint,
+        Dictionary<string, string?>? qs = null)
+    {
+        if (qs is null or { Count: 0 }) return endpoint;
+        var query = string.Join("&",
+            qs.Where(kv => kv.Value is not null)
+              .Select(kv => $"{Uri.EscapeDataString(kv.Key)}={Uri.EscapeDataString(kv.Value!)}"));
+        return string.IsNullOrEmpty(query) ? endpoint : $"{endpoint}?{query}";
+    }
+
+    // -- CRUD methods ------------------------------------------------------
+
+    public async Task<T?> GetAsync<T>(string endpoint,
+        Dictionary<string, string?>? qs = null)
     {
         try
         {
-            var userResult = await _sessionStorage.GetAsync<CurrentUser>("currentUser");
-            if (userResult.Success && userResult.Value != null && !string.IsNullOrEmpty(userResult.Value.Token))
+            var client = await BuildClientAsync();
+            var url    = BuildUrl(endpoint, qs);
+            var resp   = await client.GetAsync(url);
+            if (!resp.IsSuccessStatusCode)
             {
-                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", userResult.Value.Token);
+                _log.Warn("GET {Url} returned {Status}", url, resp.StatusCode);
+                return default;
             }
+            return await resp.Content.ReadFromJsonAsync<T>(_json);
         }
-        catch
-        {
-            // Si hay error obteniendo el token, continuar sin autorización
-        }
+        catch (Exception ex) { _log.Error(ex, "GET {Url}", endpoint); return default; }
     }
 
-    public async Task<T?> GetAsync<T>(string endpoint)
+    public async Task<TResponse?> PostAsync<TRequest, TResponse>(
+        string endpoint, TRequest body)
     {
-        _logger.LogDebug("[GetAsync] Calling GET {Endpoint}", endpoint);
         try
         {
-            await SetAuthorizationHeaderAsync();
-            var response = await _httpClient.GetAsync(endpoint);
-            _logger.LogDebug("[GetAsync] Response status: {StatusCode}", response.StatusCode);
-            
-            if (response.IsSuccessStatusCode)
+            var client = await BuildClientAsync();
+            var resp   = await client.PostAsJsonAsync(endpoint, body, _json);
+            if (!resp.IsSuccessStatusCode)
             {
-                var content = await response.Content.ReadAsStringAsync();
-                return JsonSerializer.Deserialize<T>(content, _jsonOptions);
+                _log.Warn("POST {Url} returned {Status}", endpoint, resp.StatusCode);
+                return default;
             }
-            
-            var errorBody = await response.Content.ReadAsStringAsync();
-            _logger.LogError("[GetAsync] Error in GET {Endpoint}: Status={StatusCode}, Body={ErrorBody}", endpoint, response.StatusCode, errorBody);
-            return default;
+            return await resp.Content.ReadFromJsonAsync<TResponse>(_json);
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[GetAsync] Exception in GET {Endpoint}", endpoint);
-            return default;
-        }
+        catch (Exception ex) { _log.Error(ex, "POST {Url}", endpoint); return default; }
     }
 
-    public async Task<TResponse?> PostAsync<TRequest, TResponse>(string endpoint, TRequest data)
+    public async Task<bool> PostAsync<TRequest>(string endpoint, TRequest body)
     {
         try
         {
-            await SetAuthorizationHeaderAsync();
-            var jsonContent = JsonSerializer.Serialize(data, _jsonOptions);
-            var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
-            
-            var response = await _httpClient.PostAsync(endpoint, content);
-            
-            if (response.IsSuccessStatusCode)
-            {
-                var responseContent = await response.Content.ReadAsStringAsync();
-                return JsonSerializer.Deserialize<TResponse>(responseContent, _jsonOptions);
-            }
-            
-            return default;
+            var client = await BuildClientAsync();
+            var resp   = await client.PostAsJsonAsync(endpoint, body, _json);
+            return resp.IsSuccessStatusCode;
         }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error en POST {endpoint}: {ex.Message}");
-            return default;
-        }
+        catch (Exception ex) { _log.Error(ex, "POST {Url}", endpoint); return false; }
     }
 
-    public async Task<bool> PostAsync<TRequest>(string endpoint, TRequest data)
+    public async Task<TResponse?> PutAsync<TRequest, TResponse>(
+        string endpoint, TRequest body)
     {
         try
         {
-            await SetAuthorizationHeaderAsync();
-            var jsonContent = JsonSerializer.Serialize(data, _jsonOptions);
-            var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
-            
-            var response = await _httpClient.PostAsync(endpoint, content);
-            return response.IsSuccessStatusCode;
+            var client = await BuildClientAsync();
+            var resp   = await client.PutAsJsonAsync(endpoint, body, _json);
+            if (!resp.IsSuccessStatusCode) return default;
+            return await resp.Content.ReadFromJsonAsync<TResponse>(_json);
         }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error en POST {endpoint}: {ex.Message}");
-            return false;
-        }
+        catch (Exception ex) { _log.Error(ex, "PUT {Url}", endpoint); return default; }
     }
 
-    public async Task<TResponse?> PutAsync<TRequest, TResponse>(string endpoint, TRequest data)
+    public async Task<bool> PutAsync<TRequest>(string endpoint, TRequest body)
     {
         try
         {
-            await SetAuthorizationHeaderAsync();
-            var jsonContent = JsonSerializer.Serialize(data, _jsonOptions);
-            var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
-            
-            var response = await _httpClient.PutAsync(endpoint, content);
-            
-            if (response.IsSuccessStatusCode)
-            {
-                var responseContent = await response.Content.ReadAsStringAsync();
-                return JsonSerializer.Deserialize<TResponse>(responseContent, _jsonOptions);
-            }
-            
-            return default;
+            var client = await BuildClientAsync();
+            var resp   = await client.PutAsJsonAsync(endpoint, body, _json);
+            return resp.IsSuccessStatusCode;
         }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error en PUT {endpoint}: {ex.Message}");
-            return default;
-        }
-    }
-
-    public async Task<bool> PutAsync<TRequest>(string endpoint, TRequest data)
-    {
-        try
-        {
-            await SetAuthorizationHeaderAsync();
-            var jsonContent = JsonSerializer.Serialize(data, _jsonOptions);
-            var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
-            
-            var response = await _httpClient.PutAsync(endpoint, content);
-            return response.IsSuccessStatusCode;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error en PUT {endpoint}: {ex.Message}");
-            return false;
-        }
+        catch (Exception ex) { _log.Error(ex, "PUT {Url}", endpoint); return false; }
     }
 
     public async Task<bool> DeleteAsync(string endpoint)
     {
         try
         {
-            await SetAuthorizationHeaderAsync();
-            var response = await _httpClient.DeleteAsync(endpoint);
-            return response.IsSuccessStatusCode;
+            var client = await BuildClientAsync();
+            var resp   = await client.DeleteAsync(endpoint);
+            return resp.IsSuccessStatusCode;
         }
-        catch (Exception ex)
+        catch (Exception ex) { _log.Error(ex, "DELETE {Url}", endpoint); return false; }
+    }
+
+    // -- Unauthenticated (login) -------------------------------------------
+
+    public async Task<TResponse?> PostUnauthAsync<TRequest, TResponse>(
+        string endpoint, TRequest body)
+    {
+        try
         {
-            Console.WriteLine($"Error en DELETE {endpoint}: {ex.Message}");
-            return false;
+            var client = _factory.CreateClient("VitaRaizApi");
+            var resp   = await client.PostAsJsonAsync(endpoint, body, _json);
+            if (!resp.IsSuccessStatusCode)
+            {
+                // Try to deserialise error body so callers can surface the message
+                try { return await resp.Content.ReadFromJsonAsync<TResponse>(_json); } catch { }
+                return default;
+            }
+            return await resp.Content.ReadFromJsonAsync<TResponse>(_json);
         }
-    }
-
-    // Métodos con query strings
-    public async Task<T?> GetAsync<T>(string endpoint, Dictionary<string, string?> queryParams)
-    {
-        var queryString = BuildQueryString(queryParams);
-        var fullEndpoint = string.IsNullOrEmpty(queryString) ? endpoint : $"{endpoint}?{queryString}";
-        return await GetAsync<T>(fullEndpoint);
-    }
-
-    private string BuildQueryString(Dictionary<string, string?> parameters)
-    {
-        var queryParams = parameters
-            .Where(p => !string.IsNullOrEmpty(p.Value))
-            .Select(p => $"{Uri.EscapeDataString(p.Key)}={Uri.EscapeDataString(p.Value!)}");
-        
-        return string.Join("&", queryParams);
+        catch (Exception ex) { _log.Error(ex, "POST-UNAUTH {Url}", endpoint); return default; }
     }
 }

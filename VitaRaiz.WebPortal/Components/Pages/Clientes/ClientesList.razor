@@ -1,0 +1,225 @@
+﻿@page "/clientes"
+@attribute [Authorize]
+@inject ApiService Api
+@inject IDialogService Dialog
+@inject NotificationService Notify
+
+<PageTitle>Clientes – VitaRaiz</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+    <MudText Typo="Typo.h4" Class="fw-bold">Clientes</MudText>
+    <AuthorizeView Policy="CanCreateCustomer">
+        <Authorized>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.PersonAdd"
+                       OnClick="OpenCreateDialog">Nuevo Cliente</MudButton>
+        </Authorized>
+    </AuthorizeView>
+</MudStack>
+
+<MudPaper Class="pa-3 mb-4" Elevation="1">
+    <MudGrid Spacing="2" AlignItems="AlignItems.Center">
+        <MudItem xs="12" sm="5">
+            <MudTextField Value="@_search" ValueChanged="@((string s) => OnSearchChanged(s))"
+                          Label="Buscar nombre, telefono..." Variant="Variant.Outlined"
+                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                          Clearable="true" Dense="true" Immediate="true" />
+        </MudItem>
+        <MudItem xs="6" sm="3">
+            <MudSelect T="string" @bind-Value="_zoneFilter" Label="Zona" Variant="Variant.Outlined" Dense="true">
+                <MudSelectItem Value="@("")">Todas</MudSelectItem>
+                @foreach (var z in _zones)
+                {
+                    <MudSelectItem Value="@z.ZoneId.ToString()">@z.ZoneName</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="6" sm="2">
+            <MudSelect T="string" @bind-Value="_typeFilter" Label="Tipo" Variant="Variant.Outlined" Dense="true">
+                <MudSelectItem Value="@("")">Todos</MudSelectItem>
+                <MudSelectItem Value="@("gold")">⭐ Gold</MudSelectItem>
+                <MudSelectItem Value="@("blacklist")">🚫 Blacklist</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="2">
+            <MudButton Variant="Variant.Outlined" FullWidth="true"
+                       StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync">Recargar</MudButton>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+<MudPaper Elevation="2">
+    <MudTable Items="_filtered" Hover="true" Dense="true" Loading="_loading"
+              RowsPerPage="20" LoadingProgressColor="Color.Primary">
+        <ToolBarContent>
+            <MudText Typo="Typo.subtitle1">@_filtered.Count clientes</MudText>
+        </ToolBarContent>
+        <HeaderContent>
+            <MudTh>Nombre</MudTh>
+            <MudTh>Teléfono</MudTh>
+            <MudTh>Zona</MudTh>
+            <MudTh>GPS</MudTh>
+            <MudTh>Tipo</MudTh>
+            <MudTh>Acciones</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>
+                <MudText Typo="Typo.body2" Class="fw-medium">@context.CustomerName</MudText>
+                @if (!string.IsNullOrEmpty(context.Email))
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">@context.Email</MudText>
+                }
+            </MudTd>
+            <MudTd>@context.PhoneNumber</MudTd>
+            <MudTd>@context.ZoneName</MudTd>
+            <MudTd>
+                @if (context.GpsLatitude.HasValue)
+                {
+                    <MudIcon Icon="@Icons.Material.Filled.LocationOn" Color="Color.Success" Size="Size.Small"
+                             Title="@($"{context.GpsLatitude:F6},{context.GpsLongitude:F6}")" />
+                }
+            </MudTd>
+            <MudTd>
+                @if (context.IsGoldCustomer)
+                { <MudChip T="string" Size="Size.Small" Color="Color.Warning">⭐ Gold</MudChip> }
+                @if (context.IsBlacklisted)
+                { <MudChip T="string" Size="Size.Small" Color="Color.Error">🚫 Blacklist</MudChip> }
+            </MudTd>
+            <MudTd>
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                               OnClick="() => OpenEditDialog(context)" />
+                <AuthorizeView Roles="AdminFull,Admin" Context="authCtx">
+                    <Authorized>
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                       Color="Color.Error" OnClick="() => DeleteAsync(context)" />
+                    </Authorized>
+                </AuthorizeView>
+            </MudTd>
+        </RowTemplate>
+        <PagerContent><MudTablePager /></PagerContent>
+    </MudTable>
+</MudPaper>
+
+<!-- Create/Edit Dialog -->
+<MudDialog @bind-IsVisible="_dialogOpen">
+    <TitleContent>@(_editing?.CustomerId > 0 ? "Editar" : "Nuevo") Cliente</TitleContent>
+    <DialogContent>
+        <MudGrid Spacing="2">
+            <MudItem xs="12">
+                <MudTextField @bind-Value="_editing!.CustomerName" Label="Nombre completo*" Variant="Variant.Outlined" Required="true" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="_editing.PhoneNumber" Label="Teléfono" Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="_editing.Email" Label="Email" Variant="Variant.Outlined" InputType="InputType.Email" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField @bind-Value="_editing.Address" Label="Dirección" Variant="Variant.Outlined" Lines="2" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudSelect T="int?" @bind-Value="_editing.ZoneId" Label="Zona" Variant="Variant.Outlined">
+                    <MudSelectItem T="int?" Value="@null">Sin zona</MudSelectItem>
+                    @foreach (var z in _zones)
+                    {
+                        <MudSelectItem T="int?" Value="@((int?)z.ZoneId)">@z.ZoneName</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="_editing.Notes" Label="Notas" Variant="Variant.Outlined" Lines="2" />
+            </MudItem>
+            <MudItem xs="6">
+                <MudCheckBox @bind-Value="_editing.IsGoldCustomer" Label="Cliente Gold ⭐" Color="Color.Warning" />
+            </MudItem>
+            <MudItem xs="6">
+                <MudCheckBox @bind-Value="_editing.IsBlacklisted" Label="Blacklist 🚫" Color="Color.Error" />
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => _dialogOpen = false">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAsync">Guardar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private bool _loading;
+    private bool _dialogOpen;
+    private string _search     = string.Empty;
+    private string _zoneFilter = string.Empty;
+    private string _typeFilter = string.Empty;
+    private List<CustomerDto> _all      = new();
+    private List<CustomerDto> _filtered = new();
+    private List<ZoneDto>     _zones    = new();
+    private CustomerDto?      _editing;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        var (c, z) = (await Api.GetAsync<List<CustomerDto>>("api/customers"),
+                      await Api.GetAsync<List<ZoneDto>>("api/zones"));
+        _all   = c ?? new();
+        _zones = z ?? new();
+        ApplyFilter();
+        _loading = false;
+    }
+
+    private void ApplyFilter()
+    {
+        var q = _all.AsEnumerable();
+        if (!string.IsNullOrWhiteSpace(_search))
+            q = q.Where(c => c.CustomerName.Contains(_search, StringComparison.OrdinalIgnoreCase)
+                          || (c.PhoneNumber?.Contains(_search, StringComparison.OrdinalIgnoreCase) == true));
+        if (!string.IsNullOrEmpty(_zoneFilter) && int.TryParse(_zoneFilter, out var zid))
+            q = q.Where(c => c.ZoneId == zid);
+        if (_typeFilter == "gold")      q = q.Where(c => c.IsGoldCustomer);
+        if (_typeFilter == "blacklist") q = q.Where(c => c.IsBlacklisted);
+        _filtered = q.ToList();
+    }
+
+    private void OnSearchChanged(string s) { _search = s; ApplyFilter(); }
+
+    private void OpenCreateDialog()
+    {
+        _editing    = new CustomerDto();
+        _dialogOpen = true;
+    }
+    private void OpenEditDialog(CustomerDto c)
+    {
+        _editing    = new CustomerDto
+        {
+            CustomerId = c.CustomerId, CustomerName = c.CustomerName,
+            PhoneNumber = c.PhoneNumber, Email = c.Email, Address = c.Address,
+            ZoneId = c.ZoneId, IsGoldCustomer = c.IsGoldCustomer,
+            IsBlacklisted = c.IsBlacklisted, Notes = c.Notes
+        };
+        _dialogOpen = true;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_editing?.CustomerName)) { Notify.Warning("Nombre requerido"); return; }
+        bool ok;
+        if (_editing.CustomerId > 0)
+            ok = await Api.PutAsync<CustomerDto>($"api/customers/{_editing.CustomerId}", _editing);
+        else
+            ok = await Api.PostAsync<CustomerDto>("api/customers", _editing);
+
+        if (ok) { Notify.Success("Guardado"); _dialogOpen = false; await LoadAsync(); }
+        else    Notify.Error("Error al guardar");
+    }
+
+    private async Task DeleteAsync(CustomerDto c)
+    {
+        var confirm = await Dialog.ShowMessageBox("Confirmar", $"¿Eliminar a {c.CustomerName}?", "Eliminar", cancelText: "Cancelar");
+        if (confirm == true)
+        {
+            if (await Api.DeleteAsync($"api/customers/{c.CustomerId}"))
+            { Notify.Success("Eliminado"); await LoadAsync(); }
+            else Notify.Error("No se pudo eliminar");
+        }
+    }
+}

@@ -1,0 +1,168 @@
+﻿@page "/ventas/{SaleId:int}"
+@attribute [Authorize]
+@inject ApiService Api
+@inject NotificationService Notify
+@inject NavigationManager Nav
+@inject IDialogService Dialog
+
+<PageTitle>Venta #@SaleId – VitaRaiz</PageTitle>
+
+@if (_loading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-4" />
+}
+else if (_sale is null)
+{
+    <MudAlert Severity="Severity.Error">No se pudo cargar la venta.</MudAlert>
+}
+else
+{
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-3">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick="@(() => Nav.NavigateTo("/ventas"))" />
+            <MudText Typo="Typo.h4">Venta #@_sale.SaleId</MudText>
+            <MudChip T="string" Color="@StatusColor(_sale.Status)" Size="Size.Small">@_sale.Status</MudChip>
+            <MudChip T="string" Color="@RiskColor(_sale.RiskStatus)" Size="Size.Small">@RiskLabel(_sale.RiskStatus)</MudChip>
+        </MudStack>
+        <AuthorizeView Roles="AdminFull,Admin">
+            @if (_sale.Status?.ToLower() == "activa")
+            {
+                <MudButton Variant="Variant.Outlined" Color="Color.Error"
+                           StartIcon="@Icons.Material.Filled.Cancel"
+                           OnClick="AnnulSaleAsync">Anular Venta</MudButton>
+            }
+        </AuthorizeView>
+    </MudStack>
+
+    <MudGrid Spacing="3">
+        <!-- Customer & Totals -->
+        <MudItem xs="12" md="6">
+            <MudPaper Class="pa-4" Elevation="2">
+                <MudText Typo="Typo.h6" Class="mb-3">Datos del cliente</MudText>
+                <MudGrid>
+                    <MudItem xs="6"><MudText Typo="Typo.caption" Color="Color.Secondary">Cliente</MudText><MudText>@_sale.CustomerName</MudText></MudItem>
+                    <MudItem xs="6"><MudText Typo="Typo.caption" Color="Color.Secondary">Vendedor</MudText><MudText>@_sale.SellerName</MudText></MudItem>
+                    <MudItem xs="6"><MudText Typo="Typo.caption" Color="Color.Secondary">Zona</MudText><MudText>@_sale.CustomerZone</MudText></MudItem>
+                    <MudItem xs="6"><MudText Typo="Typo.caption" Color="Color.Secondary">Fecha</MudText><MudText>@_sale.SaleDate.ToString("dd/MM/yyyy")</MudText></MudItem>
+                </MudGrid>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudPaper Class="pa-4" Elevation="2">
+                <MudText Typo="Typo.h6" Class="mb-3">Resumen financiero</MudText>
+                <MudStack Spacing="1">
+                    <MudStack Row="true" Justify="Justify.SpaceBetween">
+                        <MudText>Total</MudText>
+                        <MudText Class="fw-bold">@_sale.TotalAmount.ToString("C2")</MudText>
+                    </MudStack>
+                    <MudStack Row="true" Justify="Justify.SpaceBetween">
+                        <MudText>Cobrado</MudText>
+                        <MudText Color="Color.Success">@_sale.PaidAmount.ToString("C2")</MudText>
+                    </MudStack>
+                    <MudDivider />
+                    <MudStack Row="true" Justify="Justify.SpaceBetween">
+                        <MudText Class="fw-bold">Saldo</MudText>
+                        <MudText Class="fw-bold" Color="@(_sale.Balance > 0 ? Color.Warning : Color.Success)">
+                            @_sale.Balance.ToString("C2")</MudText>
+                    </MudStack>
+                </MudStack>
+                <MudProgressLinear Value="@(_sale.PaymentProgress * 100)" Color="Color.Primary"
+                                   Rounded="true" Size="Size.Medium" Class="mt-2" />
+                <MudText Typo="Typo.caption" Class="mt-1">@((_sale.PaymentProgress * 100).ToString("F1"))% cobrado</MudText>
+            </MudPaper>
+        </MudItem>
+
+        <!-- Products -->
+        <MudItem xs="12">
+            <MudPaper Elevation="2">
+                <MudText Typo="Typo.h6" Class="pa-3">Productos</MudText>
+                <MudTable Items="_sale.Items" Dense="true" Hover="true">
+                    <HeaderContent>
+                        <MudTh>Producto</MudTh>
+                        <MudTh>Cantidad</MudTh>
+                        <MudTh>Precio Unit.</MudTh>
+                        <MudTh>Subtotal</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>@context.ProductName</MudTd>
+                        <MudTd>@context.Quantity</MudTd>
+                        <MudTd>@context.UnitPrice.ToString("C2")</MudTd>
+                        <MudTd>@context.Subtotal.ToString("C2")</MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudPaper>
+        </MudItem>
+
+        <!-- Payments -->
+        <MudItem xs="12">
+            <MudPaper Elevation="2">
+                <MudText Typo="Typo.h6" Class="pa-3">Historial de pagos</MudText>
+                @if (_sale.Payments?.Any() == true)
+                {
+                    <MudTable Items="_sale.Payments" Dense="true" Hover="true">
+                        <HeaderContent>
+                            <MudTh>#</MudTh>
+                            <MudTh>Monto</MudTh>
+                            <MudTh>Fecha</MudTh>
+                            <MudTh>Cobrador</MudTh>
+                            <MudTh>GPS</MudTh>
+                            <MudTh>Estatus</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd>@context.PaymentId</MudTd>
+                            <MudTd>@context.Amount.ToString("C2")</MudTd>
+                            <MudTd>@context.PaymentDate.ToString("dd/MM/yyyy HH:mm")</MudTd>
+                            <MudTd>@context.CollectorName</MudTd>
+                            <MudTd>
+                                @if (context.HasGps)
+                                {
+                                    <MudIcon Icon="@Icons.Material.Filled.LocationOn" Color="Color.Success" Size="Size.Small" />
+                                }
+                            </MudTd>
+                            <MudTd><MudChip T="string" Size="Size.Small" Color="@PayStatusColor(context.Status)">@context.Status</MudChip></MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                }
+                else
+                {
+                    <MudText Class="pa-3" Color="Color.Secondary">Sin pagos registrados</MudText>
+                }
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    [Parameter] public int SaleId { get; set; }
+
+    private SaleFullDto? _sale;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loading = true;
+        _sale = await Api.GetAsync<SaleFullDto>($"api/sales/{SaleId}/full");
+        _loading = false;
+    }
+
+    private async Task AnnulSaleAsync()
+    {
+        var result = await Dialog.ShowMessageBox("Confirmar", "¿Anular esta venta?", "Sí, anular", cancelText: "Cancelar");
+        if (result == true)
+        {
+            var ok = await Api.PutAsync($"api/sales/{SaleId}/cancel", new { SaleId = SaleId });
+            if (ok) { Notify.Success("Venta cancelada"); await OnInitializedAsync(); }
+            else Notify.Error("Error al anular la venta");
+        }
+    }
+
+    private static Color StatusColor(string s) => s?.ToLower() switch
+    { "activa" => Color.Primary, "completada" => Color.Success, "cancelada" => Color.Error, _ => Color.Default };
+    private static Color RiskColor(string r) => r switch
+    { "ROJO" => Color.Error, "AMARILLO" => Color.Warning, _ => Color.Success };
+    private static string RiskLabel(string r) => r switch
+    { "ROJO" => "Vencida", "AMARILLO" => "Atrasada", _ => "Al corriente" };
+    private static Color PayStatusColor(string s) => s?.ToLower() switch
+    { "aprobado" => Color.Success, "rechazado" => Color.Error, _ => Color.Default };
+}

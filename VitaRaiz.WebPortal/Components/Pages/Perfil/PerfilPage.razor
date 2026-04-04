@@ -1,0 +1,121 @@
+﻿@page "/perfil"
+@attribute [Authorize]
+@inject ApiService Api
+@inject NotificationService Notify
+@inject CustomAuthenticationStateProvider Auth
+
+<PageTitle>Mi Perfil - VitaRaiz</PageTitle>
+
+<MudText Typo="Typo.h4" Class="fw-bold mb-4">Mi Perfil</MudText>
+
+<MudGrid Spacing="3">
+    <MudItem xs="12" md="4">
+        <MudPaper Class="pa-4 d-flex flex-column align-center" Elevation="3">
+            <MudAvatar Style="width:80px;height:80px;font-size:2rem" Color="Color.Primary">
+                @(_user?.Username?.Substring(0,1).ToUpper() ?? "?")
+            </MudAvatar>
+            <MudText Typo="Typo.h6" Class="mt-3">@_user?.Username</MudText>
+            <MudText Color="Color.Secondary">@_user?.FullName</MudText>
+            <MudChip T="string" Color="Color.Primary" Class="mt-2">@_user?.RoleName</MudChip>
+            @if (!string.IsNullOrEmpty(_user?.ZoneName))
+            {
+                <MudChip T="string" Color="Color.Default" Size="Size.Small">@_user.ZoneName</MudChip>
+            }
+            @if (_user?.LastLogin.HasValue == true)
+            {
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">
+                    Ultimo acceso: @_user.LastLogin.Value.ToString("dd/MM/yyyy HH:mm")
+                </MudText>
+            }
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" md="8">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudText Typo="Typo.h6" Class="mb-3">Datos personales</MudText>
+            <MudGrid Spacing="2">
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="_fullName" Label="Nombre completo" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="_email" Label="Email" Variant="Variant.Outlined"
+                                  InputType="InputType.Email" />
+                </MudItem>
+            </MudGrid>
+            <MudButton Class="mt-3" Variant="Variant.Filled" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Save" OnClick="SaveProfileAsync">
+                Guardar datos
+            </MudButton>
+        </MudPaper>
+
+        <MudPaper Class="pa-4 mt-3" Elevation="2">
+            <MudText Typo="Typo.h6" Class="mb-3">Cambiar contrasena</MudText>
+            <MudGrid Spacing="2">
+                <MudItem xs="12" sm="4">
+                    <MudTextField @bind-Value="_currentPwd" Label="Contrasena actual"
+                                  Variant="Variant.Outlined" InputType="InputType.Password" />
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudTextField @bind-Value="_newPwd" Label="Nueva contrasena"
+                                  Variant="Variant.Outlined" InputType="InputType.Password" />
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudTextField @bind-Value="_confirmPwd" Label="Confirmar"
+                                  Variant="Variant.Outlined" InputType="InputType.Password" />
+                </MudItem>
+            </MudGrid>
+            <MudButton Class="mt-3" Variant="Variant.Outlined" Color="Color.Warning"
+                       StartIcon="@Icons.Material.Filled.Lock" OnClick="ChangePasswordAsync">
+                Cambiar contrasena
+            </MudButton>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@code {
+    private UserDto? _user;
+    private string _fullName = "", _email = "";
+    private string _currentPwd = "", _newPwd = "", _confirmPwd = "";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        var current = await Auth.GetCurrentUserAsync();
+        if (current is null) return;
+        // Use api/auth/me — there is no api/users/{id} endpoint
+        var me = await Api.GetAsync<AuthMeDto>("api/auth/me");
+        _user = new UserDto
+        {
+            UserId   = current.UserId,
+            Username = me?.Username ?? current.Username,
+            FullName = me?.Username ?? current.Username,
+            RoleId   = current.RoleId,
+            RoleName = current.Role,
+        };
+        _fullName = _user.FullName;
+        _email    = _user.Email;
+        StateHasChanged();
+    }
+
+    private Task SaveProfileAsync()
+    {
+        // api/users/{id}/profile not available — save locally only
+        if (_user is null) return Task.CompletedTask;
+        _user.FullName = _fullName;
+        _user.Email    = _email;
+        Notify.Success("Perfil actualizado localmente");
+        return Task.CompletedTask;
+    }
+
+    private async Task ChangePasswordAsync()
+    {
+        if (_newPwd != _confirmPwd) { Notify.Warning("Las contrasenas no coinciden"); return; }
+        if (string.IsNullOrWhiteSpace(_currentPwd) || string.IsNullOrWhiteSpace(_newPwd))
+        { Notify.Warning("Complete todos los campos"); return; }
+        if (_user is null) return;
+        var ok = await Api.PostAsync<object>($"api/users/{_user.UserId}/change-password",
+            new { CurrentPassword = _currentPwd, NewPassword = _newPwd });
+        if (ok) { Notify.Success("Contrasena actualizada"); _currentPwd = _newPwd = _confirmPwd = ""; }
+        else    Notify.Error("Contrasena actual incorrecta o error del servidor");
+    }
+}

@@ -1,0 +1,101 @@
+﻿@page "/admin/temas"
+@attribute [Authorize(Roles = "AdminFull,Admin")]
+@inject ApiService Api
+@inject AuthService Auth
+@inject NotificationService Notify
+@inject ThemeService ThemeSvc
+
+<PageTitle>Temas por Rol – VitaRaiz Admin</PageTitle>
+
+<MudText Typo="Typo.h4" Class="fw-bold mb-2">Temas por Rol</MudText>
+<MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+    Personaliza los colores de la interfaz para cada perfil de usuario.
+</MudText>
+
+@if (_loading) { <MudProgressLinear Color="Color.Primary" Indeterminate="true" /> }
+else
+{
+    <MudGrid Spacing="3">
+        @foreach (var t in _themes)
+        {
+            <MudItem xs="12" sm="6" md="4">
+                <MudCard Elevation="3" Style="@($"border-top: 5px solid {t.PrimaryColor}")">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">@t.ThemeName</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Rol ID: @t.RoleId</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudGrid Spacing="2">
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.body2" Class="mb-1">Color primario</MudText>
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                    <div style="width:32px;height:32px;border-radius:50%;background:@t.PrimaryColor;border:2px solid #ccc"></div>
+                                    <MudTextField @bind-Value="t.PrimaryColor" Variant="Variant.Outlined"
+                                                  Dense="true" Style="flex:1" Placeholder="#rrggbb" />
+                                </MudStack>
+                            </MudItem>
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.body2" Class="mb-1">Color secundario</MudText>
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                    <div style="width:32px;height:32px;border-radius:50%;background:@t.SecondaryColor;border:2px solid #ccc"></div>
+                                    <MudTextField @bind-Value="t.SecondaryColor" Variant="Variant.Outlined"
+                                                  Dense="true" Style="flex:1" Placeholder="#rrggbb" />
+                                </MudStack>
+                            </MudItem>
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.body2" Class="mb-1">Color de acento</MudText>
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                    <div style="width:32px;height:32px;border-radius:50%;background:@t.AccentColor;border:2px solid #ccc"></div>
+                                    <MudTextField @bind-Value="t.AccentColor" Variant="Variant.Outlined"
+                                                  Dense="true" Style="flex:1" Placeholder="#rrggbb" />
+                                </MudStack>
+                            </MudItem>
+                        </MudGrid>
+                    </MudCardContent>
+                    <MudCardActions>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                                   OnClick="() => SaveThemeAsync(t)">Guardar</MudButton>
+                        <MudButton Variant="Variant.Text" Size="Size.Small"
+                                   OnClick="() => PreviewTheme(t)">Vista previa</MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+        }
+    </MudGrid>
+}
+
+@code {
+    private bool _loading;
+    private List<ProfileThemeDto> _themes = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        _loading = true;
+        StateHasChanged();
+        // Load current user's theme via the existing endpoint
+        var user = await Auth.GetCurrentUserAsync();
+        if (user is not null)
+        {
+            var t = await Api.GetAsync<ProfileThemeDto>($"api/catalogs/theme/role/{user.RoleId}");
+            if (t is not null) _themes = new List<ProfileThemeDto> { t };
+        }
+        _loading = false;
+        StateHasChanged();
+    }
+
+    private async Task SaveThemeAsync(ProfileThemeDto t)
+    {
+        var ok = await Api.PutAsync<ProfileThemeDto>($"api/catalogs/theme/role/{t.RoleId}", t);
+        if (ok) Notify.Success($"Tema de '{t.ThemeName}' guardado");
+        else    Notify.Error("Error al guardar tema");
+    }
+
+    private void PreviewTheme(ProfileThemeDto t)
+    {
+        ThemeSvc.Apply(t.PrimaryColor, t.SecondaryColor, t.AccentColor);
+        Notify.Info($"Vista previa del tema '{t.ThemeName}' aplicada");
+    }
+}

@@ -1,0 +1,188 @@
+﻿@page "/admin/roles"
+@attribute [Authorize(Roles = "AdminFull,Admin")]
+@inject ApiService Api
+@inject NotificationService Notify
+@inject IDialogService Dialog
+
+<PageTitle>Roles y Permisos – VitaRaiz Admin</PageTitle>
+
+<MudText Typo="Typo.h4" Class="fw-bold mb-4">Roles y Permisos</MudText>
+
+@if (_apiNotAvailable)
+{
+    <MudAlert Severity="Severity.Info" Class="mb-4">
+        La gestion de roles requiere los endpoints <strong>api/roles</strong> que aun no han sido implementados en la API.
+        Las tarjetas se mostraran en cuanto el servidor exponga dichos endpoints.
+    </MudAlert>
+}
+
+@if (_loading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+}
+else if (!_apiNotAvailable)
+{
+    <MudGrid Spacing="3">
+        @foreach (var role in _roles)
+        {
+            <MudItem xs="12" md="6">
+                <MudCard Elevation="3">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                <MudAvatar Style="@($"background:{role.DefaultThemeColor}")" Size="Size.Medium">
+                                    <MudIcon Icon="@Icons.Material.Filled.Shield" Style="color:white" />
+                                </MudAvatar>
+                                <div>
+                                    <MudText Typo="Typo.h6">@role.RoleName</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">@role.Description</MudText>
+                                </div>
+                            </MudStack>
+                        </CardHeaderContent>
+                        <CardHeaderActions>
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                                           OnClick="() => OpenEdit(role)" />
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        @if (_rolePerms.TryGetValue(role.RoleId, out var perms))
+                        {
+                            <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1">
+                                @foreach (var p in perms)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Primary">@p</MudChip>
+                                }
+                            </MudStack>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Sin permisos cargados</MudText>
+                        }
+                    </MudCardContent>
+                    <MudCardActions>
+                        <MudButton Size="Size.Small" StartIcon="@Icons.Material.Filled.Security"
+                                   OnClick="() => ManagePerms(role)">Gestionar permisos</MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+        }
+    </MudGrid>
+}
+
+<!-- Edit Role Dialog -->
+<MudDialog @bind-IsVisible="_editOpen">
+    <TitleContent>Editar Rol</TitleContent>
+    <DialogContent>
+        @if (_editingRole is not null)
+        {
+            <MudGrid Spacing="2">
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="_editingRole.RoleName" Label="Nombre del rol" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="_editingRole.Description" Label="Descripción" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudText Typo="Typo.body2">Color del tema</MudText>
+                    <MudColorPicker @bind-Text="_editingRole.DefaultThemeColor" PickerVariant="PickerVariant.Static"
+                                    DisableAlpha="true" />
+                </MudItem>
+            </MudGrid>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => _editOpen = false">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveRoleAsync">Guardar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<!-- Permissions Dialog -->
+<MudDialog @bind-IsVisible="_permsOpen" Options="@(new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true })">
+    <TitleContent>Permisos – @_editingRole?.RoleName</TitleContent>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Class="mb-2" Color="Color.Secondary">Selecciona los permisos para este rol</MudText>
+        <MudGrid Spacing="1">
+            @foreach (var perm in _availablePerms)
+            {
+                var isChecked = _selectedPerms.Contains(perm);
+                <MudItem xs="12" sm="6">
+                    <MudCheckBox Value="@isChecked"
+                                 ValueChanged="@((bool v) => TogglePerm(perm, v))"
+                                 Label="@perm" Color="Color.Primary" Dense="true" />
+                </MudItem>
+            }
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => _permsOpen = false">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SavePermsAsync">Guardar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private bool _loading, _editOpen, _permsOpen, _apiNotAvailable;
+    private List<RoleDto> _roles = new();
+    private Dictionary<int, List<string>> _rolePerms = new();
+    private RoleDto?     _editingRole;
+    private HashSet<string> _selectedPerms = new();
+
+    private static readonly string[] _availablePerms =
+    {
+        "sales.create", "sales.view_own", "sales.view_team", "sales.view_all",
+        "sales.edit_own", "sales.edit_team", "sales.annul",
+        "customers.view", "customers.create", "customers.edit",
+        "payments.create", "payments.view", "payments.approve",
+        "reports.view",
+        "admin.users", "admin.roles", "admin.catalogs"
+    };
+
+    protected override Task OnInitializedAsync()
+    {
+        // api/roles endpoint not available in current API version
+        _loading = false;
+        _apiNotAvailable = true;
+        return Task.CompletedTask;
+    }
+
+    private void OpenEdit(RoleDto r)
+    {
+        _editingRole = new RoleDto { RoleId = r.RoleId, RoleName = r.RoleName,
+                                     Description = r.Description, DefaultThemeColor = r.DefaultThemeColor };
+        _editOpen = true;
+    }
+
+    private async Task SaveRoleAsync()
+    {
+        if (_editingRole is null) return;
+        var ok = await Api.PutAsync<RoleDto>($"api/roles/{_editingRole.RoleId}", _editingRole);
+        if (ok) { Notify.Success("Rol actualizado"); _editOpen = false; await OnInitializedAsync(); }
+        else    Notify.Error("Error al guardar");
+    }
+
+    private void ManagePerms(RoleDto r)
+    {
+        _editingRole   = r;
+        _selectedPerms = _rolePerms.TryGetValue(r.RoleId, out var p)
+            ? new HashSet<string>(p) : new HashSet<string>();
+        _permsOpen = true;
+    }
+
+    private void TogglePerm(string perm, bool add)
+    {
+        if (add) _selectedPerms.Add(perm); else _selectedPerms.Remove(perm);
+    }
+
+    private async Task SavePermsAsync()
+    {
+        if (_editingRole is null) return;
+        var ok = await Api.PutAsync<object>($"api/roles/{_editingRole.RoleId}/permissions",
+            new { Permissions = _selectedPerms.ToList() });
+        if (ok)
+        {
+            _rolePerms[_editingRole.RoleId] = _selectedPerms.ToList();
+            Notify.Success("Permisos guardados");
+            _permsOpen = false;
+        }
+        else Notify.Error("Error al guardar permisos");
+    }
+}
