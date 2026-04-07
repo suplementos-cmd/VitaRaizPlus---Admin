@@ -78,10 +78,14 @@ public class VitaRaizDbContext : DbContext
             entity.Property(e => e.ZoneId).HasColumnName("ZONE_ID")
                 .HasColumnType("NUMBER(10)");
             entity.Property(e => e.ZoneName).HasColumnName("ZONE_NAME").HasMaxLength(100);
-            entity.Ignore(e => e.ZoneCode); // Columna NO existe en Oracle
+            entity.Property(e => e.ZoneCode).HasColumnName("ZONE_CODE").HasMaxLength(10);
             entity.Property(e => e.Description).HasColumnName("DESCRIPTION");
-            entity.Ignore(e => e.IsActive); // Columna NO existe en Oracle
-            entity.Ignore(e => e.CreatedAt); // Columna NO existe en Oracle
+            entity.Property(e => e.IsActive).HasColumnName("IS_ACTIVE")
+                .HasColumnType("CHAR(1)")
+                .HasConversion(
+                    v => v ? "1" : "0",
+                    v => v == "1");
+            entity.Property(e => e.CreatedAt).HasColumnName("CREATED_AT");
         });
 
         // Customer configuration
@@ -130,7 +134,8 @@ public class VitaRaizDbContext : DbContext
             entity.Property(e => e.Price).HasColumnName("UNIT_PRICE").HasPrecision(10, 2);
             entity.Property(e => e.Stock).HasColumnName("STOCK_QUANTITY")
                 .HasColumnType("NUMBER(10)");
-            entity.Ignore(e => e.Category); // Columna NO existe en Oracle
+            entity.Property(e => e.Category).HasColumnName("CATEGORY").HasMaxLength(100);
+            entity.Property(e => e.PhotoUrl).HasColumnName("PHOTO_URL").HasMaxLength(500);
             entity.Ignore(e => e.UnitPrice); // Propiedad computada, no es columna
             entity.Property(e => e.IsActive).HasColumnName("IS_ACTIVE")
                 .HasColumnType("NUMBER(1)")

@@ -12,7 +12,7 @@ public class ZoneRepository : BaseOracleRepository, IZoneRepository
     {
     }
 
-    public async Task<int> CreateZoneAsync(string zoneName, string? description)
+    public async Task<int> CreateZoneAsync(string zoneName, string? zoneCode, string? description, bool isActive)
     {
         var connection = await GetOpenConnectionAsync();
         using var command = CreatePackageProcedureCommand(connection, "sp_register_zone");
@@ -20,21 +20,25 @@ public class ZoneRepository : BaseOracleRepository, IZoneRepository
         var zoneIdParam = AddOutputParameter(command, "p_zone_id");
 
         AddInputParameter(command, "p_name", zoneName);
+        AddInputParameter(command, "p_zone_code", zoneCode);
         AddInputParameter(command, "p_description", description);
+        AddInputParameter(command, "p_is_active", isActive ? 1 : 0);
 
         await command.ExecuteNonQueryAsync();
 
         return GetOutputValue((OracleParameter)zoneIdParam);
     }
 
-    public async Task<bool> UpdateZoneAsync(int zoneId, string zoneName, string? description)
+    public async Task<bool> UpdateZoneAsync(int zoneId, string zoneName, string? zoneCode, string? description, bool isActive)
     {
         var connection = await GetOpenConnectionAsync();
         using var command = CreatePackageProcedureCommand(connection, "sp_update_zone");
 
         AddInputParameter(command, "p_zone_id", zoneId);
         AddInputParameter(command, "p_name", zoneName);
+        AddInputParameter(command, "p_zone_code", zoneCode);
         AddInputParameter(command, "p_description", description);
+        AddInputParameter(command, "p_is_active", isActive ? 1 : 0);
 
         await command.ExecuteNonQueryAsync();
         return true;
@@ -42,13 +46,25 @@ public class ZoneRepository : BaseOracleRepository, IZoneRepository
 
     public async Task<bool> DeleteZoneAsync(int zoneId)
     {
-        var connection = await GetOpenConnectionAsync();
-        using var command = CreatePackageProcedureCommand(connection, "sp_delete_zone");
-
-        AddInputParameter(command, "p_zone_id", zoneId);
-
-        await command.ExecuteNonQueryAsync();
-        return true;
+        try
+        {
+            var connection = await GetOpenConnectionAsync();
+            using var command = CreatePackageProcedureCommand(connection, "sp_delete_zone");
+            AddInputParameter(command, "p_zone_id", zoneId);
+            await command.ExecuteNonQueryAsync();
+            return true;
+        }
+        catch (Oracle.ManagedDataAccess.Client.OracleException ex) when (ex.Number == 2292)
+        {
+            throw new InvalidOperationException(
+                "La zona tiene clientes u otros registros asignados y no puede eliminarse. " +
+                "Reasigne los clientes a otra zona o marque la zona como inactiva.", ex);
+        }
+        catch (Oracle.ManagedDataAccess.Client.OracleException ex) when (ex.Number == 2291)
+        {
+            throw new InvalidOperationException(
+                "No se puede eliminar: existe una referencia de integridad relacionada.", ex);
+        }
     }
 
     public async Task<List<ZoneDto>> GetZonesAsync()
@@ -63,7 +79,10 @@ public class ZoneRepository : BaseOracleRepository, IZoneRepository
                 {
                     ZoneId = z.ZoneId,
                     ZoneName = z.ZoneName,
-                    Description = z.Description
+                    ZoneCode = z.ZoneCode,
+                    Description = z.Description,
+                    IsActive = z.IsActive,
+                    CreatedAt = z.CreatedAt
                 })
                 .ToListAsync();
 
@@ -89,7 +108,10 @@ public class ZoneRepository : BaseOracleRepository, IZoneRepository
                 {
                     ZoneId = z.ZoneId,
                     ZoneName = z.ZoneName,
-                    Description = z.Description
+                    ZoneCode = z.ZoneCode,
+                    Description = z.Description,
+                    IsActive = z.IsActive,
+                    CreatedAt = z.CreatedAt
                 })
                 .FirstOrDefaultAsync();
 

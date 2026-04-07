@@ -168,6 +168,46 @@ public class ApiService
         catch (Exception ex) { _log.Error(ex, "DELETE {Url}", endpoint); return false; }
     }
 
+    /// <summary>Returns (success, errorMessage). On 422/400 returns the server's message field.</summary>
+    public async Task<(bool Ok, string? Error)> DeleteWithMessageAsync(string endpoint)
+    {
+        try
+        {
+            var client = await BuildClientAsync();
+            var resp   = await client.DeleteAsync(endpoint);
+            if (resp.IsSuccessStatusCode) return (true, null);
+            string? msg = null;
+            try
+            {
+                var body = await resp.Content.ReadFromJsonAsync<ErrorBody>(_json);
+                msg = body?.Message;
+            }
+            catch { /* ignore parse errors */ }
+            return (false, msg ?? $"Error {(int)resp.StatusCode}");
+        }
+        catch (Exception ex) { _log.Error(ex, "DELETE {Url}", endpoint); return (false, "Error de conexión"); }
+    }
+
+    private record ErrorBody(string? Message);
+
+    public async Task<string?> UploadProductPhotoAsync(int productId, Stream fileStream, string fileName)
+    {
+        try
+        {
+            var client  = await BuildClientAsync();
+            using var content = new MultipartFormDataContent();
+            using var sc = new StreamContent(fileStream);
+            content.Add(sc, "file", fileName);
+            var resp = await client.PostAsync($"api/products/{productId}/photo", content);
+            if (!resp.IsSuccessStatusCode) return null;
+            var result = await resp.Content.ReadFromJsonAsync<PhotoUploadResult>(_json);
+            return result?.PhotoUrl;
+        }
+        catch (Exception ex) { _log.Error(ex, "UPLOAD product photo {Id}", productId); return null; }
+    }
+
+    private record PhotoUploadResult(string PhotoUrl);
+
     // -- Unauthenticated (login) -------------------------------------------
 
     public async Task<TResponse?> PostUnauthAsync<TRequest, TResponse>(

@@ -171,6 +171,13 @@ if (app.Environment.IsDevelopment())
 // DISABLED: Causes issues with HTTP localhost requests during development
 // app.UseHttpsRedirection();
 
+// Servir archivos estáticos (fotos de productos, etc.)
+app.UseStaticFiles();
+
+// Ensure uploads directory exists
+var uploadsPath = Path.Combine(app.Environment.WebRootPath ?? Path.Combine(app.Environment.ContentRootPath, "wwwroot"), "uploads", "products");
+Directory.CreateDirectory(uploadsPath);
+
 // Apply CORS - En desarrollo usamos AllowAll para facilitar testing
 if (app.Environment.IsDevelopment())
 {

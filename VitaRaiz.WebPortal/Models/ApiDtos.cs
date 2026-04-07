@@ -46,6 +46,7 @@ public class ZoneDto
     public string ZoneCode    { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public bool   IsActive    { get; set; } = true;
+    public DateTime? CreatedAt { get; set; }
 }
 
 public class ProductDto
@@ -56,6 +57,7 @@ public class ProductDto
     public decimal UnitPrice   { get; set; }
     public int     Stock       { get; set; }
     public string  Category    { get; set; } = string.Empty;
+    public string? PhotoUrl    { get; set; }
     public bool    IsActive    { get; set; } = true;
 }
 

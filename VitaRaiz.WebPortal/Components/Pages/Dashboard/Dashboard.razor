@@ -1,5 +1,8 @@
-﻿@page "/dashboard"
+@page "/dashboard"
 @attribute [Authorize]
+@using ApexCharts
+@using MudColor = MudBlazor.Color
+@using MudSize = MudBlazor.Size
 @inject ApiService Api
 @inject AuthService AuthSvc
 @inject ThemeService ThemeSvc
@@ -7,16 +10,21 @@
 
 <PageTitle>Dashboard - VitaRaiz</PageTitle>
 
-<!-- -- Page Header -- -->
-<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-5" Justify="Justify.SpaceBetween">
+<!-- -- Encabezado -- -->
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4" Justify="Justify.SpaceBetween">
     <div>
         <MudText Typo="Typo.h4" Class="fw-bold">Dashboard</MudText>
-        <MudText Typo="Typo.body2" Color="Color.Secondary">@_greeting · @DateTime.Now.ToString("dddd, d MMMM yyyy")</MudText>
+        <MudText Typo="Typo.body2" Color="MudColor.Secondary">@_greeting � @DateTime.Now.ToString("dddd, d MMMM yyyy")</MudText>
     </div>
-    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh"
-               OnClick="LoadDataAsync" Disabled="_loading" Size="Size.Small">
-        Actualizar
-    </MudButton>
+    <MudStack Row="true" Spacing="2">
+        <MudChip T="string" Icon="@Icons.Material.Filled.CalendarToday" Size="MudSize.Small" Variant="Variant.Outlined">
+            �ltimos 30 d�as
+        </MudChip>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh"
+                   OnClick="LoadDataAsync" Disabled="_loading" Size="MudSize.Small">
+            Actualizar
+        </MudButton>
+    </MudStack>
 </MudStack>
 
 @if (_loading)
@@ -25,92 +33,105 @@
         @for (int i = 0; i < 4; i++)
         {
             <MudItem xs="12" sm="6" lg="3">
-                <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="110px" Class="mud-border-r" />
+                <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="110px" Class="rounded-lg" />
             </MudItem>
         }
+        <MudItem xs="12">
+            <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="320px" Class="rounded-lg mt-4" />
+        </MudItem>
     </MudGrid>
 }
 else
 {
     <!-- -- KPI Cards -- -->
     <MudGrid Spacing="3" Class="mb-5">
-
         <MudItem xs="12" sm="6" lg="3">
-            <MudPaper Class="vr-kpi-card" Elevation="2">
+            <MudPaper Class="vr-kpi-card vr-kpi-clickable" Elevation="2" @onclick='() => Nav.NavigateTo("/ventas")'>
                 <div class="vr-kpi-accent" style="background:#1976D2"></div>
                 <div class="vr-kpi-body">
-                    <MudIcon Icon="@Icons.Material.Filled.ShoppingCart" Style="color:#1976D2;font-size:2rem" />
+                    <div class="vr-kpi-icon-wrap" style="background:#E3F2FD">
+                        <MudIcon Icon="@Icons.Material.Filled.ShoppingCart" Style="color:#1976D2;font-size:1.8rem" />
+                    </div>
                     <div>
                         <MudText Typo="Typo.h4" Class="fw-bold">@_stats.TotalSalesToday</MudText>
-                        <MudText Typo="Typo.caption" Color="Color.Secondary">Ventas hoy</MudText>
+                        <MudText Typo="Typo.caption" Color="MudColor.Secondary">Ventas hoy</MudText>
                     </div>
                 </div>
             </MudPaper>
         </MudItem>
 
         <MudItem xs="12" sm="6" lg="3">
-            <MudPaper Class="vr-kpi-card" Elevation="2">
+            <MudPaper Class="vr-kpi-card vr-kpi-clickable" Elevation="2" @onclick='() => Nav.NavigateTo("/pagos")'>
                 <div class="vr-kpi-accent" style="@($"background:{ThemeSvc.PrimaryColor}")"></div>
                 <div class="vr-kpi-body">
-                    <MudIcon Icon="@Icons.Material.Filled.AttachMoney" Style="@($"color:{ThemeSvc.PrimaryColor};font-size:2rem")" />
+                    <div class="vr-kpi-icon-wrap" style="@($"background:{ThemeSvc.AccentColor}")">
+                        <MudIcon Icon="@Icons.Material.Filled.AttachMoney" Style="@($"color:{ThemeSvc.PrimaryColor};font-size:1.8rem")" />
+                    </div>
                     <div>
                         <MudText Typo="Typo.h5" Class="fw-bold">@_stats.TotalCollectedToday.ToString("C0")</MudText>
-                        <MudText Typo="Typo.caption" Color="Color.Secondary">Cobrado hoy</MudText>
+                        <MudText Typo="Typo.caption" Color="MudColor.Secondary">Cobrado hoy</MudText>
                     </div>
                 </div>
             </MudPaper>
         </MudItem>
 
         <MudItem xs="12" sm="6" lg="3">
-            <MudPaper Class="vr-kpi-card" Elevation="2">
+            <MudPaper Class="vr-kpi-card vr-kpi-clickable" Elevation="2" @onclick='() => Nav.NavigateTo("/ventas?status=active")'>
                 <div class="vr-kpi-accent" style="background:#FF9800"></div>
                 <div class="vr-kpi-body">
-                    <MudIcon Icon="@Icons.Material.Filled.HourglassEmpty" Style="color:#FF9800;font-size:2rem" />
+                    <div class="vr-kpi-icon-wrap" style="background:#FFF3E0">
+                        <MudIcon Icon="@Icons.Material.Filled.HourglassEmpty" Style="color:#FF9800;font-size:1.8rem" />
+                    </div>
                     <div>
                         <MudText Typo="Typo.h5" Class="fw-bold">@_stats.TotalPending.ToString("C0")</MudText>
-                        <MudText Typo="Typo.caption" Color="Color.Secondary">Cartera pendiente</MudText>
+                        <MudText Typo="Typo.caption" Color="MudColor.Secondary">Cartera pendiente</MudText>
                     </div>
                 </div>
             </MudPaper>
         </MudItem>
 
         <MudItem xs="12" sm="6" lg="3">
-            <MudPaper Class="vr-kpi-card" Elevation="2">
+            <MudPaper Class="vr-kpi-card vr-kpi-clickable" Elevation="2" @onclick='() => Nav.NavigateTo("/clientes")'>
                 <div class="vr-kpi-accent" style="background:#9C27B0"></div>
                 <div class="vr-kpi-body">
-                    <MudIcon Icon="@Icons.Material.Filled.PeopleAlt" Style="color:#9C27B0;font-size:2rem" />
+                    <div class="vr-kpi-icon-wrap" style="background:#F3E5F5">
+                        <MudIcon Icon="@Icons.Material.Filled.PeopleAlt" Style="color:#9C27B0;font-size:1.8rem" />
+                    </div>
                     <div>
                         <MudText Typo="Typo.h4" Class="fw-bold">@_stats.ActiveCustomers</MudText>
-                        <MudText Typo="Typo.caption" Color="Color.Secondary">Clientes activos</MudText>
+                        <MudText Typo="Typo.caption" Color="MudColor.Secondary">Clientes activos</MudText>
                     </div>
                 </div>
             </MudPaper>
         </MudItem>
 
-        <!-- Admin-only row -->
         <AuthorizeView Roles="AdminFull,Admin,admin,adminfull">
             <Authorized>
                 <MudItem xs="12" sm="6" lg="3">
-                    <MudPaper Class="vr-kpi-card" Elevation="2">
+                    <MudPaper Class="vr-kpi-card vr-kpi-clickable" Elevation="2" @onclick='() => Nav.NavigateTo("/ventas?risk=rojo")'>
                         <div class="vr-kpi-accent" style="background:#D84315"></div>
                         <div class="vr-kpi-body">
-                            <MudIcon Icon="@Icons.Material.Filled.Warning" Style="color:#D84315;font-size:2rem" />
+                            <div class="vr-kpi-icon-wrap" style="background:#FBE9E7">
+                                <MudIcon Icon="@Icons.Material.Filled.Warning" Style="color:#D84315;font-size:1.8rem" />
+                            </div>
                             <div>
                                 <MudText Typo="Typo.h4" Class="fw-bold">@_stats.OverdueAccounts</MudText>
-                                <MudText Typo="Typo.caption" Color="Color.Secondary">Cuentas vencidas</MudText>
+                                <MudText Typo="Typo.caption" Color="MudColor.Secondary">Cuentas vencidas</MudText>
                             </div>
                         </div>
                     </MudPaper>
                 </MudItem>
 
                 <MudItem xs="12" sm="6" lg="3">
-                    <MudPaper Class="vr-kpi-card" Elevation="2">
+                    <MudPaper Class="vr-kpi-card vr-kpi-clickable" Elevation="2" @onclick='() => Nav.NavigateTo("/pagos?status=pending")'>
                         <div class="vr-kpi-accent" style="background:#F57C00"></div>
                         <div class="vr-kpi-body">
-                            <MudIcon Icon="@Icons.Material.Filled.Pending" Style="color:#F57C00;font-size:2rem" />
+                            <div class="vr-kpi-icon-wrap" style="background:#FFF8E1">
+                                <MudIcon Icon="@Icons.Material.Filled.Pending" Style="color:#F57C00;font-size:1.8rem" />
+                            </div>
                             <div>
                                 <MudText Typo="Typo.h4" Class="fw-bold">@_stats.PendingApprovals</MudText>
-                                <MudText Typo="Typo.caption" Color="Color.Secondary">Cobros por aprobar</MudText>
+                                <MudText Typo="Typo.caption" Color="MudColor.Secondary">Cobros por aprobar</MudText>
                             </div>
                         </div>
                     </MudPaper>
@@ -120,110 +141,295 @@ else
                     <MudPaper Class="vr-kpi-card" Elevation="2">
                         <div class="vr-kpi-accent" style="background:#2E7D32"></div>
                         <div class="vr-kpi-body">
-                            <MudIcon Icon="@Icons.Material.Filled.TrendingUp" Style="color:#2E7D32;font-size:2rem" />
+                            <div class="vr-kpi-icon-wrap" style="background:#E8F5E9">
+                                <MudIcon Icon="@Icons.Material.Filled.TrendingUp" Style="color:#2E7D32;font-size:1.8rem" />
+                            </div>
                             <div>
                                 <MudText Typo="Typo.h5" Class="fw-bold">@_stats.MonthlyRevenue.ToString("C0")</MudText>
-                                <MudText Typo="Typo.caption" Color="Color.Secondary">Ingresos del mes</MudText>
+                                <MudText Typo="Typo.caption" Color="MudColor.Secondary">Ingresos del mes</MudText>
                             </div>
                         </div>
                     </MudPaper>
                 </MudItem>
             </Authorized>
         </AuthorizeView>
-
     </MudGrid>
 
-    <!-- -- Recent Sales -- -->
-    <MudGrid Spacing="3">
-        <MudItem xs="12" md="7">
+    <!-- -- Secci�n Ventas -- -->
+    <MudText Typo="Typo.h6" Class="fw-bold mb-3 mt-1">
+        <MudIcon Icon="@Icons.Material.Filled.BarChart" Class="mr-1" Style="vertical-align:sub" />
+        An�lisis de Ventas
+    </MudText>
+    <MudGrid Spacing="3" Class="mb-2">
+
+        <!-- Gr�fica 1: Ventas por d�a (principal, clickable) -->
+        <MudItem xs="12" lg="8">
             <MudPaper Elevation="2" Class="pa-4">
-                <MudText Typo="Typo.h6" Class="fw-bold mb-3">
-                    <MudIcon Icon="@Icons.Material.Filled.ShoppingBag" Class="mr-1" Style="vertical-align:sub" />
-                    Ventas recientes
-                </MudText>
-                <MudTable Items="_recentSales" Hover="true" Dense="true" Striped="true"
-                          Loading="_loading" LoadingProgressColor="Color.Primary"
-                          Class="vr-table">
-                    <HeaderContent>
-                        <MudTh>Cliente</MudTh>
-                        <MudTh>Total</MudTh>
-                        <MudTh>Avance</MudTh>
-                        <MudTh>Estatus</MudTh>
-                        <MudTh></MudTh>
-                    </HeaderContent>
-                    <RowTemplate>
-                        <MudTd>
-                            <MudText Typo="Typo.body2" Class="fw-medium">@context.CustomerName</MudText>
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">@context.SaleDate.ToString("dd/MM/yyyy")</MudText>
-                        </MudTd>
-                        <MudTd>@context.TotalAmount.ToString("C0")</MudTd>
-                        <MudTd Style="min-width:120px">
-                            <MudProgressLinear Color="@GetProgressColor(context.PaymentProgress)"
-                                              Value="@(context.PaymentProgress * 100)"
-                                              Class="my-1" Rounded="true" Size="Size.Small" />
-                            <MudText Typo="Typo.caption">@((context.PaymentProgress * 100).ToString("F0"))%</MudText>
-                        </MudTd>
-                        <MudTd><MudChip T="string" Size="Size.Small" Color="@GetStatusColor(context.Status)">@context.Status</MudChip></MudTd>
-                        <MudTd>
-                            <MudIconButton Icon="@Icons.Material.Filled.OpenInNew"
-                                           Size="Size.Small"
-                                           OnClick="@(() => Nav.NavigateTo("/ventas/" + context.SaleId))" />
-                        </MudTd>
-                    </RowTemplate>
-                    <NoRecordsContent>
-                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="pa-4 text-center">Sin ventas recientes</MudText>
-                    </NoRecordsContent>
-                </MudTable>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-3">
+                    <MudText Typo="Typo.subtitle1" Class="fw-bold">
+                        <MudIcon Icon="@Icons.Material.Filled.CalendarMonth" Class="mr-1" Style="vertical-align:sub;color:#1976D2" />
+                        Ventas por d�a
+                    </MudText>
+                    <MudChip T="string" Size="MudSize.Small" Color="MudColor.Primary" Variant="Variant.Outlined">
+                        Clic en barra = ver detalle
+                    </MudChip>
+                </MudStack>
+                <ApexChart TItem="DayPoint"
+                           Options="_salesDayOpts"
+                           @ref="_salesDayChart"
+                           OnDataPointSelection="OnSalesDayClick"
+                           Height="280">
+                    <ApexPointSeries TItem="DayPoint"
+                                     Items="_salesByDay"
+                                     Name="Ventas"
+                                     SeriesType="SeriesType.Bar"
+                                     XValue="@(p => p.Label)"
+                                     YValue="@(p => p.Value)" />
+                </ApexChart>
             </MudPaper>
         </MudItem>
 
-        <!-- -- Pending Payments -- -->
-        <MudItem xs="12" md="5">
+        <!-- Gr�fica 3: Ventas por estatus (donut) -->
+        <MudItem xs="12" sm="6" lg="4">
             <MudPaper Elevation="2" Class="pa-4">
-                <MudText Typo="Typo.h6" Class="fw-bold mb-3">
-                    <MudIcon Icon="@Icons.Material.Filled.Pending" Class="mr-1" Style="vertical-align:sub" />
-                    Cobros pendientes de aprobacion
+                <MudText Typo="Typo.subtitle1" Class="fw-bold mb-3">
+                    <MudIcon Icon="@Icons.Material.Filled.DonutLarge" Class="mr-1" Style="vertical-align:sub;color:#9C27B0" />
+                    Por estatus
                 </MudText>
-                @if (_pendingPayments.Count == 0)
+                @if (_salesByStatus.Any())
                 {
-                    <MudAlert Severity="Severity.Success" Dense="true">Todo al dia ?</MudAlert>
+                    <ApexChart TItem="LabelPoint"
+                               Options="_statusOpts"
+                               Height="260">
+                        <ApexPointSeries TItem="LabelPoint"
+                                         Items="_salesByStatus"
+                                         Name="Ventas"
+                                         SeriesType="SeriesType.Donut"
+                                         XValue="@(p => p.Label)"
+                                         YValue="@(p => p.Value)" />
+                    </ApexChart>
                 }
                 else
                 {
-                    @foreach (var p in _pendingPayments.Take(6))
-                    {
-                        <MudPaper Outlined="true" Class="pa-3 mb-2 d-flex align-center justify-space-between">
-                            <div>
-                                <MudText Typo="Typo.body2" Class="fw-medium">@p.CustomerName</MudText>
-                                <MudText Typo="Typo.caption" Color="Color.Secondary">@p.CollectorName · @p.PaymentDate.ToString("dd/MM")</MudText>
-                            </div>
-                            <MudChip T="string" Size="Size.Small" Color="Color.Warning">@p.Amount.ToString("C0")</MudChip>
-                        </MudPaper>
-                    }
-                    @if (_pendingPayments.Count > 6)
-                    {
-                        <MudLink Href="/pagos" Class="mt-1">Ver todos (@_pendingPayments.Count)</MudLink>
-                    }
+                    <div class="d-flex justify-center align-center" style="height:260px">
+                        <MudText Color="MudColor.Secondary">Sin datos</MudText>
+                    </div>
                 }
             </MudPaper>
         </MudItem>
     </MudGrid>
+
+    <!-- Bot�n ver mas gr�ficas de ventas -->
+    <div class="text-center mb-4">
+        <MudButton Variant="Variant.Text" Color="MudColor.Primary"
+                   StartIcon="@(_showMoreSales ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                   OnClick="() => _showMoreSales = !_showMoreSales">
+            @(_showMoreSales ? "Ocultar" : "Ver m�s gr�ficas de ventas")
+        </MudButton>
+    </div>
+
+    @if (_showMoreSales)
+    {
+        <MudGrid Spacing="3" Class="mb-4">
+            <!-- Gr�fica 2: Ventas por vendedor -->
+            <MudItem xs="12" md="6">
+                <MudPaper Elevation="2" Class="pa-4">
+                    <MudText Typo="Typo.subtitle1" Class="fw-bold mb-3">
+                        <MudIcon Icon="@Icons.Material.Filled.Person" Class="mr-1" Style="vertical-align:sub;color:#2196F3" />
+                        Por vendedor
+                    </MudText>
+                    <ApexChart TItem="LabelPoint"
+                               Options="_sellerOpts"
+                               OnDataPointSelection="OnSellerClick"
+                               Height="250">
+                        <ApexPointSeries TItem="LabelPoint"
+                                         Items="_salesBySeller"
+                                         Name="Total ventas"
+                                         SeriesType="SeriesType.Bar"
+                                         XValue="@(p => p.Label)"
+                                         YValue="@(p => p.Value)" />
+                    </ApexChart>
+                </MudPaper>
+            </MudItem>
+
+            <!-- Gr�fica 4: Ventas por producto -->
+            <MudItem xs="12" md="6">
+                <MudPaper Elevation="2" Class="pa-4">
+                    <MudText Typo="Typo.subtitle1" Class="fw-bold mb-3">
+                        <MudIcon Icon="@Icons.Material.Filled.Inventory" Class="mr-1" Style="vertical-align:sub;color:#FF9800" />
+                        Top productos vendidos
+                    </MudText>
+                    <ApexChart TItem="LabelPoint"
+                               Options="_productOpts"
+                               OnDataPointSelection="OnProductClick"
+                               Height="250">
+                        <ApexPointSeries TItem="LabelPoint"
+                                         Items="_salesByProduct"
+                                         Name="Cantidad"
+                                         SeriesType="SeriesType.Bar"
+                                         XValue="@(p => p.Label)"
+                                         YValue="@(p => p.Value)" />
+                    </ApexChart>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    }
+
+    <!-- -- Secci�n Cobros -- -->
+    <MudText Typo="Typo.h6" Class="fw-bold mb-3 mt-1">
+        <MudIcon Icon="@Icons.Material.Filled.Payments" Class="mr-1" Style="vertical-align:sub" />
+        An�lisis de Cobros
+    </MudText>
+    <MudGrid Spacing="3" Class="mb-2">
+
+        <!-- Gr�fica 5: Cobros por d�a (principal) -->
+        <MudItem xs="12" lg="8">
+            <MudPaper Elevation="2" Class="pa-4">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-3">
+                    <MudText Typo="Typo.subtitle1" Class="fw-bold">
+                        <MudIcon Icon="@Icons.Material.Filled.CalendarMonth" Class="mr-1" Style="vertical-align:sub;color:#2E7D32" />
+                        Cobros por d�a
+                    </MudText>
+                    <MudChip T="string" Size="MudSize.Small" Color="MudColor.Success" Variant="Variant.Outlined">
+                        Clic en punto = ver detalle
+                    </MudChip>
+                </MudStack>
+                <ApexChart TItem="DayPoint"
+                           Options="_payDayOpts"
+                           @ref="_payDayChart"
+                           OnDataPointSelection="OnPayDayClick"
+                           Height="280">
+                    <ApexPointSeries TItem="DayPoint"
+                                     Items="_payByDay"
+                                     Name="Cobrado"
+                                     SeriesType="SeriesType.Area"
+                                     XValue="@(p => p.Label)"
+                                     YValue="@(p => p.Value)" />
+                </ApexChart>
+            </MudPaper>
+        </MudItem>
+
+        <!-- Gr�fica 7: Cobros por zona -->
+        <MudItem xs="12" sm="6" lg="4">
+            <MudPaper Elevation="2" Class="pa-4">
+                <MudText Typo="Typo.subtitle1" Class="fw-bold mb-3">
+                    <MudIcon Icon="@Icons.Material.Filled.Map" Class="mr-1" Style="vertical-align:sub;color:#795548" />
+                    Cobros por zona
+                </MudText>
+                @if (_payByZone.Any())
+                {
+                    <ApexChart TItem="LabelPoint"
+                               Options="_zoneOpts"
+                               OnDataPointSelection="OnZoneClick"
+                               Height="260">
+                        <ApexPointSeries TItem="LabelPoint"
+                                         Items="_payByZone"
+                                         Name="Cobrado"
+                                         SeriesType="SeriesType.Pie"
+                                         XValue="@(p => p.Label)"
+                                         YValue="@(p => p.Value)" />
+                    </ApexChart>
+                }
+                else
+                {
+                    <div class="d-flex justify-center align-center" style="height:260px">
+                        <MudText Color="MudColor.Secondary">Sin datos</MudText>
+                    </div>
+                }
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+
+    <!-- Bot�n ver mas gr�ficas de cobros -->
+    <div class="text-center mb-5">
+        <MudButton Variant="Variant.Text" Color="MudColor.Success"
+                   StartIcon="@(_showMorePay ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                   OnClick="() => _showMorePay = !_showMorePay">
+            @(_showMorePay ? "Ocultar" : "Ver m�s gr�ficas de cobros")
+        </MudButton>
+    </div>
+
+    @if (_showMorePay)
+    {
+        <MudGrid Spacing="3" Class="mb-5">
+            <!-- Gr�fica 6: Cobros por cobrador -->
+            <MudItem xs="12">
+                <MudPaper Elevation="2" Class="pa-4">
+                    <MudText Typo="Typo.subtitle1" Class="fw-bold mb-3">
+                        <MudIcon Icon="@Icons.Material.Filled.RecordVoiceOver" Class="mr-1" Style="vertical-align:sub;color:#00796B" />
+                        Cobros por cobrador
+                    </MudText>
+                    <ApexChart TItem="LabelPoint"
+                               Options="_collectorOpts"
+                               OnDataPointSelection="OnCollectorClick"
+                               Height="250">
+                        <ApexPointSeries TItem="LabelPoint"
+                                         Items="_payByCollector"
+                                         Name="Total cobrado"
+                                         SeriesType="SeriesType.Bar"
+                                         XValue="@(p => p.Label)"
+                                         YValue="@(p => p.Value)" />
+                    </ApexChart>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    }
 }
 
 <style>
-    .vr-kpi-card { display:flex; flex-direction:column; overflow:hidden; border-radius:12px !important; }
+    .vr-kpi-card { display:flex; flex-direction:column; overflow:hidden; border-radius:14px !important; transition:box-shadow .2s; }
+    .vr-kpi-clickable { cursor:pointer; }
+    .vr-kpi-clickable:hover { box-shadow: 0 6px 24px rgba(0,0,0,0.14) !important; }
     .vr-kpi-accent { height:4px; }
     .vr-kpi-body { display:flex; align-items:center; gap:16px; padding:16px; }
-    .vr-table .mud-table-cell { padding: 8px 12px !important; }
+    .vr-kpi-icon-wrap { width:52px; height:52px; border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
 </style>
 
 @code {
     private bool _loading = true;
+    private bool _showMoreSales;
+    private bool _showMorePay;
     private string _greeting = string.Empty;
     private DashboardStats _stats = new();
-    private List<SaleDto> _recentSales = new();
-    private List<PaymentDto> _pendingPayments = new();
 
+    // Chart refs
+    private ApexChart<DayPoint>? _salesDayChart;
+    private ApexChart<DayPoint>? _payDayChart;
+
+    // Chart data
+    private List<DayPoint>   _salesByDay     = new();
+    private List<LabelPoint> _salesBySeller  = new();
+    private List<LabelPoint> _salesByStatus  = new();
+    private List<LabelPoint> _salesByProduct = new();
+    private List<DayPoint>   _payByDay       = new();
+    private List<LabelPoint> _payByCollector = new();
+    private List<LabelPoint> _payByZone      = new();
+
+    // Chart options
+    private ApexChartOptions<DayPoint>   _salesDayOpts  = new();
+    private ApexChartOptions<LabelPoint> _sellerOpts    = new();
+    private ApexChartOptions<LabelPoint> _statusOpts    = new();
+    private ApexChartOptions<LabelPoint> _productOpts   = new();
+    private ApexChartOptions<DayPoint>   _payDayOpts    = new();
+    private ApexChartOptions<LabelPoint> _collectorOpts = new();
+    private ApexChartOptions<LabelPoint> _zoneOpts      = new();
+
+    // --- Models ---------------------------------------------------------------
+    private record DayPoint(string Label, decimal Value, DateTime Date);
+    private record LabelPoint(string Label, decimal Value);
+
+    private class DashboardStats
+    {
+        public int     TotalSalesToday       { get; set; }
+        public decimal TotalCollectedToday   { get; set; }
+        public decimal TotalPending          { get; set; }
+        public int     ActiveCustomers       { get; set; }
+        public int     OverdueAccounts       { get; set; }
+        public int     PendingApprovals      { get; set; }
+        public decimal MonthlyRevenue        { get; set; }
+    }
+
+    // --- Lifecycle ------------------------------------------------------------
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
@@ -231,62 +437,232 @@ else
             var user = await AuthSvc.GetCurrentUserAsync();
             if (user is not null) await ThemeSvc.LoadForRoleAsync(user.RoleId);
             SetGreeting(user?.Username ?? "Usuario");
+            BuildChartOptions();
             await LoadDataAsync();
         }
     }
 
+    // --- Data loading ---------------------------------------------------------
     private async Task LoadDataAsync()
     {
         _loading = true;
         StateHasChanged();
 
-        var user  = await AuthSvc.GetCurrentUserAsync();
-        var today = DateTime.Today.ToString("yyyy-MM-dd");
+        var today   = DateTime.Today;
+        var todayS  = today.ToString("yyyy-MM-dd");
+        var start30 = today.AddDays(-29).ToString("yyyy-MM-dd");
+        var startM  = new DateTime(today.Year, today.Month, 1).ToString("yyyy-MM-dd");
 
-        // Sales today
-        var sales = await Api.GetAsync<List<SaleDto>>("api/sales", new() {
-            { "startDate", today }, { "endDate", today } });
-        _recentSales = sales ?? new();
-        _stats.TotalSalesToday = _recentSales.Count;
+        // -- Ventas --
+        var allSales = await Api.GetAsync<List<SaleDto>>("api/sales", new() {
+            { "startDate", start30 }, { "endDate", todayS } });
+        var sales = allSales ?? new();
 
-        // Payments today
-        var payments = await Api.GetAsync<List<PaymentDto>>("api/payments", new() {
-            { "startDate", today }, { "endDate", today } });
-        _stats.TotalCollectedToday = payments?
-            .Where(p => p.Status.Equals("approved", StringComparison.OrdinalIgnoreCase))
-            .Sum(p => p.Amount) ?? 0;
+        var todaySales = sales.Where(s => s.SaleDate.Date == today).ToList();
+        _stats.TotalSalesToday = todaySales.Count;
 
-        // Pending approvals
-        var pending = await Api.GetAsync<List<PaymentDto>>("api/payments", new() {
-            { "status", "pending" } });
-        _pendingPayments  = pending ?? new();
-        _stats.PendingApprovals = _pendingPayments.Count;
+        _salesByDay = sales
+            .GroupBy(s => s.SaleDate.Date)
+            .OrderBy(g => g.Key)
+            .Select(g => new DayPoint(g.Key.ToString("dd/MM"), g.Sum(s => s.TotalAmount), g.Key))
+            .ToList();
 
-        // Active sales cartera
+        _salesBySeller = sales
+            .GroupBy(s => s.SellerName)
+            .OrderByDescending(g => g.Sum(s => s.TotalAmount))
+            .Select(g => new LabelPoint(g.Key, g.Sum(s => s.TotalAmount)))
+            .Take(10).ToList();
+
+        _salesByStatus = sales
+            .GroupBy(s => s.Status)
+            .Select(g => new LabelPoint(g.Key, g.Count()))
+            .ToList();
+
+        _salesByProduct = sales
+            .Where(s => !string.IsNullOrEmpty(s.ProductName))
+            .GroupBy(s => s.ProductName!)
+            .OrderByDescending(g => g.Count())
+            .Select(g => new LabelPoint(g.Key, g.Count()))
+            .Take(10).ToList();
+
+        // -- Cobros --
+        var allPayments = await Api.GetAsync<List<PaymentDto>>("api/payments", new() {
+            { "startDate", start30 }, { "endDate", todayS } });
+        var payments = allPayments ?? new();
+
+        var approvedPay = payments.Where(p => p.Status.Equals("approved", StringComparison.OrdinalIgnoreCase)).ToList();
+        _stats.TotalCollectedToday = approvedPay.Where(p => p.PaymentDate.Date == today).Sum(p => p.Amount);
+
+        var pendingPay = payments.Where(p => p.Status.Equals("pending", StringComparison.OrdinalIgnoreCase)).ToList();
+        _stats.PendingApprovals = pendingPay.Count;
+
+        _payByDay = approvedPay
+            .GroupBy(p => p.PaymentDate.Date)
+            .OrderBy(g => g.Key)
+            .Select(g => new DayPoint(g.Key.ToString("dd/MM"), g.Sum(p => p.Amount), g.Key))
+            .ToList();
+
+        _payByCollector = approvedPay
+            .GroupBy(p => p.CollectorName)
+            .OrderByDescending(g => g.Sum(p => p.Amount))
+            .Select(g => new LabelPoint(g.Key, g.Sum(p => p.Amount)))
+            .Take(10).ToList();
+
+        _payByZone = approvedPay
+            .Where(p => !string.IsNullOrEmpty(p.ZoneName))
+            .GroupBy(p => p.ZoneName!)
+            .OrderByDescending(g => g.Sum(p => p.Amount))
+            .Select(g => new LabelPoint(g.Key, g.Sum(p => p.Amount)))
+            .ToList();
+
+        // -- Cartera activa --
         var active = await Api.GetAsync<List<SaleDto>>("api/sales/active", new());
         _stats.TotalPending    = active?.Sum(s => s.Balance) ?? 0;
         _stats.ActiveCustomers = active?.Select(s => s.CustomerId).Distinct().Count() ?? 0;
-        _stats.OverdueAccounts = active?
-            .Count(s => s.RiskStatus.Equals("ROJO", StringComparison.OrdinalIgnoreCase)) ?? 0;
+        _stats.OverdueAccounts = active?.Count(s => s.RiskStatus.Equals("ROJO", StringComparison.OrdinalIgnoreCase)) ?? 0;
+
+        // -- Ingresos del mes --
+        var monthlySales = await Api.GetAsync<List<SaleDto>>("api/sales", new() {
+            { "startDate", startM }, { "endDate", todayS } });
+        _stats.MonthlyRevenue = monthlySales?.Sum(s => s.TotalAmount) ?? 0;
 
         _loading = false;
+        StateHasChanged();
     }
 
+    // --- Chart options --------------------------------------------------------
+    private void BuildChartOptions()
+    {
+        var primary = ThemeSvc.PrimaryColor;
+
+        _salesDayOpts = new ApexChartOptions<DayPoint>
+        {
+            Chart = new Chart { Toolbar = new Toolbar { Show = false } },
+            Colors = new List<string> { "#1976D2" },
+            PlotOptions = new PlotOptions { Bar = new PlotOptionsBar { BorderRadius = 6, ColumnWidth = "55%" } },
+            DataLabels = new DataLabels { Enabled = false },
+            Tooltip = new Tooltip { Y = new TooltipY { Formatter = "function(v){return '$'+v.toLocaleString()}" } },
+            Xaxis = new XAxis { Labels = new XAxisLabels { Rotate = -35 } },
+            Yaxis = new List<YAxis> { new() { Labels = new YAxisLabels { Formatter = "function(v){return '$'+v.toLocaleString()}" } } }
+        };
+
+        _payDayOpts = new ApexChartOptions<DayPoint>
+        {
+            Chart = new Chart { Toolbar = new Toolbar { Show = false } },
+            Colors = new List<string> { "#2E7D32" },
+            Fill = new Fill { Type = new List<FillType> { FillType.Gradient }, Gradient = new FillGradient { ShadeIntensity = 1, OpacityFrom = 0.7, OpacityTo = 0.1 } },
+            DataLabels = new DataLabels { Enabled = false },
+            Stroke = new Stroke { Curve = new List<Curve> { Curve.Smooth }, Width = new List<double> { 2.5 } },
+            Tooltip = new Tooltip { Y = new TooltipY { Formatter = "function(v){return '$'+v.toLocaleString()}" } },
+            Xaxis = new XAxis { Labels = new XAxisLabels { Rotate = -35 } },
+            Yaxis = new List<YAxis> { new() { Labels = new YAxisLabels { Formatter = "function(v){return '$'+v.toLocaleString()}" } } }
+        };
+
+        _sellerOpts = new ApexChartOptions<LabelPoint>
+        {
+            Chart = new Chart { Toolbar = new Toolbar { Show = false } },
+            Colors = new List<string> { "#2196F3" },
+            PlotOptions = new PlotOptions { Bar = new PlotOptionsBar { Horizontal = true, BorderRadius = 4, BarHeight = "60%" } },
+            DataLabels = new DataLabels { Enabled = false },
+            Tooltip = new Tooltip { Y = new TooltipY { Formatter = "function(v){return '$'+v.toLocaleString()}" } }
+        };
+
+        _statusOpts = new ApexChartOptions<LabelPoint>
+        {
+            Chart = new Chart { Toolbar = new Toolbar { Show = false } },
+            Colors = new List<string> { "#1976D2", "#4CAF50", "#FF9800", "#F44336" },
+            DataLabels = new DataLabels { Enabled = true },
+            Legend = new Legend { Position = LegendPosition.Bottom }
+        };
+
+        _productOpts = new ApexChartOptions<LabelPoint>
+        {
+            Chart = new Chart { Toolbar = new Toolbar { Show = false } },
+            Colors = new List<string> { "#FF9800" },
+            PlotOptions = new PlotOptions { Bar = new PlotOptionsBar { Horizontal = true, BorderRadius = 4, BarHeight = "60%" } },
+            DataLabels = new DataLabels { Enabled = false }
+        };
+
+        _collectorOpts = new ApexChartOptions<LabelPoint>
+        {
+            Chart = new Chart { Toolbar = new Toolbar { Show = false } },
+            Colors = new List<string> { "#00796B" },
+            PlotOptions = new PlotOptions { Bar = new PlotOptionsBar { BorderRadius = 6, ColumnWidth = "55%" } },
+            DataLabels = new DataLabels { Enabled = false },
+            Tooltip = new Tooltip { Y = new TooltipY { Formatter = "function(v){return '$'+v.toLocaleString()}" } }
+        };
+
+        _zoneOpts = new ApexChartOptions<LabelPoint>
+        {
+            Chart = new Chart { Toolbar = new Toolbar { Show = false } },
+            Colors = new List<string> { "#795548","#A5715E","#BF8C7A","#D4A896" },
+            DataLabels = new DataLabels { Enabled = true },
+            Legend = new Legend { Position = LegendPosition.Bottom }
+        };
+    }
+
+    // --- Drill-down click handlers --------------------------------------------
+    private void OnSalesDayClick(SelectedData<DayPoint> selected)
+    {
+        var pt = GetPoint(_salesByDay, selected.DataPointIndex);
+        if (pt is null) return;
+        Nav.NavigateTo($"/dashboard/detalle?tipo=ventas-dia&fecha={pt.Date:yyyy-MM-dd}");
+    }
+
+    private void OnSellerClick(SelectedData<LabelPoint> selected)
+    {
+        var pt = GetPoint(_salesBySeller, selected.DataPointIndex);
+        if (pt is null) return;
+        Nav.NavigateTo($"/dashboard/detalle?tipo=ventas-vendedor&filtro={Uri.EscapeDataString(pt.Label)}");
+    }
+
+    private void OnProductClick(SelectedData<LabelPoint> selected)
+    {
+        var pt = GetPoint(_salesByProduct, selected.DataPointIndex);
+        if (pt is null) return;
+        Nav.NavigateTo($"/dashboard/detalle?tipo=ventas-producto&filtro={Uri.EscapeDataString(pt.Label)}");
+    }
+
+    private void OnPayDayClick(SelectedData<DayPoint> selected)
+    {
+        var pt = GetPoint(_payByDay, selected.DataPointIndex);
+        if (pt is null) return;
+        Nav.NavigateTo($"/dashboard/detalle?tipo=cobros-dia&fecha={pt.Date:yyyy-MM-dd}");
+    }
+
+    private void OnCollectorClick(SelectedData<LabelPoint> selected)
+    {
+        var pt = GetPoint(_payByCollector, selected.DataPointIndex);
+        if (pt is null) return;
+        Nav.NavigateTo($"/dashboard/detalle?tipo=cobros-cobrador&filtro={Uri.EscapeDataString(pt.Label)}");
+    }
+
+    private void OnZoneClick(SelectedData<LabelPoint> selected)
+    {
+        var pt = GetPoint(_payByZone, selected.DataPointIndex);
+        if (pt is null) return;
+        Nav.NavigateTo($"/dashboard/detalle?tipo=cobros-zona&filtro={Uri.EscapeDataString(pt.Label)}");
+    }
+
+    private static T? GetPoint<T>(List<T> list, int idx) where T : class =>
+        (idx >= 0 && idx < list.Count) ? list[idx] : null;
+
+    // --- Helpers --------------------------------------------------------------
     private void SetGreeting(string firstName)
     {
         var h     = DateTime.Now.Hour;
-        var salud = h < 12 ? "Buenos dias" : h < 19 ? "Buenas tardes" : "Buenas noches";
-        _greeting = $"{salud}, {firstName.Split(' ')[0]} ??";
+        var salud = h < 12 ? "Buenos d�as" : h < 19 ? "Buenas tardes" : "Buenas noches";
+        _greeting = $"{salud}, {firstName.Split(' ')[0]}";
     }
 
-    private static Color GetProgressColor(double pct) =>
-        pct >= .9 ? Color.Success : pct >= .5 ? Color.Warning : Color.Error;
+    private static MudBlazor.Color GetProgressColor(double pct) =>
+        pct >= .9 ? MudBlazor.Color.Success : pct >= .5 ? MudBlazor.Color.Warning : MudBlazor.Color.Error;
 
-    private static Color GetStatusColor(string status) => status?.ToLower() switch
+    private static MudBlazor.Color GetStatusColor(string status) => status?.ToLower() switch
     {
-        "activa"     => Color.Primary,
-        "completada" => Color.Success,
-        "cancelada"  => Color.Error,
-        _            => Color.Default,
+        "activa"     => MudBlazor.Color.Primary,
+        "completada" => MudBlazor.Color.Success,
+        "cancelada"  => MudBlazor.Color.Error,
+        _            => MudBlazor.Color.Default,
     };
 }

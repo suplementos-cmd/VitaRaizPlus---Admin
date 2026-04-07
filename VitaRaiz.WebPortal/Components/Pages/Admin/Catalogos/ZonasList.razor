@@ -4,96 +4,286 @@
 @inject NotificationService Notify
 @inject IDialogService Dialog
 
-<PageTitle>Zonas – VitaRaiz</PageTitle>
+<PageTitle>Zonas - VitaRaiz</PageTitle>
 
+<!-- Header -->
 <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
-    <MudText Typo="Typo.h4" Class="fw-bold">Zonas</MudText>
-    <MudButton Variant="Variant.Filled" Color="Color.Primary"
-               StartIcon="@Icons.Material.Filled.AddLocation" OnClick="OpenCreate">Nueva Zona</MudButton>
+    <MudStack Spacing="0">
+        <MudText Typo="Typo.h4" Class="fw-bold">Zonas de Cobertura</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">Gestion de zonas geograficas de ventas</MudText>
+    </MudStack>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large"
+               StartIcon="@Icons.Material.Filled.AddLocation" OnClick="OpenCreate">
+        Nueva Zona
+    </MudButton>
 </MudStack>
 
-<MudPaper Elevation="2">
-    <MudTable Items="_zones" Hover="true" Dense="true" Loading="_loading" RowsPerPage="20">
+<!-- Stats row -->
+<MudGrid Spacing="3" Class="mb-4">
+    <MudItem xs="12" sm="4">
+        <MudPaper Elevation="2" Class="pa-4 rounded-lg">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                <MudAvatar Color="Color.Primary" Variant="Variant.Filled" Size="Size.Large">
+                    <MudIcon Icon="@Icons.Material.Filled.Map" />
+                </MudAvatar>
+                <MudStack Spacing="0">
+                    <MudText Typo="Typo.h4" Class="fw-bold">@_zones.Count</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Total Zonas</MudText>
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="4">
+        <MudPaper Elevation="2" Class="pa-4 rounded-lg">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                <MudAvatar Color="Color.Success" Variant="Variant.Filled" Size="Size.Large">
+                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" />
+                </MudAvatar>
+                <MudStack Spacing="0">
+                    <MudText Typo="Typo.h4" Class="fw-bold">@_zones.Count(z => z.IsActive)</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Activas</MudText>
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="4">
+        <MudPaper Elevation="2" Class="pa-4 rounded-lg">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                <MudAvatar Color="Color.Warning" Variant="Variant.Filled" Size="Size.Large">
+                    <MudIcon Icon="@Icons.Material.Filled.PauseCircle" />
+                </MudAvatar>
+                <MudStack Spacing="0">
+                    <MudText Typo="Typo.h4" Class="fw-bold">@_zones.Count(z => !z.IsActive)</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Inactivas</MudText>
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+<!-- Toolbar + Table -->
+<MudPaper Elevation="2" Class="rounded-lg">
+    <MudGrid Spacing="2" Class="pa-3">
+        <MudItem xs="12" sm="7">
+            <MudTextField Value="@_search" ValueChanged="@((string s) => OnSearchChanged(s))"
+                          Label="Buscar por nombre, codigo o descripcion..." Variant="Variant.Outlined"
+                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                          Clearable="true" Dense="true" Immediate="true" />
+        </MudItem>
+        <MudItem xs="12" sm="3">
+            <MudSelect T="string"
+                       Value="@_statusFilter"
+                       ValueChanged="@((string v) => { _statusFilter = v; ApplyFilter(); })"
+                       Label="Estado" Variant="Variant.Outlined" Dense="true">
+                <MudSelectItem Value="@("all")">Todos</MudSelectItem>
+                <MudSelectItem Value="@("active")">Activas</MudSelectItem>
+                <MudSelectItem Value="@("inactive")">Inactivas</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="2" Class="d-flex align-center">
+            <MudText Typo="Typo.body2" Color="Color.Secondary">@_filtered.Count resultado(s)</MudText>
+        </MudItem>
+    </MudGrid>
+
+    @if (_loading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+
+    <MudTable Items="@_filtered" Hover="true" Striped="true" Dense="true"
+              FixedHeader="true" Height="calc(100vh - 400px)"
+              SortLabel="Ordenar" Elevation="0">
         <HeaderContent>
-            <MudTh>Código</MudTh><MudTh>Nombre</MudTh><MudTh>Descripción</MudTh><MudTh>Estado</MudTh><MudTh>Acciones</MudTh>
+            <MudTh Style="width:110px">
+                <MudTableSortLabel SortBy="new Func<ZoneDto, object>(z => z.ZoneCode ?? string.Empty)">
+                    Codigo
+                </MudTableSortLabel>
+            </MudTh>
+            <MudTh>
+                <MudTableSortLabel SortBy="new Func<ZoneDto, object>(z => z.ZoneName)" InitialDirection="SortDirection.Ascending">
+                    Nombre
+                </MudTableSortLabel>
+            </MudTh>
+            <MudTh Style="width:100px">Estado</MudTh>
+            <MudTh>Descripcion</MudTh>
+            <MudTh Style="width:110px">
+                <MudTableSortLabel SortBy="new Func<ZoneDto, object>(z => (object)(z.CreatedAt ?? DateTime.MinValue))">
+                    Creada
+                </MudTableSortLabel>
+            </MudTh>
+            <MudTh Style="width:90px; text-align:center">Acciones</MudTh>
         </HeaderContent>
         <RowTemplate>
-            <MudTd><MudChip T="string" Size="Size.Small" Color="Color.Primary">@context.ZoneCode</MudChip></MudTd>
-            <MudTd Class="fw-medium">@context.ZoneName</MudTd>
-            <MudTd>@context.Description</MudTd>
-            <MudTd>
-                <MudChip T="string" Size="Size.Small" Color="@(context.IsActive ? Color.Success : Color.Default)">
-                    @(context.IsActive ? "Activa" : "Inactiva")</MudChip>
+            <MudTd DataLabel="Codigo">
+                @if (!string.IsNullOrWhiteSpace(context.ZoneCode))
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined">@context.ZoneCode</MudChip>
+                }
+                else
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Tertiary">--</MudText>
+                }
             </MudTd>
-            <MudTd>
-                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="() => OpenEdit(context)" />
-                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
-                               OnClick="() => DeleteAsync(context)" />
+            <MudTd DataLabel="Nombre">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudAvatar Color="@(context.IsActive ? Color.Primary : Color.Default)"
+                               Variant="Variant.Outlined" Size="Size.Small">
+                        <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" />
+                    </MudAvatar>
+                    <MudText Typo="Typo.body2" Class="fw-bold">@context.ZoneName</MudText>
+                </MudStack>
+            </MudTd>
+            <MudTd DataLabel="Estado">
+                <MudChip T="string" Size="Size.Small"
+                         Color="@(context.IsActive ? Color.Success : Color.Default)"
+                         Variant="Variant.Filled">
+                    @(context.IsActive ? "Activa" : "Inactiva")
+                </MudChip>
+            </MudTd>
+            <MudTd DataLabel="Descripcion">
+                <MudText Typo="Typo.body2" Color="Color.Secondary"
+                         Style="max-width:300px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">
+                    @(string.IsNullOrWhiteSpace(context.Description) ? "--" : context.Description)
+                </MudText>
+            </MudTd>
+            <MudTd DataLabel="Creada">
+                @if (context.CreatedAt.HasValue)
+                {
+                    <MudText Typo="Typo.body2">@context.CreatedAt.Value.ToString("dd/MM/yyyy")</MudText>
+                }
+                else
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Tertiary">--</MudText>
+                }
+            </MudTd>
+            <MudTd DataLabel="Acciones" Style="text-align:center">
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary"
+                               Size="Size.Small" Title="Editar"
+                               OnClick="async () => await OpenEdit(context)" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error"
+                               Size="Size.Small" Title="Eliminar"
+                               OnClick="async () => await DeleteAsync(context)" />
             </MudTd>
         </RowTemplate>
-        <PagerContent><MudTablePager /></PagerContent>
+        <PagerContent>
+            <MudTablePager PageSizeOptions="new int[]{15,30,50,100}" />
+        </PagerContent>
+        <NoRecordsContent>
+            <MudStack AlignItems="AlignItems.Center" Class="pa-8">
+                <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="Size.Large" Color="Color.Secondary" />
+                <MudText Typo="Typo.h6" Color="Color.Secondary">No se encontraron zonas</MudText>
+            </MudStack>
+        </NoRecordsContent>
     </MudTable>
 </MudPaper>
 
-<MudDialog @bind-IsVisible="_dialogOpen">
-    <TitleContent>@(_editing?.ZoneId > 0 ? "Editar" : "Nueva") Zona</TitleContent>
+<!-- Dialog Crear/Editar -->
+<MudDialog @bind-Visible="_dialogOpen" MaxWidth="MaxWidth.Small" FullWidth="true">
+    <TitleContent>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.LocationOn" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">@(_editing?.ZoneId > 0 ? "Editar" : "Nueva") Zona</MudText>
+        </MudStack>
+    </TitleContent>
     <DialogContent>
         <MudGrid Spacing="2">
             <MudItem xs="12" sm="4">
-                <MudTextField @bind-Value="_editing!.ZoneCode" Label="Código*" Variant="Variant.Outlined" Required="true" />
+                <MudTextField @bind-Value="_editing!.ZoneCode" Label="Codigo" Variant="Variant.Outlined"
+                              Placeholder="Ej: ZN-01" HelperText="Codigo unico de zona" />
             </MudItem>
             <MudItem xs="12" sm="8">
-                <MudTextField @bind-Value="_editing.ZoneName" Label="Nombre*" Variant="Variant.Outlined" Required="true" />
+                <MudTextField @bind-Value="_editing.ZoneName" Label="Nombre*" Variant="Variant.Outlined"
+                              Required="true" HelperText="Nombre descriptivo" />
             </MudItem>
             <MudItem xs="12">
-                <MudTextField @bind-Value="_editing.Description" Label="Descripción" Variant="Variant.Outlined" Lines="2" />
+                <MudTextField @bind-Value="_editing.Description" Label="Descripcion" Variant="Variant.Outlined"
+                              Lines="3" Placeholder="Descripcion de la zona de cobertura..." />
             </MudItem>
             <MudItem xs="12">
-                <MudCheckBox @bind-Value="_editing.IsActive" Label="Zona activa" Color="Color.Primary" />
+                <MudSwitch @bind-Value="_editing.IsActive" Color="Color.Success"
+                           Label="@(_editing.IsActive ? "Zona activa" : "Zona inactiva")" />
             </MudItem>
         </MudGrid>
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="() => _dialogOpen = false">Cancelar</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAsync">Guardar</MudButton>
+        <MudButton OnClick="() => _dialogOpen = false" Variant="Variant.Text">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAsync"
+                   StartIcon="@Icons.Material.Filled.Save" Disabled="_saving">
+            @(_saving ? "Guardando..." : "Guardar")
+        </MudButton>
     </DialogActions>
 </MudDialog>
 
 @code {
-    private bool _loading, _dialogOpen;
-    private List<ZoneDto> _zones = new();
+    private bool _loading, _dialogOpen, _saving;
+    private string _search = "", _statusFilter = "all";
+    private List<ZoneDto> _zones = new(), _filtered = new();
     private ZoneDto? _editing;
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
     {
         _loading = true;
-        _zones   = await Api.GetAsync<List<ZoneDto>>("api/zones") ?? new();
+        _zones = await Api.GetAsync<List<ZoneDto>>("api/zones") ?? new();
+        ApplyFilter();
         _loading = false;
     }
 
+    private void OnSearchChanged(string s) { _search = s; ApplyFilter(); }
+
+    private void ApplyFilter()
+    {
+        var q = _zones.AsEnumerable();
+        if (!string.IsNullOrWhiteSpace(_search))
+            q = q.Where(z => z.ZoneName.Contains(_search, StringComparison.OrdinalIgnoreCase)
+                          || (z.ZoneCode ?? "").Contains(_search, StringComparison.OrdinalIgnoreCase)
+                          || (z.Description ?? "").Contains(_search, StringComparison.OrdinalIgnoreCase));
+        if (_statusFilter == "active")   q = q.Where(z => z.IsActive);
+        if (_statusFilter == "inactive") q = q.Where(z => !z.IsActive);
+        _filtered = q.ToList();
+    }
+
     private void OpenCreate() { _editing = new ZoneDto { IsActive = true }; _dialogOpen = true; }
-    private void OpenEdit(ZoneDto z)
+
+    private Task OpenEdit(ZoneDto z)
     {
         _editing = new ZoneDto { ZoneId = z.ZoneId, ZoneCode = z.ZoneCode, ZoneName = z.ZoneName,
                                   Description = z.Description, IsActive = z.IsActive };
         _dialogOpen = true;
+        return Task.CompletedTask;
     }
 
     private async Task SaveAsync()
     {
         if (string.IsNullOrWhiteSpace(_editing?.ZoneName)) { Notify.Warning("Nombre requerido"); return; }
+        _saving = true;
         bool ok = _editing.ZoneId > 0
             ? await Api.PutAsync<ZoneDto>($"api/zones/{_editing.ZoneId}", _editing)
             : await Api.PostAsync<ZoneDto>("api/zones", _editing);
-        if (ok) { Notify.Success("Guardado"); _dialogOpen = false; await OnInitializedAsync(); }
+        _saving = false;
+        if (ok) { Notify.Success("Guardado correctamente"); _dialogOpen = false; await LoadAsync(); }
         else    Notify.Error("Error al guardar");
     }
 
     private async Task DeleteAsync(ZoneDto z)
     {
-        var ok = await Dialog.ShowMessageBox("Confirmar", $"¿Eliminar zona '{z.ZoneName}'?", "Eliminar", cancelText: "Cancelar");
-        if (ok == true && await Api.DeleteAsync($"api/zones/{z.ZoneId}"))
-        { Notify.Success("Eliminado"); await OnInitializedAsync(); }
-        else if (ok == true) Notify.Error("No se pudo eliminar");
+        var confirm = await Dialog.ShowMessageBox("Confirmar eliminacion",
+            $"Eliminar la zona '{z.ZoneName}'? Si tiene clientes asignados sera desactivada en su lugar.",
+            "Eliminar / Desactivar", cancelText: "Cancelar");
+        if (confirm != true) return;
+
+        var (ok, error) = await Api.DeleteWithMessageAsync($"api/zones/{z.ZoneId}");
+        if (ok)
+        {
+            Notify.Success("Zona eliminada correctamente");
+            await LoadAsync();
+        }
+        else
+        {
+            Notify.Error(error ?? "No se pudo eliminar la zona");
+            // Recargar para reflejar si fue desactivada
+            await LoadAsync();
+        }
     }
 }

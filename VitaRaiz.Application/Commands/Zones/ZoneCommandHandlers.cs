@@ -14,7 +14,7 @@ public class CreateZoneCommandHandler : IRequestHandler<CreateZoneCommand, int>
 
     public async Task<int> Handle(CreateZoneCommand request, CancellationToken cancellationToken)
     {
-        return await _zoneRepository.CreateZoneAsync(request.ZoneName, request.Description);
+        return await _zoneRepository.CreateZoneAsync(request.ZoneName, request.ZoneCode, request.Description, request.IsActive);
     }
 }
 
@@ -29,7 +29,7 @@ public class UpdateZoneCommandHandler : IRequestHandler<UpdateZoneCommand, bool>
 
     public async Task<bool> Handle(UpdateZoneCommand request, CancellationToken cancellationToken)
     {
-        return await _zoneRepository.UpdateZoneAsync(request.ZoneId, request.ZoneName, request.Description);
+        return await _zoneRepository.UpdateZoneAsync(request.ZoneId, request.ZoneName, request.ZoneCode, request.Description, request.IsActive);
     }
 }
 

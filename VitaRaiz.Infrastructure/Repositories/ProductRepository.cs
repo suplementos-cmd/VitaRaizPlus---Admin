@@ -12,7 +12,7 @@ public class ProductRepository : BaseOracleRepository, IProductRepository
     {
     }
 
-    public async Task<int> CreateProductAsync(string productName, string? description, decimal unitPrice, int stock)
+    public async Task<int> CreateProductAsync(string productName, string? description, decimal unitPrice, int stock, string? category)
     {
         var connection = await GetOpenConnectionAsync();
         using var command = CreatePackageProcedureCommand(connection, "sp_register_product");
@@ -23,6 +23,7 @@ public class ProductRepository : BaseOracleRepository, IProductRepository
         AddInputParameter(command, "p_description", description);
         AddInputParameter(command, "p_unit_price", unitPrice);
         AddInputParameter(command, "p_stock", stock);
+        AddInputParameter(command, "p_category", category);
 
         await command.ExecuteNonQueryAsync();
 
@@ -30,7 +31,7 @@ public class ProductRepository : BaseOracleRepository, IProductRepository
     }
 
     public async Task<bool> UpdateProductAsync(int productId, string productName, string? description, 
-        decimal unitPrice, int stock, bool isActive)
+        decimal unitPrice, int stock, bool isActive, string? category)
     {
         var connection = await GetOpenConnectionAsync();
         using var command = CreatePackageProcedureCommand(connection, "sp_update_product");
@@ -41,6 +42,19 @@ public class ProductRepository : BaseOracleRepository, IProductRepository
         AddInputParameter(command, "p_unit_price", unitPrice);
         AddInputParameter(command, "p_stock", stock);
         AddInputParameter(command, "p_is_active", isActive ? 1 : 0);
+        AddInputParameter(command, "p_category", category);
+
+        await command.ExecuteNonQueryAsync();
+        return true;
+    }
+
+    public async Task<bool> UpdateProductPhotoAsync(int productId, string photoUrl)
+    {
+        var connection = await GetOpenConnectionAsync();
+        using var command = CreatePackageProcedureCommand(connection, "sp_update_product_photo");
+
+        AddInputParameter(command, "p_product_id", productId);
+        AddInputParameter(command, "p_photo_url", photoUrl);
 
         await command.ExecuteNonQueryAsync();
         return true;
@@ -72,6 +86,8 @@ public class ProductRepository : BaseOracleRepository, IProductRepository
                     Description = p.Description,
                     UnitPrice = p.Price,
                     Stock = p.Stock,
+                    Category = p.Category,
+                    PhotoUrl = p.PhotoUrl,
                     IsActive = p.IsActive
                 })
                 .ToListAsync();
@@ -108,6 +124,8 @@ public class ProductRepository : BaseOracleRepository, IProductRepository
                     Description = p.Description,
                     UnitPrice = p.Price,
                     Stock = p.Stock,
+                    Category = p.Category,
+                    PhotoUrl = p.PhotoUrl,
                     IsActive = p.IsActive
                 })
                 .FirstOrDefaultAsync();

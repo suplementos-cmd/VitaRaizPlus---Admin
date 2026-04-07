@@ -8,7 +8,8 @@ public class Product
     public decimal Price { get; set; }
     public decimal UnitPrice => Price;
     public int Stock { get; set; } = 0;
-    public string Category { get; set; } = string.Empty;
+    public string? Category { get; set; }
+    public string? PhotoUrl { get; set; }
     public bool IsActive { get; set; } = true;
     
     // Navigation properties

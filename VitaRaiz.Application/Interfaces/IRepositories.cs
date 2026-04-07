@@ -22,10 +22,12 @@ public interface ICustomerRepository
 
 public interface IProductRepository
 {
-    Task<int> CreateProductAsync(string productName, string? description, decimal unitPrice, int stock);
+    Task<int> CreateProductAsync(string productName, string? description, decimal unitPrice, int stock, string? category);
     
     Task<bool> UpdateProductAsync(int productId, string productName, string? description, 
-        decimal unitPrice, int stock, bool isActive);
+        decimal unitPrice, int stock, bool isActive, string? category);
+
+    Task<bool> UpdateProductPhotoAsync(int productId, string photoUrl);
     
     Task<bool> DeleteProductAsync(int productId);
     
@@ -36,9 +38,9 @@ public interface IProductRepository
 
 public interface IZoneRepository
 {
-    Task<int> CreateZoneAsync(string zoneName, string? description);
+    Task<int> CreateZoneAsync(string zoneName, string? zoneCode, string? description, bool isActive);
     
-    Task<bool> UpdateZoneAsync(int zoneId, string zoneName, string? description);
+    Task<bool> UpdateZoneAsync(int zoneId, string zoneName, string? zoneCode, string? description, bool isActive);
     
     Task<bool> DeleteZoneAsync(int zoneId);
     

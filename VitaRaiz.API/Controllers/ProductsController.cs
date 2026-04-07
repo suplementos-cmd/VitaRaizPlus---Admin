@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using VitaRaiz.Application.Commands.Products;
+using VitaRaiz.Application.Interfaces;
 using VitaRaiz.Application.Queries.Products;
 
 namespace VitaRaiz.API.Controllers;
@@ -13,11 +14,16 @@ public class ProductsController : ControllerBase
 {
     private readonly IMediator _mediator;
     private readonly ILogger<ProductsController> _logger;
+    private readonly IWebHostEnvironment _env;
+    private readonly IProductRepository _productRepository;
 
-    public ProductsController(IMediator mediator, ILogger<ProductsController> logger)
+    public ProductsController(IMediator mediator, ILogger<ProductsController> logger,
+        IWebHostEnvironment env, IProductRepository productRepository)
     {
         _mediator = mediator;
         _logger = logger;
+        _env = env;
+        _productRepository = productRepository;
     }
 
     /// <summary>
@@ -112,5 +118,39 @@ public class ProductsController : ControllerBase
             return NotFound(new { message = "Producto no encontrado" });
 
         return NoContent();
+    }
+
+    /// <summary>
+    /// Subir/actualizar foto de producto
+    /// </summary>
+    [HttpPost("{id}/photo")]
+    [Authorize(Roles = "AdminFull,Admin,Supervisor")]
+    public async Task<IActionResult> UploadProductPhoto(int id, IFormFile file)
+    {
+        if (file == null || file.Length == 0)
+            return BadRequest(new { message = "Archivo requerido" });
+
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (ext is not (".jpg" or ".jpeg" or ".png" or ".webp"))
+            return BadRequest(new { message = "Solo se permiten imágenes jpg, png o webp" });
+
+        if (file.Length > 5 * 1024 * 1024)
+            return BadRequest(new { message = "El archivo no debe superar 5 MB" });
+
+        var webRoot = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
+        var uploadsDir = Path.Combine(webRoot, "uploads", "products");
+        Directory.CreateDirectory(uploadsDir);
+
+        var fileName = $"{id}{ext}";
+        var filePath = Path.Combine(uploadsDir, fileName);
+
+        using (var stream = new FileStream(filePath, FileMode.Create))
+            await file.CopyToAsync(stream);
+
+        var relativeUrl = $"/uploads/products/{fileName}";
+        await _productRepository.UpdateProductPhotoAsync(id, relativeUrl);
+
+        _logger.LogInformation("[ProductsController] Photo updated for product {Id}: {Url}", id, relativeUrl);
+        return Ok(new { photoUrl = relativeUrl });
     }
 }

@@ -94,12 +94,25 @@ public class ZonesController : ControllerBase
     [Authorize(Roles = "AdminFull,Admin")]
     public async Task<IActionResult> DeleteZone(int id)
     {
-        var command = new DeleteZoneCommand { ZoneId = id };
-        var result = await _mediator.Send(command);
+        try
+        {
+            var command = new DeleteZoneCommand { ZoneId = id };
+            var result = await _mediator.Send(command);
 
-        if (!result)
-            return NotFound(new { message = "Zona no encontrada" });
+            if (!result)
+                return NotFound(new { message = "Zona no encontrada" });
 
-        return NoContent();
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "[ZonesController] No se pudo eliminar zona {Id}: {Msg}", id, ex.Message);
+            return UnprocessableEntity(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[ZonesController] Error eliminando zona {Id}", id);
+            return StatusCode(500, new { message = "Error interno al eliminar la zona." });
+        }
     }
 }

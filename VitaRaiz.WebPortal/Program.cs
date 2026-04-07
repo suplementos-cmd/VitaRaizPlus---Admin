@@ -2,6 +2,7 @@ using VitaRaiz.WebPortal.Components;
 using VitaRaiz.WebPortal.Services;
 using Microsoft.AspNetCore.Components.Authorization;
 using MudBlazor.Services;
+using ApexCharts;
 using NLog;
 using NLog.Web;
 

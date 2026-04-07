@@ -23,6 +23,8 @@ public class ProductDto
     public string? Description { get; set; }
     public decimal UnitPrice { get; set; }
     public int Stock { get; set; }
+    public string? Category { get; set; }
+    public string? PhotoUrl { get; set; }
     public bool IsActive { get; set; }
 }
 
@@ -30,7 +32,10 @@ public class ZoneDto
 {
     public int ZoneId { get; set; }
     public string ZoneName { get; set; } = string.Empty;
+    public string? ZoneCode { get; set; }
     public string? Description { get; set; }
+    public bool IsActive { get; set; } = true;
+    public DateTime? CreatedAt { get; set; }
 }
 
 public class UserDto

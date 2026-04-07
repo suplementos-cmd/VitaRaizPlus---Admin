@@ -8,6 +8,7 @@ public class CreateProductCommand : IRequest<int>
     public string? Description { get; set; }
     public decimal UnitPrice { get; set; }
     public int Stock { get; set; }
+    public string? Category { get; set; }
 }
 
 public class UpdateProductCommand : IRequest<bool>
@@ -18,6 +19,7 @@ public class UpdateProductCommand : IRequest<bool>
     public decimal UnitPrice { get; set; }
     public int Stock { get; set; }
     public bool IsActive { get; set; }
+    public string? Category { get; set; }
 }
 
 public class DeleteProductCommand : IRequest<bool>
