@@ -1,9 +1,9 @@
-using VitaRaiz.WebPortal.Models;
+﻿using VitaRaiz.WebPortal.Models;
 using NLog;
 
 namespace VitaRaiz.WebPortal.Services;
 
-/// <summary>Mirrors Mobile PermissionsService � fetches and caches permissions from the API.</summary>
+/// <summary>Mirrors Mobile PermissionsService — fetches and caches permissions from the API.</summary>
 public class PermissionsService
 {
     private readonly ApiService _api;

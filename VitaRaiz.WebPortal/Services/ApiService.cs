@@ -208,6 +208,25 @@ public class ApiService
 
     private record PhotoUploadResult(string PhotoUrl);
 
+    public async Task<int> UploadSalePhotoAsync(int saleId, string photoType, Stream fileStream, string fileName)
+    {
+        try
+        {
+            var client = await BuildClientAsync();
+            using var content = new MultipartFormDataContent();
+            using var sc = new StreamContent(fileStream);
+            content.Add(sc, "file", fileName);
+            content.Add(new StringContent(photoType), "photoType");
+            var resp = await client.PostAsync($"api/sales/{saleId}/photos/upload", content);
+            if (!resp.IsSuccessStatusCode) return 0;
+            var result = await resp.Content.ReadFromJsonAsync<SalePhotoUploadResult>(_json);
+            return result?.PhotoId ?? 0;
+        }
+        catch (Exception ex) { _log.Error(ex, "UPLOAD sale photo {SaleId} {Type}", saleId, photoType); return 0; }
+    }
+
+    private record SalePhotoUploadResult(int PhotoId, string FilePath);
+
     // -- Unauthenticated (login) -------------------------------------------
 
     public async Task<TResponse?> PostUnauthAsync<TRequest, TResponse>(

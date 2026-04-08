@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using VitaRaiz.Application.Commands.Products;
 using VitaRaiz.Application.Interfaces;
 using VitaRaiz.Application.Queries.Products;
@@ -16,14 +17,19 @@ public class ProductsController : ControllerBase
     private readonly ILogger<ProductsController> _logger;
     private readonly IWebHostEnvironment _env;
     private readonly IProductRepository _productRepository;
+    private readonly string _storageBasePath;
+    private readonly string _productsFolder;
 
     public ProductsController(IMediator mediator, ILogger<ProductsController> logger,
-        IWebHostEnvironment env, IProductRepository productRepository)
+        IWebHostEnvironment env, IProductRepository productRepository,
+        IConfiguration configuration)
     {
         _mediator = mediator;
         _logger = logger;
         _env = env;
         _productRepository = productRepository;
+        _storageBasePath  = configuration["FileStorage:BasePath"] ?? Path.Combine(_env.ContentRootPath, "wwwroot", "uploads");
+        _productsFolder   = configuration["FileStorage:ProductsFolder"] ?? "Productos";
     }
 
     /// <summary>
@@ -125,6 +131,8 @@ public class ProductsController : ControllerBase
     /// </summary>
     [HttpPost("{id}/photo")]
     [Authorize(Roles = "AdminFull,Admin,Supervisor")]
+    [Consumes("multipart/form-data")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     public async Task<IActionResult> UploadProductPhoto(int id, IFormFile file)
     {
         if (file == null || file.Length == 0)
@@ -137,20 +145,31 @@ public class ProductsController : ControllerBase
         if (file.Length > 5 * 1024 * 1024)
             return BadRequest(new { message = "El archivo no debe superar 5 MB" });
 
-        var webRoot = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
-        var uploadsDir = Path.Combine(webRoot, "uploads", "products");
-        Directory.CreateDirectory(uploadsDir);
+        // Guardar en ruta centralizada: {BasePath}\Productos\
+        var dir = Path.Combine(_storageBasePath, _productsFolder);
+        Directory.CreateDirectory(dir);
 
         var fileName = $"{id}{ext}";
-        var filePath = Path.Combine(uploadsDir, fileName);
+        var absolutePath = Path.Combine(dir, fileName);
 
-        using (var stream = new FileStream(filePath, FileMode.Create))
+        using (var stream = new FileStream(absolutePath, FileMode.Create))
             await file.CopyToAsync(stream);
 
-        var relativeUrl = $"/uploads/products/{fileName}";
+        // URL relativa para acceso web vía archivos estáticos (wwwroot symlink o rewrite)
+        // Guardamos referencia al endpoint de producto (PhotoUrl = ruta relativa al BasePath)
+        var v = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var relativeStoragePath = Path.Combine(_productsFolder, fileName);
+        // La URL que se almacena en DB como PhotoUrl sigue siendo la URL web statática
+        // pero apuntando al BasePath via el directorio virtual /uploads que mapea a wwwroot/uploads
+        // Para simplificar: copiamos también a wwwroot/uploads/products para servir estáticamente
+        var wwwDir = Path.Combine(_env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot"), "uploads", "products");
+        Directory.CreateDirectory(wwwDir);
+        System.IO.File.Copy(absolutePath, Path.Combine(wwwDir, fileName), overwrite: true);
+
+        var relativeUrl = $"/uploads/products/{fileName}?v={v}";
         await _productRepository.UpdateProductPhotoAsync(id, relativeUrl);
 
-        _logger.LogInformation("[ProductsController] Photo updated for product {Id}: {Url}", id, relativeUrl);
+        _logger.LogInformation("[ProductsController] Photo updated for product {Id}: BasePath={AbsPath}", id, absolutePath);
         return Ok(new { photoUrl = relativeUrl });
     }
 }

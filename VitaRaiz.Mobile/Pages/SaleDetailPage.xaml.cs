@@ -121,7 +121,7 @@ public partial class SaleDetailPage : ContentPage
         get => _fachadaPhotoPath;
         set { _fachadaPhotoPath = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasFachadaPhoto)); }
     }
-    public bool HasFachadaPhoto => !string.IsNullOrEmpty(FachadaPhotoPath) && File.Exists(FachadaPhotoPath);
+    public bool HasFachadaPhoto  => !string.IsNullOrEmpty(FachadaPhotoPath);
 
     private string? _clientePhotoPath;
     public string? ClientePhotoPath
@@ -129,7 +129,7 @@ public partial class SaleDetailPage : ContentPage
         get => _clientePhotoPath;
         set { _clientePhotoPath = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasClientePhoto)); }
     }
-    public bool HasClientePhoto => !string.IsNullOrEmpty(ClientePhotoPath) && File.Exists(ClientePhotoPath);
+    public bool HasClientePhoto  => !string.IsNullOrEmpty(ClientePhotoPath);
 
     private string? _contratoPhotoPath;
     public string? ContratoPhotoPath
@@ -137,7 +137,7 @@ public partial class SaleDetailPage : ContentPage
         get => _contratoPhotoPath;
         set { _contratoPhotoPath = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasContratoPhoto)); }
     }
-    public bool HasContratoPhoto => !string.IsNullOrEmpty(ContratoPhotoPath) && File.Exists(ContratoPhotoPath);
+    public bool HasContratoPhoto  => !string.IsNullOrEmpty(ContratoPhotoPath);
 
     private string? _adicionalPhotoPath;
     public string? AdicionalPhotoPath
@@ -145,7 +145,7 @@ public partial class SaleDetailPage : ContentPage
         get => _adicionalPhotoPath;
         set { _adicionalPhotoPath = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasAdicionalPhoto)); }
     }
-    public bool HasAdicionalPhoto => !string.IsNullOrEmpty(AdicionalPhotoPath) && File.Exists(AdicionalPhotoPath);
+    public bool HasAdicionalPhoto  => !string.IsNullOrEmpty(AdicionalPhotoPath);
 
     public string ZoneName => Sale?.ZoneName ?? "—";
     public string CustomerName => Sale?.CustomerName is { Length: > 0 } n ? n : "Detalle de Venta";
@@ -304,216 +304,60 @@ public partial class SaleDetailPage : ContentPage
         });
     }
 
-    // ── Load photos from server ──
-    private async Task LoadSalePhotosAsync()
+    // ── Load photos from server (PhotoIds del objeto Sale ya cargado) ──
+    private Task LoadSalePhotosAsync()
     {
         try
         {
-            System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] LoadSalePhotosAsync START for saleId={SaleId}");
-            
-            // First, try to load photos from local database (these are the uploaded photos)
-            await LoadPhotosFromLocalDbAsync();
-            
-            // If we found photos locally, we're done
-            if (AvailablePhotos.Count > 0)
+            var photos = Sale?.Photos;
+            if (photos == null || photos.Count == 0)
             {
-                System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] Using {AvailablePhotos.Count} photos from local DB");
-                return;
+                System.Diagnostics.Debug.WriteLine("[SaleDetailPage] Sale sin fotos registradas");
+                return Task.CompletedTask;
             }
-            
-            // If no local photos, try server (though server paths usually don't work on client)
-            var photos = await _apiService.GetAsync<List<SalePhotoDto>>($"api/sales/{SaleId}/photos");
-            
-            if (photos != null && photos.Count > 0)
-            {
-                System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] Loaded {photos.Count} photos from server, checking if accessible...");
-                
-                // Find photos by type
-                var fachadaPhoto = photos.FirstOrDefault(p => p.PhotoType.Contains("FACHADA"));
-                var clientePhoto = photos.FirstOrDefault(p => p.PhotoType.Contains("CLIENTE"));
-                var contratoPhoto = photos.FirstOrDefault(p => p.PhotoType.Contains("CONTRATO"));
-                var adicionalPhoto = photos.FirstOrDefault(p => p.PhotoType.Contains("ADICIONAL"));
 
-                // Try to use server photos (will only work if paths are accessible locally)
-                MainThread.BeginInvokeOnMainThread(() =>
-                {
-                    AvailablePhotos.Clear();
-                    
-                    if (fachadaPhoto != null && File.Exists(fachadaPhoto.FilePath))
-                    {
-                        FachadaPhotoPath = fachadaPhoto.FilePath;
-                        AvailablePhotos.Add(new PhotoInfo 
-                        { 
-                            PhotoPath = fachadaPhoto.FilePath, 
-                            PhotoType = "FACHADA", 
-                            DisplayName = "Fachada",
-                            Icon = "🏠"
-                        });
-                    }
-                    
-                    if (clientePhoto != null && File.Exists(clientePhoto.FilePath))
-                    {
-                        ClientePhotoPath = clientePhoto.FilePath;
-                        AvailablePhotos.Add(new PhotoInfo 
-                        { 
-                            PhotoPath = clientePhoto.FilePath, 
-                            PhotoType = "CLIENTE", 
-                            DisplayName = "Cliente",
-                            Icon = "👤"
-                        });
-                    }
-                    
-                    if (contratoPhoto != null && File.Exists(contratoPhoto.FilePath))
-                    {
-                        ContratoPhotoPath = contratoPhoto.FilePath;
-                        AvailablePhotos.Add(new PhotoInfo 
-                        { 
-                            PhotoPath = contratoPhoto.FilePath, 
-                            PhotoType = "CONTRATO", 
-                            DisplayName = "Contrato",
-                            Icon = "📄"
-                        });
-                    }
-                    
-                    if (adicionalPhoto != null && File.Exists(adicionalPhoto.FilePath))
-                    {
-                        AdicionalPhotoPath = adicionalPhoto.FilePath;
-                        AvailablePhotos.Add(new PhotoInfo 
-                        { 
-                            PhotoPath = adicionalPhoto.FilePath, 
-                            PhotoType = "ADICIONAL", 
-                            DisplayName = "Adicional",
-                            Icon = "🖼️"
-                        });
-                    }
-                    
-                    System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] AvailablePhotos populated with {AvailablePhotos.Count} accessible server photos");
-                    
-                    // Set banner photo
-                    if (AvailablePhotos.Count > 0)
-                    {
-                        BannerPhotoPath = AvailablePhotos[0].PhotoPath;
-                    }
-                });
-            }
-            else
+            System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] Cargando {photos.Count} fotos via API");
+
+            SalePhotoDto? PhotoOf(string type) => photos
+                .Where(p => p.PhotoType == type || p.PhotoType == $"FOTO_{type}")
+                .OrderByDescending(p => p.UploadedAt)
+                .FirstOrDefault();
+
+            var fachada   = PhotoOf("FACHADA");
+            var cliente   = PhotoOf("CLIENTE");
+            var contrato  = PhotoOf("CONTRATO");
+            var adicional = PhotoOf("ADICIONAL");
+
+            MainThread.BeginInvokeOnMainThread(() =>
             {
-                System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] No photos from server");
-            }
+                AvailablePhotos.Clear();
+
+                void Set(SalePhotoDto? p, string tipo, string display, string icon,
+                         Action<string> setter)
+                {
+                    if (p == null || p.PhotoId == 0) return;
+                    var url = _apiService.GetPhotoUrl(p.PhotoId);
+                    setter(url);
+                    AvailablePhotos.Add(new PhotoInfo { PhotoPath = url, PhotoType = tipo,
+                                                        DisplayName = display, Icon = icon });
+                }
+
+                Set(fachada,   "FACHADA",   "Fachada",   "🏠", v => FachadaPhotoPath  = v);
+                Set(cliente,   "CLIENTE",   "Cliente",   "👤", v => ClientePhotoPath   = v);
+                Set(contrato,  "CONTRATO",  "Contrato",  "📄", v => ContratoPhotoPath  = v);
+                Set(adicional, "ADICIONAL", "Adicional", "🖼️", v => AdicionalPhotoPath = v);
+
+                if (AvailablePhotos.Count > 0)
+                    BannerPhotoPath = AvailablePhotos[0].PhotoPath;
+
+                System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] {AvailablePhotos.Count} fotos listas");
+            });
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] LoadSalePhotosAsync ERROR: {ex.Message}");
         }
-    }
-
-    // ── Load photos from local SQLite DB (fallback) ──
-    private async Task LoadPhotosFromLocalDbAsync()
-    {
-        try
-        {
-            System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] LoadPhotosFromLocalDbAsync START for saleId={SaleId}");
-            
-            var dbPath = Path.Combine(FileSystem.AppDataDirectory, "vitaraiz.db3");
-            if (!File.Exists(dbPath))
-            {
-                System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] Local DB not found");
-                return;
-            }
-
-            var db = new Data.LocalDatabase(dbPath);
-            var localPhotos = await db.GetSalePhotosAsync(SaleId);
-
-            if (localPhotos != null && localPhotos.Count > 0)
-            {
-                System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] Found {localPhotos.Count} photos in local DB");
-
-                // Priority: Fachada > Cliente > Contrato > Adicional
-                var fachadaPhoto = localPhotos.FirstOrDefault(p => p.PhotoType == "Fachada");
-                var clientePhoto = localPhotos.FirstOrDefault(p => p.PhotoType == "Cliente");
-                var contratoPhoto = localPhotos.FirstOrDefault(p => p.PhotoType == "Contrato");
-                var adicionalPhoto = localPhotos.FirstOrDefault(p => p.PhotoType == "Adicional");
-
-                MainThread.BeginInvokeOnMainThread(() =>
-                {
-                    // Clear and populate available photos collection
-                    AvailablePhotos.Clear();
-                    
-                    if (fachadaPhoto != null && File.Exists(fachadaPhoto.LocalPath))
-                    {
-                        FachadaPhotoPath = fachadaPhoto.LocalPath;
-                        AvailablePhotos.Add(new PhotoInfo 
-                        { 
-                            PhotoPath = fachadaPhoto.LocalPath, 
-                            PhotoType = "FACHADA", 
-                            DisplayName = "Fachada",
-                            Icon = "🏠"
-                        });
-                    }
-                    
-                    if (clientePhoto != null && File.Exists(clientePhoto.LocalPath))
-                    {
-                        ClientePhotoPath = clientePhoto.LocalPath;
-                        AvailablePhotos.Add(new PhotoInfo 
-                        { 
-                            PhotoPath = clientePhoto.LocalPath, 
-                            PhotoType = "CLIENTE", 
-                            DisplayName = "Cliente",
-                            Icon = "👤"
-                        });
-                    }
-                    
-                    if (contratoPhoto != null && File.Exists(contratoPhoto.LocalPath))
-                    {
-                        ContratoPhotoPath = contratoPhoto.LocalPath;
-                        AvailablePhotos.Add(new PhotoInfo 
-                        { 
-                            PhotoPath = contratoPhoto.LocalPath, 
-                            PhotoType = "CONTRATO", 
-                            DisplayName = "Contrato",
-                            Icon = "📄"
-                        });
-                    }
-                    
-                    if (adicionalPhoto != null && File.Exists(adicionalPhoto.LocalPath))
-                    {
-                        AdicionalPhotoPath = adicionalPhoto.LocalPath;
-                        AvailablePhotos.Add(new PhotoInfo 
-                        { 
-                            PhotoPath = adicionalPhoto.LocalPath, 
-                            PhotoType = "ADICIONAL", 
-                            DisplayName = "Adicional",
-                            Icon = "🖼️"
-                        });
-                    }
-                    
-                    System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] AvailablePhotos populated with {AvailablePhotos.Count} photos from local DB");
-                    
-                    // Set banner photo (prioritize first available)
-                    if (AvailablePhotos.Count > 0)
-                    {
-                        BannerPhotoPath = AvailablePhotos[0].PhotoPath;
-                        System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] Banner (Local): Using {AvailablePhotos[0].DisplayName}");
-                    }
-                });
-            }
-            else
-            {
-                System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] No photos in local DB");
-                MainThread.BeginInvokeOnMainThread(() =>
-                {
-                    BannerPhotoPath = null;
-                });
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[SaleDetailPage] Error loading local photos: {ex.Message}");
-            MainThread.BeginInvokeOnMainThread(() =>
-            {
-                BannerPhotoPath = null;
-            });
-        }
+        return Task.CompletedTask;
     }
 
     // ── Navigation ──

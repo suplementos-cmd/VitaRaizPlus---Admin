@@ -130,8 +130,9 @@ public class SaleFullDetail
     public int DaysSinceLastPayment { get; set; }
 
     // Details
-    public List<SaleItemDetail> Items { get; set; } = new();
-    public List<PaymentDetail> Payments { get; set; } = new();
+    public List<SaleItemDetail>  Items   { get; set; } = new();
+    public List<PaymentDetail>   Payments { get; set; } = new();
+    public List<SalePhotoDto>    Photos   { get; set; } = new();
 
     // Resolved from catalogs (set by CatalogService)
     public string StatusLabel { get; set; } = string.Empty;

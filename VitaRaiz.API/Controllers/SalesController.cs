@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using VitaRaiz.Application.Commands.Sales;
 using VitaRaiz.Application.Queries.Sales;
 using VitaRaiz.Application.Interfaces;
@@ -15,12 +16,37 @@ public class SalesController : ControllerBase
     private readonly IMediator _mediator;
     private readonly ILogger<SalesController> _logger;
     private readonly ISalePhotoRepository _salePhotoRepository;
+    private readonly IWebHostEnvironment _env;
+    private readonly string _storageBasePath;
+    private readonly string _salesFolder;
 
-    public SalesController(IMediator mediator, ILogger<SalesController> logger, ISalePhotoRepository salePhotoRepository)
+    // Mapeo de tipos "amigables" al valor que acepta CHK_PHOTO_TYPE en Oracle
+    private static readonly Dictionary<string, string> _photoTypeMap =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["FACHADA"]      = "FOTO_FACHADA",
+            ["FOTO_FACHADA"] = "FOTO_FACHADA",
+            ["CLIENTE"]      = "FOTO_CLIENTE",
+            ["FOTO_CLIENTE"] = "FOTO_CLIENTE",
+            ["CONTRATO"]     = "FOTO_CONTRATO",
+            ["FOTO_CONTRATO"]= "FOTO_CONTRATO",
+            ["ADICIONAL"]    = "FOTO_ADD_1",
+            ["ADD_1"]        = "FOTO_ADD_1",
+            ["FOTO_ADD_1"]   = "FOTO_ADD_1",
+            ["ADD_2"]        = "FOTO_ADD_2",
+            ["FOTO_ADD_2"]   = "FOTO_ADD_2",
+        };
+
+    public SalesController(IMediator mediator, ILogger<SalesController> logger,
+        ISalePhotoRepository salePhotoRepository, IWebHostEnvironment env,
+        IConfiguration configuration)
     {
         _mediator = mediator;
         _logger = logger;
         _salePhotoRepository = salePhotoRepository;
+        _env = env;
+        _storageBasePath = configuration["FileStorage:BasePath"] ?? Path.Combine(_env.ContentRootPath, "wwwroot", "uploads");
+        _salesFolder     = configuration["FileStorage:SalesFolder"] ?? "Ventas";
     }
 
     /// <summary>
@@ -248,6 +274,56 @@ public class SalesController : ControllerBase
     }
 
     /// <summary>
+    /// Subir archivo de foto de venta desde el portal web (multipart)
+    /// </summary>
+    [HttpPost("{saleId}/photos/upload")]
+    [Authorize]
+    [Consumes("multipart/form-data")]
+    [ApiExplorerSettings(IgnoreApi = true)]
+    public async Task<IActionResult> UploadSalePhotoFile(int saleId,
+        [FromForm] IFormFile file,
+        [FromForm] string photoType)
+    {
+        if (file == null || file.Length == 0)
+            return BadRequest(new { message = "Archivo requerido" });
+
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (ext is not (".jpg" or ".jpeg" or ".png" or ".webp"))
+            return BadRequest(new { message = "Solo jpg, png o webp" });
+
+        if (file.Length > 10 * 1024 * 1024)
+            return BadRequest(new { message = "El archivo no debe superar 10 MB" });
+
+        // Normalizar tipo al formato aceptado por CHK_PHOTO_TYPE de Oracle
+        if (!_photoTypeMap.TryGetValue(photoType, out var normalizedType))
+            return BadRequest(new { message = $"Tipo de foto no válido: {photoType}. Use FACHADA, CLIENTE, CONTRATO, ADICIONAL." });
+
+        // Guardar en ruta centralizada: {BasePath}\Ventas\{saleId}\
+        var dir = Path.Combine(_storageBasePath, _salesFolder, saleId.ToString());
+        Directory.CreateDirectory(dir);
+
+        var fileName = $"{normalizedType}_{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}{ext}";
+        var absolutePath = Path.Combine(dir, fileName);
+
+        using (var stream = new FileStream(absolutePath, FileMode.Create))
+            await file.CopyToAsync(stream);
+
+        // Ruta relativa al BasePath (sin separador inicial)
+        var relativeStoragePath = Path.Combine(_salesFolder, saleId.ToString(), fileName);
+
+        var userId = User.FindFirst("user_id")?.Value;
+        int.TryParse(userId, out int uploadedBy);
+
+        var photoId = await _salePhotoRepository.AddSalePhotoAsync(
+            saleId, normalizedType, relativeStoragePath,
+            null, null, file.Length,
+            uploadedBy > 0 ? uploadedBy : null);
+
+        _logger.LogInformation("[SalesController] Photo {Type} uploaded for sale {Id}: {Path}", normalizedType, saleId, absolutePath);
+        return Ok(new { photoId, filePath = relativeStoragePath });
+    }
+
+    /// <summary>
     /// Agregar una foto a una venta
     /// </summary>
     [HttpPost("{saleId}/photos")]
@@ -310,7 +386,40 @@ public class SalesController : ControllerBase
             if (photo == null)
                 return NotFound(new { message = "Foto no encontrada" });
 
-            if (!System.IO.File.Exists(photo.FilePath))
+            // Resolver ruta absoluta desde el BasePath centralizado.
+            // Soporta rutas relativas nuevas (Ventas/10101/FACHADA_xxx.jpg)
+            // y rutas legadas (/uploads/sales/... para compatibilidad).
+            string absolutePath;
+            var stored = photo.FilePath;
+
+            if (stored.StartsWith("/") || stored.StartsWith("\\")
+                || (stored.Length > 2 && stored[1] == ':'))
+            {
+                // Ruta absoluta (legado móvil: G:\AppData\... o /uploads/...)
+                if (stored.StartsWith("/uploads/") || stored.StartsWith("uploads/"))
+                {
+                    var webRoot = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
+                    var rel = stored.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
+                    absolutePath = Path.GetFullPath(Path.Combine(webRoot, rel));
+                    if (!absolutePath.StartsWith(webRoot, StringComparison.OrdinalIgnoreCase))
+                        return BadRequest(new { message = "Ruta no válida" });
+                }
+                else
+                {
+                    // Ruta absoluta del dispositivo móvil — archivo no disponible en servidor
+                    return NotFound(new { message = "Foto tomada desde dispositivo móvil, no disponible en servidor" });
+                }
+            }
+            else
+            {
+                // Ruta relativa al BasePath centralizado (Ventas/{saleId}/archivo.jpg)
+                var rel = stored.Replace('/', Path.DirectorySeparatorChar);
+                absolutePath = Path.GetFullPath(Path.Combine(_storageBasePath, rel));
+                if (!absolutePath.StartsWith(_storageBasePath, StringComparison.OrdinalIgnoreCase))
+                    return BadRequest(new { message = "Ruta no válida" });
+            }
+
+            if (!System.IO.File.Exists(absolutePath))
                 return NotFound(new { message = "Archivo no encontrado en el servidor" });
 
             var ext = Path.GetExtension(photo.FilePath).ToLowerInvariant();
@@ -323,7 +432,7 @@ public class SalesController : ControllerBase
                 _                 => "application/octet-stream"
             };
 
-            var stream = new FileStream(photo.FilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            var stream = new FileStream(absolutePath, FileMode.Open, FileAccess.Read, FileShare.Read);
             return File(stream, contentType);
         }
         catch (Exception ex)

@@ -798,6 +798,7 @@ public partial class CreateSalePage : ContentPage, INotifyPropertyChanged
     }
 
     // ═══ Upload photos to server ═══
+    // ═══ Upload photos to server (multipart — archivo real) ═══
     private async Task UploadSalePhotosToServerAsync(int saleId)
     {
         try
@@ -806,59 +807,40 @@ public partial class CreateSalePage : ContentPage, INotifyPropertyChanged
 
             var photoPairs = new[]
             {
-                ("FACHADA", _fotoFachadaPath),
-                ("CLIENTE", _fotoClientePath),
-                ("CONTRATO", _fotoContratoPath),
+                ("FACHADA",   _fotoFachadaPath),
+                ("CLIENTE",   _fotoClientePath),
+                ("CONTRATO",  _fotoContratoPath),
                 ("ADICIONAL", _fotoAdicionalPath)
             };
-
-            // Get GPS if available
-            double? gpsLat = _gpsObtained ? _gpsLat : null;
-            double? gpsLng = _gpsObtained ? _gpsLng : null;
 
             int uploadedCount = 0;
             foreach (var (photoType, path) in photoPairs)
             {
-                if (!string.IsNullOrEmpty(path) && File.Exists(path))
+                if (string.IsNullOrEmpty(path) || !File.Exists(path)) continue;
+                try
                 {
-                    try
+                    var photoId = await _apiService.UploadSalePhotoAsync(saleId, photoType, path);
+                    if (photoId > 0)
                     {
-                        // Read file size
-                        var fileInfo = new FileInfo(path);
-                        var fileSize = fileInfo.Length;
-
-                        // For now, we just store the local path
-                        // In production, you would upload the actual file to a file server/cloud storage
-                        // and store the URL here
-                        var photoPayload = new
-                        {
-                            photoType,
-                            filePath = path, // In production: uploaded URL
-                            gpsLatitude = gpsLat,
-                            gpsLongitude = gpsLng,
-                            fileSize
-                        };
-
-                        var result = await _apiService.PostAsync<object>($"api/sales/{saleId}/photos", photoPayload);
-                        if (result)
-                        {
-                            uploadedCount++;
-                            System.Diagnostics.Debug.WriteLine($"[CreateSale] ✓ Uploaded {photoType} to server");
-                        }
+                        uploadedCount++;
+                        System.Diagnostics.Debug.WriteLine($"[CreateSale] ✓ {photoType} subida, photoId={photoId}");
                     }
-                    catch (Exception photoEx)
+                    else
                     {
-                        System.Diagnostics.Debug.WriteLine($"[CreateSale] Error uploading {photoType}: {photoEx.Message}");
-                        // Continue with other photos even if one fails
+                        System.Diagnostics.Debug.WriteLine($"[CreateSale] ✗ {photoType} falló");
                     }
+                }
+                catch (Exception photoEx)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[CreateSale] Error {photoType}: {photoEx.Message}");
                 }
             }
 
-            System.Diagnostics.Debug.WriteLine($"[CreateSale] UploadSalePhotosToServerAsync END - Uploaded {uploadedCount} photos");
+            System.Diagnostics.Debug.WriteLine($"[CreateSale] UploadSalePhotosToServerAsync END — {uploadedCount} fotos subidas");
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[CreateSale] ERROR in UploadSalePhotosToServerAsync: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[CreateSale] ERROR en UploadSalePhotosToServerAsync: {ex.Message}");
         }
     }
 

@@ -1,11 +1,11 @@
-namespace VitaRaiz.WebPortal.Models.ViewModels;
+ï»¿namespace VitaRaiz.WebPortal.Models.ViewModels;
 
 public class LoginViewModel
 {
     [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Usuario requerido")]
     public string Username { get; set; } = string.Empty;
 
-    [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Contraseña requerida")]
+    [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "ContraseÃ±a requerida")]
     public string Password { get; set; } = string.Empty;
 }
 
@@ -30,7 +30,7 @@ public class UserFormViewModel
     public bool   IsActive { get; set; } = true;
 
     // Only required on create
-    [System.ComponentModel.DataAnnotations.MinLength(6, ErrorMessage = "Mínimo 6 caracteres")]
+    [System.ComponentModel.DataAnnotations.MinLength(6, ErrorMessage = "MÃ­nimo 6 caracteres")]
     public string? Password { get; set; }
 }
 

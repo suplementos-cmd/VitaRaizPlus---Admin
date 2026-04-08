@@ -1,4 +1,4 @@
-using VitaRaiz.WebPortal.Models;
+﻿using VitaRaiz.WebPortal.Models;
 using NLog;
 
 namespace VitaRaiz.WebPortal.Services;
@@ -50,7 +50,7 @@ public class AuthService
         catch (Exception ex)
         {
             _log.Error(ex, "LoginAsync error");
-            return (false, "Error inesperado al iniciar sesi�n");
+            return (false, "Error inesperado al iniciar sesión");
         }
     }
 

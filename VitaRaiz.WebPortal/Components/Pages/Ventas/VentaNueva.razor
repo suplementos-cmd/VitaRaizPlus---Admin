@@ -1,0 +1,798 @@
+﻿@page "/ventas/nueva"
+@attribute [Authorize]
+@inject ApiService Api
+@inject NotificationService Notify
+@inject NavigationManager Nav
+@using Microsoft.AspNetCore.Components.Forms
+
+<PageTitle>Nueva Venta – VitaRaiz</PageTitle>
+
+<style>
+    /* ── numbered sections ───────────────────────────────────────── */
+    .form-sec       { margin-bottom:36px; }
+    .form-sec-head  { display:flex;align-items:center;gap:14px;margin-bottom:20px;
+                      padding-bottom:12px;border-bottom:1px solid var(--mud-palette-lines-default); }
+    .form-sec-num   { width:38px;height:38px;background:var(--mud-palette-primary);color:white;
+                      border-radius:10px;display:flex;align-items:center;justify-content:center;
+                      font-weight:900;font-size:.92rem;flex-shrink:0;
+                      box-shadow:0 3px 10px rgba(var(--mud-palette-primary-rgb),.38); }
+    .form-sec-title { font-size:1.08rem;font-weight:800;line-height:1.2; }
+    .form-sec-sub   { font-size:.78rem;color:var(--mud-palette-text-secondary);margin-top:2px; }
+    /* ── product cards ───────────────────────────────────────────── */
+    .prod-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(152px,1fr));gap:10px; }
+    .prod-card { border:2px solid var(--mud-palette-lines-default);border-radius:14px;
+                 padding:16px 12px 14px;cursor:pointer;text-align:center;
+                 transition:all .18s;background:var(--mud-palette-surface);position:relative; }
+    .prod-card:hover { border-color:var(--mud-palette-primary);transform:translateY(-2px);
+                       box-shadow:0 4px 18px rgba(var(--mud-palette-primary-rgb),.16); }
+    .prod-card.sel  { border-color:var(--mud-palette-primary);border-width:2.5px;
+                      background:rgba(var(--mud-palette-primary-rgb),.08); }
+    .prod-chk { position:absolute;top:8px;right:8px;width:22px;height:22px;
+                background:var(--mud-palette-primary);border-radius:50%;
+                display:flex;align-items:center;justify-content:center; }
+    /* ── payment type ────────────────────────────────────────────── */
+    .pay-grid { display:grid;grid-template-columns:1fr 1fr;gap:14px; }
+    .pay-btn  { border:2px solid var(--mud-palette-lines-default);border-radius:16px;
+                padding:24px 16px;cursor:pointer;text-align:center;
+                transition:all .2s;background:var(--mud-palette-surface); }
+    .pay-btn:hover { border-color:var(--mud-palette-primary); }
+    .pay-btn.sel   { border-color:var(--mud-palette-primary);border-width:2.5px;
+                     background:rgba(var(--mud-palette-primary-rgb),.07); }
+    /* ── day chips ───────────────────────────────────────────────── */
+    .dchip { border-radius:50px;padding:7px 18px;font-size:.83rem;font-weight:700;
+             cursor:pointer;transition:all .15s;border:2px solid var(--mud-palette-lines-default);
+             background:var(--mud-palette-background-grey);
+             color:var(--mud-palette-text-secondary);display:inline-block;user-select:none; }
+    .dchip.sel { border-color:var(--mud-palette-primary);color:var(--mud-palette-primary);
+                 background:rgba(var(--mud-palette-primary-rgb),.09); }
+    /* ── photo tiles ─────────────────────────────────────────────── */
+    .ph-tile     { border:2px dashed var(--mud-palette-lines-default);border-radius:14px;
+                   overflow:hidden;cursor:pointer;aspect-ratio:4/3;position:relative;
+                   background:var(--mud-palette-background-grey);display:block;
+                   transition:border-color .18s,box-shadow .18s; }
+    .ph-tile:hover { border-color:var(--mud-palette-primary); }
+    .ph-tile.ph-has { border-style:solid;border-color:var(--mud-palette-success); }
+    .ph-tile img    { width:100%;height:100%;object-fit:cover;display:block; }
+    .ph-inner  { position:absolute;inset:0;display:flex;flex-direction:column;
+                 align-items:center;justify-content:center;gap:6px;padding:8px;text-align:center; }
+    .ph-tl     { position:absolute;top:6px;left:6px;background:rgba(0,0,0,.6);
+                 color:#fff;font-size:.6rem;font-weight:700;padding:2px 7px;border-radius:20px; }
+    .ph-tr     { position:absolute;top:6px;right:6px;border-radius:50%;width:22px;height:22px;
+                 display:flex;align-items:center;justify-content:center; }
+    /* ── client toggle ───────────────────────────────────────────── */
+    .cl-tab  { padding:9px 20px;cursor:pointer;font-size:.85rem;font-weight:700;transition:all .15s; }
+    .cl-tab.on  { background:var(--mud-palette-primary);color:white; }
+    .cl-tab.off { background:transparent;color:var(--mud-palette-text-secondary); }
+    /* ── checklist ───────────────────────────────────────────────── */
+    .chk-row { display:flex;align-items:center;gap:6px;padding:3px 0;font-size:.8rem; }
+    .chk-ok  { color:var(--mud-palette-success); }
+    .chk-no  { color:var(--mud-palette-text-disabled); }
+</style>
+
+<!-- ─── HEADER ────────────────────────────────────────────────────────── -->
+<div style="padding-bottom:14px;margin-bottom:28px;
+            border-bottom:1px solid var(--mud-palette-lines-default)">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                       OnClick="@(() => Nav.NavigateTo("/ventas"))" />
+        <MudStack Spacing="0">
+            <MudText Typo="Typo.caption" Color="Color.Secondary"
+                     Style="text-transform:uppercase;letter-spacing:.09em;font-weight:600">
+                Ventas / Nueva
+            </MudText>
+            <MudText Typo="Typo.h4" Style="font-weight:800;line-height:1.15">Alta de Venta</MudText>
+        </MudStack>
+    </MudStack>
+</div>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Style="height:3px" Class="mb-5" />
+}
+
+<MudGrid Spacing="4">
+
+    <!-- ════════ COLUMNA FORMULARIO (8/12) ════════════════════════════════ -->
+    <MudItem xs="12" md="8">
+
+        <!-- ═══ 01 PRODUCTO ═════════════════════════════════════════════ -->
+        <div class="form-sec">
+            <div class="form-sec-head">
+                <div class="form-sec-num">01</div>
+                <div>
+                    <div class="form-sec-title">Producto</div>
+                    <div class="form-sec-sub">Selecciona el artículo a cotizar</div>
+                </div>
+            </div>
+            @if (!_loading && !_productos.Any())
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true">No hay productos disponibles.</MudAlert>
+            }
+            else
+            {
+                <div class="prod-grid">
+                    @foreach (var p in _productos)
+                    {
+                        var pp  = p;
+                        var sel = _productoId == pp.ProductId;
+                        <div class="prod-card @(sel ? "sel" : "")"
+                             @onclick="@(() => _productoId = pp.ProductId)">
+                            @if (sel)
+                            {
+                                <div class="prod-chk">
+                                    <MudIcon Icon="@Icons.Material.Filled.Check"
+                                             Style="font-size:13px;color:white" />
+                                </div>
+                            }
+                            <MudIcon Icon="@Icons.Material.Filled.Inventory2"
+                                     Color="@(sel ? Color.Primary : Color.Default)"
+                                     Style="font-size:34px;margin-bottom:6px" />
+                            <div style="font-weight:800;font-size:.86rem;margin-bottom:5px;
+                                        overflow:hidden;text-overflow:ellipsis;display:-webkit-box;
+                                        -webkit-line-clamp:2;-webkit-box-orient:vertical">
+                                @pp.ProductName
+                            </div>
+                            <div style="font-size:.95rem;font-weight:900;
+                                        color:@(sel ? "var(--mud-palette-primary)" : "var(--mud-palette-text-secondary)")">
+                                @pp.UnitPrice.ToString("C2")
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        <!-- ═══ 02 FORMA DE PAGO ══════════════════════════════════════════ -->
+        <div class="form-sec">
+            <div class="form-sec-head">
+                <div class="form-sec-num">02</div>
+                <div>
+                    <div class="form-sec-title">Forma de Pago</div>
+                    <div class="form-sec-sub">¿Cómo pagará el cliente?</div>
+                </div>
+            </div>
+            <div class="pay-grid">
+                @foreach (var (pv, ptitle, psub, pico) in new (string, string, string, string)[]
+                {
+                    ("SEMANAL", "Semanal",  "Abono fijo cada semana",            Icons.Material.Filled.DateRange),
+                    ("CONTADO", "Contado",  "Pago único en una sola exhibición", Icons.Material.Filled.Payments),
+                })
+                {
+                    var pv2 = pv;
+                    var sel = _formaPago == pv2;
+                    <div class="pay-btn @(sel ? "sel" : "")" @onclick="@(() => _formaPago = pv2)">
+                        <MudIcon Icon="@pico" Size="Size.Large"
+                                 Color="@(sel ? Color.Primary : Color.Default)"
+                                 Style="margin-bottom:8px" />
+                        <div style="font-weight:800;font-size:1.02rem">@ptitle</div>
+                        <div style="font-size:.78rem;color:var(--mud-palette-text-secondary);margin-top:4px">
+                            @psub
+                        </div>
+                        @if (sel)
+                        {
+                            <div style="margin-top:10px;padding:2px 12px;border-radius:20px;
+                                        display:inline-block;font-size:.7rem;font-weight:800;
+                                        background:var(--mud-palette-primary);color:white">
+                                ✓ Seleccionado
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+            @if (_formaPago != "CONTADO")
+            {
+                <div style="margin-top:20px;padding:16px 18px;border-radius:12px;
+                            background:var(--mud-palette-background-grey)">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary"
+                             Style="display:block;font-weight:700;margin-bottom:10px;
+                                    text-transform:uppercase;letter-spacing:.07em">
+                        Día de cobro *
+                    </MudText>
+                    <MudStack Row="true" Spacing="1" Wrap="Wrap.Wrap">
+                        @foreach (var (dc, dl) in new[] { ("LUN","Lun"), ("MAR","Mar"), ("MIE","Mié"), ("JUE","Jue"), ("VIE","Vie"), ("SAB","Sáb") })
+                        {
+                            var dcv = dc;
+                            <span class="dchip @(_diaAbono == dcv ? "sel" : "")"
+                                  @onclick="@(() => _diaAbono = dcv)">@dl</span>
+                        }
+                    </MudStack>
+                </div>
+            }
+        </div>
+
+        <!-- ═══ 03 DETALLES FINANCIEROS ════════════════════════════════════ -->
+        <div class="form-sec">
+            <div class="form-sec-head">
+                <div class="form-sec-num">03</div>
+                <div>
+                    <div class="form-sec-title">Detalles Financieros</div>
+                    <div class="form-sec-sub">Fecha, enganche, zona y vendedor</div>
+                </div>
+            </div>
+            <MudGrid Spacing="3">
+                <MudItem xs="12" sm="6">
+                    <MudDatePicker @bind-Date="_fechaVenta" Label="Fecha de venta"
+                                   Variant="Variant.Outlined" DateFormat="dd/MM/yyyy"
+                                   Adornment="Adornment.Start"
+                                   AdornmentIcon="@Icons.Material.Filled.CalendarToday" />
+                </MudItem>
+                @if (_formaPago != "CONTADO")
+                {
+                    <MudItem xs="12" sm="6">
+                        <MudDatePicker @bind-Date="_primerCobro" Label="Fecha primer cobro"
+                                       Variant="Variant.Outlined" DateFormat="dd/MM/yyyy"
+                                       MinDate="DateTime.Today"
+                                       Adornment="Adornment.Start"
+                                       AdornmentIcon="@Icons.Material.Filled.EventAvailable" />
+                    </MudItem>
+                }
+                <MudItem xs="12" sm="6">
+                    <MudNumericField @bind-Value="_enganche"
+                                     Label="@(_formaPago == "CONTADO" ? "Monto de contado ($)" : "Enganche ($)")"
+                                     Variant="Variant.Outlined" Format="F2" Min="0"
+                                     Adornment="Adornment.Start" AdornmentText="$" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="int" @bind-Value="_vendedorId" Label="Vendedor *"
+                               Variant="Variant.Outlined" AnchorOrigin="Origin.BottomLeft"
+                               Adornment="Adornment.Start"
+                               AdornmentIcon="@Icons.Material.Filled.Badge">
+                        <MudSelectItem Value="0">— Seleccionar vendedor —</MudSelectItem>
+                        @foreach (var u in _vendedores)
+                        {
+                            <MudSelectItem Value="@u.UserId">@u.FullName</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="int?" @bind-Value="_zonaId" Label="Zona / Colonia"
+                               Variant="Variant.Outlined" Clearable="true"
+                               AnchorOrigin="Origin.BottomLeft"
+                               Adornment="Adornment.Start"
+                               AdornmentIcon="@Icons.Material.Filled.Place">
+                        <MudSelectItem T="int?" Value="@((int?)null)">— Sin zona —</MudSelectItem>
+                        @foreach (var z in _zonas)
+                        {
+                            <MudSelectItem T="int?" Value="@((int?)z.ZoneId)">@z.ZoneName</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+            </MudGrid>
+        </div>
+
+        <!-- ═══ 04 CLIENTE ══════════════════════════════════════════════════ -->
+        <div class="form-sec">
+            <div class="form-sec-head">
+                <div class="form-sec-num">04</div>
+                <div>
+                    <div class="form-sec-title">Cliente</div>
+                    <div class="form-sec-sub">Busca uno existente o registra uno nuevo</div>
+                </div>
+            </div>
+            <!-- tab toggle -->
+            <div style="display:inline-flex;border:1.5px solid var(--mud-palette-lines-default);
+                        border-radius:10px;overflow:hidden;margin-bottom:18px">
+                <div class="cl-tab @(_nuevoCliente ? "off" : "on")"
+                     @onclick="@(() => { _nuevoCliente = false; _clienteExistente = null; })">
+                    <MudIcon Icon="@Icons.Material.Filled.PersonSearch"
+                             Style="font-size:15px;margin-right:5px;vertical-align:sub" />
+                    Existente
+                </div>
+                <div class="cl-tab @(_nuevoCliente ? "on" : "off")"
+                     @onclick="@(() => _nuevoCliente = true)">
+                    <MudIcon Icon="@Icons.Material.Filled.PersonAdd"
+                             Style="font-size:15px;margin-right:5px;vertical-align:sub" />
+                    Nuevo
+                </div>
+            </div>
+
+            @if (!_nuevoCliente)
+            {
+                <MudAutocomplete T="CustomerDto" Label="Buscar cliente existente"
+                                 @bind-Value="_clienteExistente"
+                                 SearchFunc="BuscarClientes"
+                                 ToStringFunc="@(c => c?.CustomerName ?? "")"
+                                 Variant="Variant.Outlined"
+                                 Adornment="Adornment.Start"
+                                 AdornmentIcon="@Icons.Material.Filled.Search"
+                                 MinCharacters="0" ShowProgressIndicator="true"
+                                 ResetValueOnEmptyText="true" CoerceValue="true"
+                                 Clearable="true" Immediate="true"
+                                 Placeholder="Nombre, teléfono o dirección..." />
+                @if (_clienteExistente is not null)
+                {
+                    <div style="margin-top:10px;padding:12px 16px;border-radius:12px;
+                                border:1.5px solid var(--mud-palette-primary);
+                                background:rgba(var(--mud-palette-primary-rgb),.05)">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudAvatar Color="Color.Primary" Size="Size.Small">
+                                <MudIcon Icon="@Icons.Material.Filled.Person" />
+                            </MudAvatar>
+                            <MudStack Spacing="0" Style="flex:1;min-width:0;overflow:hidden">
+                                <MudText Typo="Typo.body1" Style="font-weight:700">
+                                    @_clienteExistente.CustomerName
+                                </MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    @_clienteExistente.PhoneNumber
+                                    @if (!string.IsNullOrEmpty(_clienteExistente.Address))
+                                    {<span> · @_clienteExistente.Address</span>}
+                                </MudText>
+                            </MudStack>
+                            <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
+                                           OnClick="@(() => _clienteExistente = null)" />
+                        </MudStack>
+                    </div>
+                }
+            }
+            else
+            {
+                <MudGrid Spacing="3">
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="_nc.Nombre" Label="Nombre completo *"
+                                      Variant="Variant.Outlined"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Person"
+                                      Placeholder="Como aparece en identificación"
+                                      MaxLength="150" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_nc.Telefono" Label="Teléfono *"
+                                      Variant="Variant.Outlined"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Phone"
+                                      Placeholder="10 dígitos" MaxLength="10"
+                                      InputType="InputType.Telephone" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_nc.Coords" Label="Coordenadas GPS"
+                                      Variant="Variant.Outlined"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.MyLocation"
+                                      Placeholder="19.4326, -99.1332"
+                                      HelperText="Copia de Google Maps — opcional" />
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="_nc.Calle" Label="Calle y número"
+                                      Variant="Variant.Outlined"
+                                      Placeholder="Ej. Av. Juárez 123 Int. 4" />
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary"
+                                 Style="display:block;font-weight:600;margin-bottom:6px">
+                            Entre las calles
+                        </MudText>
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudTextField @bind-Value="_nc.EntreCalle1" Variant="Variant.Outlined"
+                                          Placeholder="Primera calle" Style="flex:1" />
+                            <MudText Color="Color.Secondary" Style="font-weight:600;white-space:nowrap">y</MudText>
+                            <MudTextField @bind-Value="_nc.EntreCalle2" Variant="Variant.Outlined"
+                                          Placeholder="Segunda calle" Style="flex:1" />
+                        </MudStack>
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="_nc.Referencia" Label="Referencia (señas)"
+                                      Variant="Variant.Outlined"
+                                      Placeholder="Color de fachada, rejas, pisos..." />
+                    </MudItem>
+                </MudGrid>
+            }
+        </div>
+
+        <!-- ═══ 05 EVIDENCIA FOTOGRÁFICA ════════════════════════════════════ -->
+        <div class="form-sec">
+            <div class="form-sec-head">
+                <div class="form-sec-num">05</div>
+                <div>
+                    <div class="form-sec-title">Evidencia Fotográfica</div>
+                    <div class="form-sec-sub">
+                        Fachada obligatoria · JPG / PNG / WEBP · máx 10 MB
+                    </div>
+                </div>
+            </div>
+            <MudGrid Spacing="3">
+                @foreach (var (tipo, icon, lbl, req) in new (string, string, string, bool)[]
+                {
+                    ("FACHADA",   Icons.Material.Outlined.Home,         "Fachada",   true),
+                    ("CLIENTE",   Icons.Material.Outlined.Person,       "Cliente",   false),
+                    ("CONTRATO",  Icons.Material.Outlined.Description,  "Contrato",  false),
+                    ("ADICIONAL", Icons.Material.Outlined.PhotoLibrary, "Adicional", false),
+                })
+                {
+                    var t      = tipo;
+                    var hasImg = _fotoDataUrls.ContainsKey(t);
+                    <MudItem xs="6" sm="3">
+                        <label for="@($"fp-{t}")" class="ph-tile @(hasImg ? "ph-has" : "")">
+                            <InputFile id="@($"fp-{t}")"
+                                       OnChange="@(e => OnFotoSeleccionada(e, t))"
+                                       accept="image/jpeg,image/png,image/webp"
+                                       style="display:none" />
+                            @if (hasImg)
+                            {
+                                <img src="@_fotoDataUrls[t]" alt="@lbl" />
+                                <div class="ph-tl">@lbl</div>
+                                <div class="ph-tr" style="background:var(--mud-palette-success)">
+                                    <MudIcon Icon="@Icons.Material.Filled.Check"
+                                             Style="font-size:13px;color:white" />
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="ph-inner">
+                                    <MudIcon Icon="@icon"
+                                             Style="font-size:36px;color:rgba(0,0,0,.18)" />
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary"
+                                             Style="font-weight:700;font-size:.72rem">@lbl</MudText>
+                                    @if (req)
+                                    {
+                                        <span style="font-size:.62rem;font-weight:800;
+                                                     background:#c62828;color:white;
+                                                     padding:1px 7px;border-radius:20px">REQ</span>
+                                    }
+                                </div>
+                            }
+                        </label>
+                        @if (hasImg)
+                        {
+                            <MudButton Variant="Variant.Text" Size="Size.Small" Color="Color.Error"
+                                       StartIcon="@Icons.Material.Filled.Delete"
+                                       Class="mt-1" Style="font-size:.7rem;min-width:0"
+                                       OnClick="@(() => EliminarFoto(t))">Quitar</MudButton>
+                        }
+                    </MudItem>
+                }
+            </MudGrid>
+        </div>
+
+        <!-- ═══ 06 OBSERVACIONES ════════════════════════════════════════════ -->
+        <div class="form-sec">
+            <div class="form-sec-head">
+                <div class="form-sec-num">06</div>
+                <div>
+                    <div class="form-sec-title">Observaciones</div>
+                    <div class="form-sec-sub">Notas internas, acuerdos o instrucciones especiales</div>
+                </div>
+            </div>
+            <MudTextField @bind-Value="_notas" Label="Notas adicionales"
+                          Variant="Variant.Outlined" Lines="3"
+                          Placeholder="Referencias, acuerdos de pago, horarios de cobro..." />
+        </div>
+
+        <!-- ─── Botón guardar móvil (visible en pantalla chica) ──── -->
+        <div class="d-md-none mb-4">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
+                       Size="Size.Large" StartIcon="@Icons.Material.Filled.SaveAlt"
+                       Style="border-radius:10px;font-weight:700"
+                       OnClick="GuardarAsync" Disabled="_guardando || _loading">
+                @(_guardando ? "Guardando..." : "Crear Venta")
+            </MudButton>
+            <MudButton Variant="Variant.Text" Color="Color.Default" FullWidth="true"
+                       Class="mt-1" OnClick="@(() => Nav.NavigateTo("/ventas"))">
+                Cancelar
+            </MudButton>
+        </div>
+
+    </MudItem>
+
+    <!-- ════════ SIDEBAR RESUMEN (4/12) ════════════════════════════════════ -->
+    <MudItem xs="12" md="4">
+        <div style="position:sticky;top:80px">
+            @{
+                var prodSel = _productos.FirstOrDefault(p => p.ProductId == _productoId);
+                var vendSel = _vendedores.FirstOrDefault(u => u.UserId == _vendedorId);
+                var zonaSel = _zonaId.HasValue ? _zonas.FirstOrDefault(z => z.ZoneId == _zonaId) : null;
+                var checks  = new (string L, bool Ok)[]
+                {
+                    ("Producto",      _productoId > 0),
+                    ("Forma de pago", !string.IsNullOrEmpty(_formaPago)),
+                    ("Día de cobro",  _formaPago == "CONTADO" || !string.IsNullOrEmpty(_diaAbono)),
+                    ("Vendedor",      _vendedorId > 0),
+                    ("Zona",          _zonaId.HasValue),
+                    ("Cliente",       _nuevoCliente
+                                        ? !string.IsNullOrWhiteSpace(_nc.Nombre)
+                                        : _clienteExistente is not null),
+                    ("Foto fachada",  _fotos.ContainsKey("FACHADA")),
+                };
+                var allOk = checks.All(c => c.Ok);
+            }
+            <MudPaper Elevation="3" Class="pa-5 rounded-xl"
+                      Style="border:2px solid var(--mud-palette-primary);
+                             background:linear-gradient(160deg,
+                               rgba(var(--mud-palette-primary-rgb),.07) 0%,
+                               var(--mud-palette-surface) 80%)">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-4">
+                    <MudIcon Icon="@Icons.Material.Filled.Receipt" Color="Color.Primary" />
+                    <MudText Typo="Typo.h6" Style="font-weight:800">Resumen</MudText>
+                </MudStack>
+
+                @if (prodSel is not null)
+                {
+                    <div style="border-radius:10px;padding:12px 14px;margin-bottom:12px;
+                                background:rgba(var(--mud-palette-primary-rgb),.08);
+                                border:1px solid rgba(var(--mud-palette-primary-rgb),.2)">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary"
+                                 Style="display:block">Producto</MudText>
+                        <MudText Typo="Typo.body1" Style="font-weight:800">@prodSel.ProductName</MudText>
+                    </div>
+                }
+
+                <MudStack Spacing="1" Class="mb-3">
+                    @if (vendSel is not null)
+                    {
+                        <MudStack Row="true" Justify="Justify.SpaceBetween">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Vendedor</MudText>
+                            <MudText Typo="Typo.caption" Style="font-weight:700">@vendSel.FullName</MudText>
+                        </MudStack>
+                    }
+                    @if (zonaSel is not null)
+                    {
+                        <MudStack Row="true" Justify="Justify.SpaceBetween">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Zona</MudText>
+                            <MudText Typo="Typo.caption" Style="font-weight:700">@zonaSel.ZoneName</MudText>
+                        </MudStack>
+                    }
+                    <MudStack Row="true" Justify="Justify.SpaceBetween">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Pago</MudText>
+                        <MudText Typo="Typo.caption" Style="font-weight:700">
+                            @_formaPago@(!string.IsNullOrEmpty(_diaAbono) && _formaPago != "CONTADO" ? $" · {_diaAbono}" : "")
+                        </MudText>
+                    </MudStack>
+                    @if (!string.IsNullOrEmpty(NombreClienteResumen) && NombreClienteResumen != "—" && NombreClienteResumen != "(nuevo cliente)")
+                    {
+                        <MudStack Row="true" Justify="Justify.SpaceBetween">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Cliente</MudText>
+                            <MudText Typo="Typo.caption"
+                                     Style="font-weight:700;max-width:130px;text-align:right;word-break:break-word">
+                                @NombreClienteResumen
+                            </MudText>
+                        </MudStack>
+                    }
+                    @if (_enganche > 0)
+                    {
+                        <MudStack Row="true" Justify="Justify.SpaceBetween">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Enganche</MudText>
+                            <MudText Typo="Typo.caption"
+                                     Style="font-weight:700;color:var(--mud-palette-success)">
+                                @_enganche.ToString("C2")
+                            </MudText>
+                        </MudStack>
+                    }
+                </MudStack>
+
+                <MudDivider Class="mb-3" />
+
+                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                    <MudText Typo="Typo.body2" Style="font-weight:700">Total</MudText>
+                    <MudText Style="font-size:1.65rem;font-weight:900;
+                                   color:var(--mud-palette-primary)">
+                        @((prodSel?.UnitPrice ?? 0m).ToString("C2"))
+                    </MudText>
+                </MudStack>
+
+                <!-- Checklist -->
+                <div style="margin-top:14px;padding:12px 14px;border-radius:10px;
+                            background:var(--mud-palette-background-grey)">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary"
+                             Style="display:block;font-weight:700;margin-bottom:8px;
+                                    text-transform:uppercase;letter-spacing:.06em">
+                        Checklist
+                    </MudText>
+                    @foreach (var (cl, ok) in checks)
+                    {
+                        <div class="chk-row @(ok ? "chk-ok" : "chk-no")">
+                            <MudIcon Icon="@(ok ? Icons.Material.Filled.CheckCircle : Icons.Material.Outlined.RadioButtonUnchecked)"
+                                     Style="font-size:16px" />
+                            <span>@cl</span>
+                        </div>
+                    }
+                </div>
+
+                <MudButton Variant="Variant.Filled"
+                           Color="@(allOk ? Color.Primary : Color.Default)"
+                           FullWidth="true" Class="mt-4"
+                           StartIcon="@Icons.Material.Filled.SaveAlt"
+                           Style="border-radius:10px;font-weight:800"
+                           OnClick="GuardarAsync" Disabled="_guardando || _loading || !allOk">
+                    @(_guardando ? "Guardando..." : "Crear Venta")
+                </MudButton>
+                @if (!allOk)
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Secondary"
+                             Style="display:block;text-align:center;margin-top:6px">
+                        Completa todos los campos requeridos
+                    </MudText>
+                }
+                <MudButton Variant="Variant.Text" Color="Color.Default" FullWidth="true"
+                           Class="mt-1" Size="Size.Small"
+                           OnClick="@(() => Nav.NavigateTo("/ventas"))">
+                    Cancelar
+                </MudButton>
+            </MudPaper>
+        </div>
+    </MudItem>
+
+</MudGrid>
+
+@code {
+    private bool _loading   = true;
+    private bool _guardando;
+
+    private List<CustomerDto> _clientes   = new();
+    private List<UserDto>     _vendedores = new();
+    private List<ProductDto>  _productos  = new();
+    private List<ZoneDto>     _zonas      = new();
+
+    // campos de venta
+    private DateTime? _fechaVenta  = DateTime.Today;
+    private int       _productoId;
+    private string    _formaPago   = "SEMANAL";
+    private string    _diaAbono    = "";
+    private DateTime? _primerCobro;
+    private int?      _zonaId;
+    private decimal   _enganche;
+    private int       _vendedorId;
+    private string    _notas       = "";
+
+    // cliente
+    private bool         _nuevoCliente    = true;
+    private CustomerDto? _clienteExistente;
+    private readonly NuevoClienteForm _nc = new();
+
+    // fotos
+    private static readonly string[] _tiposFoto = ["FACHADA", "CLIENTE", "CONTRATO", "ADICIONAL"];
+    private readonly Dictionary<string, IBrowserFile> _fotos        = new();
+    private readonly Dictionary<string, string>       _fotoDataUrls = new();
+
+    private string NombreClienteResumen =>
+        _nuevoCliente
+            ? (_nc.Nombre.Trim().Length > 0 ? _nc.Nombre.Trim() : "(nuevo cliente)")
+            : (_clienteExistente?.CustomerName ?? "—");
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loading = true;
+        var t1 = Api.GetAsync<List<CustomerDto>>("api/customers");
+        var t2 = Api.GetAsync<List<UserDto>>("api/users");
+        var t3 = Api.GetAsync<List<ProductDto>>("api/products?isActive=true");
+        var t4 = Api.GetAsync<List<ZoneDto>>("api/zones");
+        await Task.WhenAll(t1, t2, t3, t4);
+        _clientes   = t1.Result ?? new();
+        _vendedores = (t2.Result ?? new()).Where(u => u.IsActive).ToList();
+        _productos  = (t3.Result ?? new()).Where(p => p.IsActive).ToList();
+        _zonas      = (t4.Result ?? new()).Where(z => z.IsActive).ToList();
+        _loading    = false;
+    }
+
+    private Task<IEnumerable<CustomerDto>> BuscarClientes(string v, CancellationToken _)
+    {
+        var q = string.IsNullOrWhiteSpace(v)
+            ? (IEnumerable<CustomerDto>)_clientes.Take(50)
+            : _clientes.Where(c =>
+                c.CustomerName.Contains(v, StringComparison.OrdinalIgnoreCase) ||
+                (c.PhoneNumber ?? "").Contains(v) ||
+                (c.Address ?? "").Contains(v, StringComparison.OrdinalIgnoreCase)).Take(30);
+        return Task.FromResult(q);
+    }
+
+    private async Task OnFotoSeleccionada(InputFileChangeEventArgs e, string tipo)
+    {
+        var file = e.File;
+        if (file is null) return;
+        _fotos[tipo] = file;
+        using var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+        var ms = new MemoryStream();
+        await stream.CopyToAsync(ms);
+        _fotoDataUrls[tipo] = $"data:{file.ContentType};base64,{Convert.ToBase64String(ms.ToArray())}";
+        StateHasChanged();
+    }
+
+    private void EliminarFoto(string tipo) { _fotos.Remove(tipo); _fotoDataUrls.Remove(tipo); }
+
+    private async Task GuardarAsync()
+    {
+        if (_productoId == 0)                                       { Notify.Warning("Selecciona un producto"); return; }
+        if (string.IsNullOrEmpty(_formaPago))                       { Notify.Warning("Selecciona forma de pago"); return; }
+        if (_formaPago != "CONTADO" && string.IsNullOrEmpty(_diaAbono)) { Notify.Warning("Selecciona día de cobro"); return; }
+        if (_vendedorId == 0)                                       { Notify.Warning("Selecciona un vendedor"); return; }
+        if (_zonaId is null)                                        { Notify.Warning("Selecciona una zona"); return; }
+        if (!_fotos.ContainsKey("FACHADA"))                         { Notify.Warning("La foto de FACHADA es obligatoria"); return; }
+        if (_nuevoCliente)
+        {
+            if (string.IsNullOrWhiteSpace(_nc.Nombre))              { Notify.Warning("Nombre del cliente requerido"); return; }
+            if ((_nc.Telefono ?? "").Replace(" ", "").Length < 10)  { Notify.Warning("Teléfono: 10 dígitos requeridos"); return; }
+        }
+        else if (_clienteExistente is null)                         { Notify.Warning("Selecciona un cliente existente"); return; }
+
+        _guardando = true;
+        try
+        {
+            // 1. cliente
+            int customerId;
+            if (_nuevoCliente)
+            {
+                var address = _nc.Calle?.Trim() ?? "";
+                if (!string.IsNullOrWhiteSpace(_nc.EntreCalle1) || !string.IsNullOrWhiteSpace(_nc.EntreCalle2))
+                    address += $", entre {_nc.EntreCalle1?.Trim()} y {_nc.EntreCalle2?.Trim()}";
+                if (!string.IsNullOrWhiteSpace(_nc.Referencia))
+                    address += $", ref: {_nc.Referencia.Trim()}";
+
+                string? gpsLat = null, gpsLng = null;
+                if (!string.IsNullOrWhiteSpace(_nc.Coords))
+                {
+                    var parts = _nc.Coords.Split(',');
+                    if (parts.Length == 2) { gpsLat = parts[0].Trim(); gpsLng = parts[1].Trim(); }
+                }
+
+                var cr = await Api.PostAsync<object, CustomerCreatedResponse>("api/customers", new
+                {
+                    customerName   = _nc.Nombre.Trim().ToUpperInvariant(),
+                    phoneNumber    = _nc.Telefono?.Trim(),
+                    address, zoneId = _zonaId,
+                    gpsLatitude    = gpsLat, gpsLongitude = gpsLng,
+                    isGoldCustomer = false, isBlacklisted  = false
+                });
+                if (cr is null || cr.CustomerId <= 0) { Notify.Error("No se pudo registrar el cliente"); return; }
+                customerId = cr.CustomerId;
+            }
+            else { customerId = _clienteExistente!.CustomerId; }
+
+            // 2. venta
+            var producto = _productos.First(p => p.ProductId == _productoId);
+            var sr = await Api.PostAsync<object, SaleCreatedResponse>("api/sales", new
+            {
+                customerId,
+                sellerId            = _vendedorId,
+                paymentTermDays     = _formaPago == "CONTADO" ? 0 : 7,
+                paymentTerm         = _formaPago,
+                collectionDay       = _formaPago == "CONTADO" ? null : _diaAbono,
+                firstCollectionDate = _primerCobro,
+                downPayment         = _enganche,
+                notes               = _notas,
+                details             = new[]
+                {
+                    new { productId   = producto.ProductId,
+                          productName = producto.ProductName,
+                          quantity    = 1,
+                          unitPrice   = producto.UnitPrice,
+                          subtotal    = producto.UnitPrice }
+                }
+            });
+            if (sr is null || sr.SaleId <= 0) { Notify.Error("No se pudo crear la venta"); return; }
+
+            // 3. fotos
+            var conError = new List<string>();
+            foreach (var (tipo, archivo) in _fotos)
+            {
+                try
+                {
+                    using var stream = archivo.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+                    var photoId = await Api.UploadSalePhotoAsync(sr.SaleId, tipo, stream, archivo.Name);
+                    if (photoId <= 0) conError.Add(tipo);
+                }
+                catch { conError.Add(tipo); }
+            }
+
+            if (conError.Count > 0)
+                Notify.Warning($"Venta #{sr.SaleId} creada, pero fallaron fotos: {string.Join(", ", conError)}");
+            else
+                Notify.Success($"Venta #{sr.SaleId} creada correctamente");
+
+            Nav.NavigateTo($"/ventas/{sr.SaleId}");
+        }
+        catch (Exception ex) { Notify.Error($"Error: {ex.Message}"); }
+        finally { _guardando = false; }
+    }
+
+    private class NuevoClienteForm
+    {
+        public string  Nombre      { get; set; } = "";
+        public string? Telefono    { get; set; }
+        public string? Coords      { get; set; }
+        public string? Calle       { get; set; }
+        public string? EntreCalle1 { get; set; }
+        public string? EntreCalle2 { get; set; }
+        public string? Referencia  { get; set; }
+    }
+
+    private record SaleCreatedResponse(int SaleId, string Message);
+    private record CustomerCreatedResponse(int CustomerId);
+}

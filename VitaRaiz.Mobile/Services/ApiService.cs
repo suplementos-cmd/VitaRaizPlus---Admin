@@ -218,6 +218,56 @@ public class ApiService
         }
     }
 
+    public async Task<TResponse?> PostMultipartAsync<TResponse>(string endpoint, MultipartFormDataContent content)
+    {
+        try
+        {
+            await SetAuthorizationHeaderAsync();
+            var response = await _httpClient.PostAsync(endpoint, content);
+            if (response.IsSuccessStatusCode)
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                return JsonSerializer.Deserialize<TResponse>(body, _jsonOptions);
+            }
+            Console.WriteLine($"[ApiService] POST multipart {endpoint} failed: {response.StatusCode}");
+            return default;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error en POST multipart {endpoint}: {ex.Message}");
+            return default;
+        }
+    }
+
+    /// <summary>URL directa al binario de la foto via el API (AllowAnonymous).</summary>
+    public string GetPhotoUrl(int photoId) => $"{API_BASE_URL}/api/sales/photos/{photoId}/file";
+
+    /// <summary>
+    /// Sube el archivo binario de una foto de venta al servidor (multipart).
+    /// Devuelve el photoId asignado, o 0 si falla.
+    /// </summary>
+    public async Task<int> UploadSalePhotoAsync(int saleId, string photoType, string localFilePath)
+    {
+        try
+        {
+            if (!File.Exists(localFilePath)) return 0;
+            using var form = new MultipartFormDataContent();
+            var fileBytes = await File.ReadAllBytesAsync(localFilePath);
+            var ext = Path.GetExtension(localFilePath);
+            form.Add(new ByteArrayContent(fileBytes) { Headers = { ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(ext switch { ".png" => "image/png", ".webp" => "image/webp", _ => "image/jpeg" }) } }, "file", Path.GetFileName(localFilePath));
+            form.Add(new StringContent(photoType), "photoType");
+            var result = await PostMultipartAsync<SalePhotoUploadResult>($"api/sales/{saleId}/photos/upload", form);
+            return result?.PhotoId ?? 0;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ApiService] UploadSalePhotoAsync error: {ex.Message}");
+            return 0;
+        }
+    }
+
+    private record SalePhotoUploadResult(int PhotoId, string FilePath);
+
     public async Task<TResponse?> PutAsync<TRequest, TResponse>(string endpoint, TRequest data)
     {
         try

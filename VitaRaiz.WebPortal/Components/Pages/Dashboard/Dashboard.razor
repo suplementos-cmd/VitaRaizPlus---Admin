@@ -1,4 +1,4 @@
-@page "/dashboard"
+﻿@page "/dashboard"
 @attribute [Authorize]
 @using ApexCharts
 @using MudColor = MudBlazor.Color
@@ -14,11 +14,11 @@
 <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4" Justify="Justify.SpaceBetween">
     <div>
         <MudText Typo="Typo.h4" Class="fw-bold">Dashboard</MudText>
-        <MudText Typo="Typo.body2" Color="MudColor.Secondary">@_greeting � @DateTime.Now.ToString("dddd, d MMMM yyyy")</MudText>
+        <MudText Typo="Typo.body2" Color="MudColor.Secondary">@_greeting · @DateTime.Now.ToString("dddd, d MMMM yyyy")</MudText>
     </div>
     <MudStack Row="true" Spacing="2">
         <MudChip T="string" Icon="@Icons.Material.Filled.CalendarToday" Size="MudSize.Small" Variant="Variant.Outlined">
-            �ltimos 30 d�as
+            Últimos 30 días
         </MudChip>
         <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh"
                    OnClick="LoadDataAsync" Disabled="_loading" Size="MudSize.Small">
@@ -155,20 +155,20 @@ else
         </AuthorizeView>
     </MudGrid>
 
-    <!-- -- Secci�n Ventas -- -->
+    <!-- -- Sección Ventas -- -->
     <MudText Typo="Typo.h6" Class="fw-bold mb-3 mt-1">
         <MudIcon Icon="@Icons.Material.Filled.BarChart" Class="mr-1" Style="vertical-align:sub" />
-        An�lisis de Ventas
+        Análisis de Ventas
     </MudText>
     <MudGrid Spacing="3" Class="mb-2">
 
-        <!-- Gr�fica 1: Ventas por d�a (principal, clickable) -->
+        <!-- Gráfica 1: Ventas por día (principal, clickable) -->
         <MudItem xs="12" lg="8">
             <MudPaper Elevation="2" Class="pa-4">
                 <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-3">
                     <MudText Typo="Typo.subtitle1" Class="fw-bold">
                         <MudIcon Icon="@Icons.Material.Filled.CalendarMonth" Class="mr-1" Style="vertical-align:sub;color:#1976D2" />
-                        Ventas por d�a
+                        Ventas por día
                     </MudText>
                     <MudChip T="string" Size="MudSize.Small" Color="MudColor.Primary" Variant="Variant.Outlined">
                         Clic en barra = ver detalle
@@ -189,7 +189,7 @@ else
             </MudPaper>
         </MudItem>
 
-        <!-- Gr�fica 3: Ventas por estatus (donut) -->
+        <!-- Gráfica 3: Ventas por estatus (donut) -->
         <MudItem xs="12" sm="6" lg="4">
             <MudPaper Elevation="2" Class="pa-4">
                 <MudText Typo="Typo.subtitle1" Class="fw-bold mb-3">
@@ -219,19 +219,19 @@ else
         </MudItem>
     </MudGrid>
 
-    <!-- Bot�n ver mas gr�ficas de ventas -->
+    <!-- Botón ver mas Gráficas de ventas -->
     <div class="text-center mb-4">
         <MudButton Variant="Variant.Text" Color="MudColor.Primary"
                    StartIcon="@(_showMoreSales ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
                    OnClick="() => _showMoreSales = !_showMoreSales">
-            @(_showMoreSales ? "Ocultar" : "Ver m�s gr�ficas de ventas")
+            @(_showMoreSales ? "Ocultar" : "Ver más Gráficas de ventas")
         </MudButton>
     </div>
 
     @if (_showMoreSales)
     {
         <MudGrid Spacing="3" Class="mb-4">
-            <!-- Gr�fica 2: Ventas por vendedor -->
+            <!-- Gráfica 2: Ventas por vendedor -->
             <MudItem xs="12" md="6">
                 <MudPaper Elevation="2" Class="pa-4">
                     <MudText Typo="Typo.subtitle1" Class="fw-bold mb-3">
@@ -252,7 +252,7 @@ else
                 </MudPaper>
             </MudItem>
 
-            <!-- Gr�fica 4: Ventas por producto -->
+            <!-- Gráfica 4: Ventas por producto -->
             <MudItem xs="12" md="6">
                 <MudPaper Elevation="2" Class="pa-4">
                     <MudText Typo="Typo.subtitle1" Class="fw-bold mb-3">
@@ -275,20 +275,20 @@ else
         </MudGrid>
     }
 
-    <!-- -- Secci�n Cobros -- -->
+    <!-- -- Sección Cobros -- -->
     <MudText Typo="Typo.h6" Class="fw-bold mb-3 mt-1">
         <MudIcon Icon="@Icons.Material.Filled.Payments" Class="mr-1" Style="vertical-align:sub" />
-        An�lisis de Cobros
+        Análisis de Cobros
     </MudText>
     <MudGrid Spacing="3" Class="mb-2">
 
-        <!-- Gr�fica 5: Cobros por d�a (principal) -->
+        <!-- Gráfica 5: Cobros por día (principal) -->
         <MudItem xs="12" lg="8">
             <MudPaper Elevation="2" Class="pa-4">
                 <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-3">
                     <MudText Typo="Typo.subtitle1" Class="fw-bold">
                         <MudIcon Icon="@Icons.Material.Filled.CalendarMonth" Class="mr-1" Style="vertical-align:sub;color:#2E7D32" />
-                        Cobros por d�a
+                        Cobros por día
                     </MudText>
                     <MudChip T="string" Size="MudSize.Small" Color="MudColor.Success" Variant="Variant.Outlined">
                         Clic en punto = ver detalle
@@ -309,7 +309,7 @@ else
             </MudPaper>
         </MudItem>
 
-        <!-- Gr�fica 7: Cobros por zona -->
+        <!-- Gráfica 7: Cobros por zona -->
         <MudItem xs="12" sm="6" lg="4">
             <MudPaper Elevation="2" Class="pa-4">
                 <MudText Typo="Typo.subtitle1" Class="fw-bold mb-3">
@@ -340,19 +340,19 @@ else
         </MudItem>
     </MudGrid>
 
-    <!-- Bot�n ver mas gr�ficas de cobros -->
+    <!-- Botón ver mas Gráficas de cobros -->
     <div class="text-center mb-5">
         <MudButton Variant="Variant.Text" Color="MudColor.Success"
                    StartIcon="@(_showMorePay ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
                    OnClick="() => _showMorePay = !_showMorePay">
-            @(_showMorePay ? "Ocultar" : "Ver m�s gr�ficas de cobros")
+            @(_showMorePay ? "Ocultar" : "Ver más Gráficas de cobros")
         </MudButton>
     </div>
 
     @if (_showMorePay)
     {
         <MudGrid Spacing="3" Class="mb-5">
-            <!-- Gr�fica 6: Cobros por cobrador -->
+            <!-- Gráfica 6: Cobros por cobrador -->
             <MudItem xs="12">
                 <MudPaper Elevation="2" Class="pa-4">
                     <MudText Typo="Typo.subtitle1" Class="fw-bold mb-3">
@@ -385,12 +385,15 @@ else
     .vr-kpi-icon-wrap { width:52px; height:52px; border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
 </style>
 
+@implements IDisposable
 @code {
     private bool _loading = true;
     private bool _showMoreSales;
     private bool _showMorePay;
     private string _greeting = string.Empty;
     private DashboardStats _stats = new();
+
+    private CancellationTokenSource _cts = new();
 
     // Chart refs
     private ApexChart<DayPoint>? _salesDayChart;
@@ -443,10 +446,22 @@ else
     }
 
     // --- Data loading ---------------------------------------------------------
+    public void Dispose()
+    {
+        _cts.Cancel();
+        _cts.Dispose();
+    }
+
+    private void SafeStateHasChanged()
+    {
+        if (!_cts.IsCancellationRequested)
+            try { StateHasChanged(); } catch { }
+    }
+
     private async Task LoadDataAsync()
     {
         _loading = true;
-        StateHasChanged();
+        SafeStateHasChanged();
 
         var today   = DateTime.Today;
         var todayS  = today.ToString("yyyy-MM-dd");
@@ -527,7 +542,7 @@ else
         _stats.MonthlyRevenue = monthlySales?.Sum(s => s.TotalAmount) ?? 0;
 
         _loading = false;
-        StateHasChanged();
+        SafeStateHasChanged();
     }
 
     // --- Chart options --------------------------------------------------------
@@ -651,7 +666,7 @@ else
     private void SetGreeting(string firstName)
     {
         var h     = DateTime.Now.Hour;
-        var salud = h < 12 ? "Buenos d�as" : h < 19 ? "Buenas tardes" : "Buenas noches";
+        var salud = h < 12 ? "Buenos días" : h < 19 ? "Buenas tardes" : "Buenas noches";
         _greeting = $"{salud}, {firstName.Split(' ')[0]}";
     }
 
