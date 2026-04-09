@@ -12,7 +12,7 @@ public class ProductRepository : BaseOracleRepository, IProductRepository
     {
     }
 
-    public async Task<int> CreateProductAsync(string productName, string? description, decimal unitPrice, int stock, string? category)
+    public async Task<int> CreateProductAsync(string productName, string? description, decimal unitPrice, int stock, int? categoryId)
     {
         var connection = await GetOpenConnectionAsync();
         using var command = CreatePackageProcedureCommand(connection, "sp_register_product");
@@ -23,7 +23,7 @@ public class ProductRepository : BaseOracleRepository, IProductRepository
         AddInputParameter(command, "p_description", description);
         AddInputParameter(command, "p_unit_price", unitPrice);
         AddInputParameter(command, "p_stock", stock);
-        AddInputParameter(command, "p_category", category);
+        AddInputParameter(command, "p_category_id", categoryId);
 
         await command.ExecuteNonQueryAsync();
 
@@ -31,7 +31,7 @@ public class ProductRepository : BaseOracleRepository, IProductRepository
     }
 
     public async Task<bool> UpdateProductAsync(int productId, string productName, string? description, 
-        decimal unitPrice, int stock, bool isActive, string? category)
+        decimal unitPrice, int stock, bool isActive, int? categoryId)
     {
         var connection = await GetOpenConnectionAsync();
         using var command = CreatePackageProcedureCommand(connection, "sp_update_product");
@@ -42,7 +42,7 @@ public class ProductRepository : BaseOracleRepository, IProductRepository
         AddInputParameter(command, "p_unit_price", unitPrice);
         AddInputParameter(command, "p_stock", stock);
         AddInputParameter(command, "p_is_active", isActive ? 1 : 0);
-        AddInputParameter(command, "p_category", category);
+        AddInputParameter(command, "p_category_id", categoryId);
 
         await command.ExecuteNonQueryAsync();
         return true;
@@ -86,6 +86,7 @@ public class ProductRepository : BaseOracleRepository, IProductRepository
                     Description = p.Description,
                     UnitPrice = p.Price,
                     Stock = p.Stock,
+                    CategoryId = p.CategoryId,
                     Category = p.Category,
                     PhotoUrl = p.PhotoUrl,
                     IsActive = p.IsActive
@@ -124,6 +125,7 @@ public class ProductRepository : BaseOracleRepository, IProductRepository
                     Description = p.Description,
                     UnitPrice = p.Price,
                     Stock = p.Stock,
+                    CategoryId = p.CategoryId,
                     Category = p.Category,
                     PhotoUrl = p.PhotoUrl,
                     IsActive = p.IsActive

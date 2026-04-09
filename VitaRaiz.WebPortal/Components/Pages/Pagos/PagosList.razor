@@ -184,11 +184,10 @@ else
                                             </td>
                                         </tr>
 
-                                        <!-- Payment rows (click → sale detail) -->
+                                        <!-- Payment rows -->
                                         @foreach (var pago in zonaGroup.Payments)
                                         {
-                                            <tr @onclick="@(() => Nav.NavigateTo("/ventas/" + pago.SaleId))"
-                                                style="cursor:pointer" class="payment-row">
+                                            <tr class="payment-row">
                                                 <!-- ID -->
                                                 <td style="@TdStyle;white-space:nowrap">
                                                     <MudText Typo="Typo.caption">#@pago.PaymentId</MudText>
@@ -339,11 +338,6 @@ else
                                                             }
                                                         </Authorized>
                                                     </AuthorizeView>
-                                                    <MudTooltip Text="Ver detalle de venta">
-                                                        <MudIconButton Icon="@Icons.Material.Filled.OpenInNew"
-                                                                       Size="Size.Small" Color="Color.Default"
-                                                                       OnClick="@(() => Nav.NavigateTo("/ventas/" + pago.SaleId))" />
-                                                    </MudTooltip>
                                                 </td>
                                                 <!-- Nota -->
                                                 <td style="@TdStyle;max-width:160px">

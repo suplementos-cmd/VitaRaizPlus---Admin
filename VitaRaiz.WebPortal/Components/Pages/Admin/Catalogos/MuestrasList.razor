@@ -1,4 +1,4 @@
-@page "/admin/productos"
+@page "/admin/muestras"
 @attribute [Authorize(Roles = "AdminFull,Admin")]
 @inject ApiService Api
 @inject NotificationService Notify
@@ -116,7 +116,7 @@
     }
 </style>
 
-<PageTitle>Productos - VitaRaiz</PageTitle>
+<PageTitle>Muestras - VitaRaiz</PageTitle>
 
 <!-- Page header -->
 <MudPaper Elevation="0" Class="mb-4 pa-3" Style="border-left:4px solid #667eea; background:linear-gradient(135deg, rgba(102,126,234,.05) 0%, rgba(118,75,162,.03) 100%)">
@@ -129,8 +129,8 @@
             </MudButton>
             <MudText Typo="Typo.body2" Style="color:#999">/</MudText>
             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                <MudIcon Icon="@Icons.Material.Filled.ShoppingCart" Style="color:#667eea" />
-                <MudText Typo="Typo.h6" Style="font-weight:700; color:#333">Productos</MudText>
+                <MudIcon Icon="@Icons.Material.Filled.Science" Style="color:#667eea" />
+                <MudText Typo="Typo.h6" Style="font-weight:700; color:#333">Muestras</MudText>
                 <MudChip T="string" Size="Size.Small" Style="background:rgba(102,126,234,.1); color:#667eea; font-weight:600">@_all.Count</MudChip>
             </MudStack>
         </MudStack>
@@ -146,7 +146,7 @@
     <MudGrid Spacing="2" Style="align-items:center">
         <MudItem xs="12" md="6">
             <MudTextField Value="@_search" ValueChanged="@((string s) => OnSearchChanged(s))"
-                          Placeholder="Buscar productos..."
+                          Placeholder="Buscar muestras..."
                           Variant="Variant.Outlined" Adornment="Adornment.Start"
                           AdornmentIcon="@Icons.Material.Filled.Search"
                           Clearable="true" Immediate="true" Margin="Margin.Dense" />
@@ -251,16 +251,6 @@
                     <div style="padding:16px 18px 18px; flex:1; display:flex; flex-direction:column; gap:8px">
                         <div class="prod-name" title="@p.ProductName">@p.ProductName</div>
 
-                        @if (!string.IsNullOrWhiteSpace(p.Category))
-                        {
-                            <div>
-                                <MudChip T="string" Size="Size.Small" Style="background:rgba(102,126,234,.1); color:#667eea; font-weight:600"
-                                         Icon="@Icons.Material.Filled.Category">
-                                    @p.Category
-                                </MudChip>
-                            </div>
-                        }
-
                         <div class="prod-desc" style="color:var(--mud-palette-text-secondary)">
                             @(string.IsNullOrWhiteSpace(p.Description) ? "Sin descripcion" : p.Description)
                         </div>
@@ -330,12 +320,6 @@ else if (_viewMode == "list")
                                 <MudChip T="string" Size="Size.Small" Color="@(p.IsActive ? Color.Success : Color.Default)">
                                     @(p.IsActive ? "Activo" : "Inactivo")
                                 </MudChip>
-                                @if (!string.IsNullOrWhiteSpace(p.Category))
-                                {
-                                    <MudChip T="string" Size="Size.Small" Style="background:rgba(102,126,234,.1); color:#667eea" Icon="@Icons.Material.Filled.Category">
-                                        @p.Category
-                                    </MudChip>
-                                }
                             </MudStack>
                             <MudText Typo="Typo.body2" Color="Color.Secondary">
                                 @(string.IsNullOrWhiteSpace(p.Description) ? "Sin descripcion" : p.Description)
@@ -406,12 +390,6 @@ else if (_viewMode == "detail")
                                          Icon="@(p.IsActive ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Block)">
                                     @(p.IsActive ? "Activo" : "Inactivo")
                                 </MudChip>
-                                @if (!string.IsNullOrWhiteSpace(p.Category))
-                                {
-                                    <MudChip T="string" Style="background:rgba(102,126,234,.1); color:#667eea" Icon="@Icons.Material.Filled.Category">
-                                        @p.Category
-                                    </MudChip>
-                                }
                                 <MudChip T="string" Color="@(p.Stock < 5 ? Color.Error : p.Stock < 15 ? Color.Warning : Color.Success)"
                                          Icon="@Icons.Material.Filled.Inventory">
                                     Stock: @p.Stock unidades
@@ -545,12 +523,6 @@ else if (_viewMode == "detail")
                               Placeholder="Descripcion detallada del producto..." />
             </MudItem>
             <MudItem xs="12" sm="6">
-                <MudTextField @bind-Value="_editing!.Category" Label="Categoria"
-                              Variant="Variant.Outlined"
-                              Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Category"
-                              Placeholder="Ej: Electrodomesticos" />
-            </MudItem>
-            <MudItem xs="12" sm="6">
                 <MudNumericField @bind-Value="_editing!.UnitPrice" Label="Precio unitario*"
                                  Variant="Variant.Outlined" Format="F2" Min="0" Required="true"
                                  Adornment="Adornment.Start" AdornmentText="$" />
@@ -560,7 +532,7 @@ else if (_viewMode == "detail")
                                  Variant="Variant.Outlined" Min="0"
                                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Inventory" />
             </MudItem>
-            <MudItem xs="12" sm="6" Class="d-flex align-center">
+            <MudItem xs="12" Class="d-flex align-center">
                 <MudSwitch @bind-Value="_editing!.IsActive" Color="Color.Success"
                            Label="@(_editing!.IsActive ? "✓ Producto activo" : "✗ Producto inactivo")"
                            Style="font-weight:600" />
@@ -578,67 +550,6 @@ else if (_viewMode == "detail")
     </DialogActions>
 </MudDialog>
 
-<!-- Photo Upload Dialog -->
-<MudDialog @bind-Visible="_photoDialogOpen" MaxWidth="MaxWidth.ExtraSmall" FullWidth="true">
-    <TitleContent>
-        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-            <MudAvatar Color="Color.Info" Size="Size.Small">
-                <MudIcon Icon="@Icons.Material.Filled.AddAPhoto" />
-            </MudAvatar>
-            <MudStack Spacing="0">
-                <MudText Typo="Typo.h6" Style="font-weight:700">Subir foto</MudText>
-                <MudText Typo="Typo.caption" Color="Color.Secondary">@_photoProduct?.ProductName</MudText>
-            </MudStack>
-        </MudStack>
-    </TitleContent>
-    <DialogContent>
-        <label style="display:block; cursor:pointer; user-select:none">
-            <InputFile OnChange="OnFileSelected" accept="image/jpeg,image/png,image/webp"
-                       style="display:none" />
-            @if (_selectedFile != null)
-            {
-                <div style="border:2px solid var(--mud-palette-success); border-radius:12px;
-                             padding:24px 16px; text-align:center; background:rgba(46,125,50,.06)">
-                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle"
-                             Color="Color.Success" Size="Size.Large" />
-                    <MudText Typo="Typo.body2" Class="fw-bold mt-2"
-                             Style="word-break:break-all">@_selectedFile.Name</MudText>
-                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="d-block mt-1">
-                        @(_selectedFile.Size / 1024) KB &mdash; @_selectedFile.ContentType
-                    </MudText>
-                    <MudText Typo="Typo.caption" Color="Color.Primary" Class="d-block mt-2">
-                        Clic para cambiar imagen
-                    </MudText>
-                </div>
-            }
-            else
-            {
-                <div style="border:2px dashed var(--mud-palette-lines-input); border-radius:12px;
-                             padding:36px 16px; text-align:center;
-                             background:var(--mud-palette-background-grey); transition:border-color .2s"
-                     onmouseover="this.style.borderColor='var(--mud-palette-primary)'"
-                     onmouseout="this.style.borderColor='var(--mud-palette-lines-input)'">
-                    <MudIcon Icon="@Icons.Material.Filled.CloudUpload"
-                             Color="Color.Primary" Size="Size.Large" Style="font-size:52px" />
-                    <MudText Typo="Typo.body1" Class="fw-bold mt-2">Seleccionar imagen</MudText>
-                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="d-block mt-1">
-                        JPG, PNG o WEBP &mdash; Max 5 MB
-                    </MudText>
-                </div>
-            }
-        </label>
-    </DialogContent>
-    <DialogActions>
-        <MudButton OnClick="() => { _photoDialogOpen = false; _selectedFile = null; }"
-                   Variant="Variant.Text">Cancelar</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="UploadPhotoAsync"
-                   StartIcon="@Icons.Material.Filled.Upload" Style="border-radius:8px"
-                   Disabled="@(_selectedFile == null || _uploading)">
-            @(_uploading ? "Subiendo..." : "Subir foto")
-        </MudButton>
-    </DialogActions>
-</MudDialog>
-
 <!-- Image Preview Dialog -->
 <MudDialog @bind-Visible="_imagePreviewOpen" MaxWidth="MaxWidth.Large">
     <TitleContent>
@@ -649,7 +560,7 @@ else if (_viewMode == "detail")
                 </MudAvatar>
                 <MudStack Spacing="0">
                     <MudText Typo="Typo.h6" Style="font-weight:700">@_previewProduct?.ProductName</MudText>
-                    <MudText Typo="Typo.caption" Color="Color.Secondary">@_previewProduct?.Category</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Muestras</MudText>
                 </MudStack>
             </MudStack>
             <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Default"
@@ -672,7 +583,7 @@ else if (_viewMode == "detail")
                         <MudText Typo="Typo.h6" Style="color:white">Sin imagen disponible</MudText>
                         <MudButton Variant="Variant.Filled" Color="Color.Surface"
                                    StartIcon="@Icons.Material.Filled.AddAPhoto"
-                                   OnClick="async () => { _imagePreviewOpen = false; await OpenPhotoUploadAsync(_previewProduct!); }">
+                                   OnClick="async () => { _imagePreviewOpen = false; await OpenEdit(_previewProduct!); }">
                             Subir foto ahora
                         </MudButton>
                     </MudStack>
@@ -683,6 +594,8 @@ else if (_viewMode == "detail")
 </MudDialog>
 
 @code {
+    private const int CATEGORY_ID = 4; // Muestras
+    
     private bool _loading, _dialogOpen, _photoDialogOpen, _saving, _uploading, _imagePreviewOpen;
     private string _search = "", _statusFilter = "all", _viewMode = "grid";
     private List<ProductDto> _all = new(), _filtered = new();
@@ -694,7 +607,8 @@ else if (_viewMode == "detail")
     private async Task LoadAsync()
     {
         _loading = true;
-        _all = await Api.GetAsync<List<ProductDto>>("api/products") ?? new();
+        var allProducts = await Api.GetAsync<List<ProductDto>>("api/products") ?? new();
+        _all = allProducts.Where(p => p.CategoryId == CATEGORY_ID).ToList();
         ApplyFilter();
         _loading = false;
     }
@@ -706,7 +620,6 @@ else if (_viewMode == "detail")
         var q = _all.AsEnumerable();
         if (!string.IsNullOrWhiteSpace(_search))
             q = q.Where(p => p.ProductName.Contains(_search, StringComparison.OrdinalIgnoreCase)
-                          || (p.Category ?? "").Contains(_search, StringComparison.OrdinalIgnoreCase)
                           || (p.Description ?? "").Contains(_search, StringComparison.OrdinalIgnoreCase));
         if (_statusFilter == "active")   q = q.Where(p => p.IsActive);
         if (_statusFilter == "inactive") q = q.Where(p => !p.IsActive);
@@ -715,7 +628,7 @@ else if (_viewMode == "detail")
 
     private void OpenCreate() 
     { 
-        _editing = new ProductDto { IsActive = true }; 
+        _editing = new ProductDto { IsActive = true, CategoryId = CATEGORY_ID }; 
         _editingPhotoFile = null;
         _dialogOpen = true; 
     }
@@ -725,7 +638,7 @@ else if (_viewMode == "detail")
         _editing = new ProductDto
         {
             ProductId = p.ProductId, ProductName = p.ProductName,
-            Description = p.Description, Category = p.Category,
+            Description = p.Description, CategoryId = CATEGORY_ID,
             UnitPrice = p.UnitPrice, Stock = p.Stock,
             IsActive = p.IsActive, PhotoUrl = p.PhotoUrl
         };
@@ -738,6 +651,9 @@ else if (_viewMode == "detail")
     {
         if (string.IsNullOrWhiteSpace(_editing?.ProductName)) { Notify.Warning("Nombre requerido"); return; }
         _saving = true;
+        
+        // Asegurar que la categoría esté establecida
+        _editing.CategoryId = CATEGORY_ID;
         
         // Guardar producto
         bool ok = _editing.ProductId > 0
@@ -838,3 +754,5 @@ else if (_viewMode == "detail")
     private void SetListView() => _viewMode = "list";
     private void SetDetailView() => _viewMode = "detail";
 }
+
+

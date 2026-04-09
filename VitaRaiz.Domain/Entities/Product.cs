@@ -8,6 +8,7 @@ public class Product
     public decimal Price { get; set; }
     public decimal UnitPrice => Price;
     public int Stock { get; set; } = 0;
+    public int? CategoryId { get; set; }
     public string? Category { get; set; }
     public string? PhotoUrl { get; set; }
     public bool IsActive { get; set; } = true;

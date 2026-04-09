@@ -134,6 +134,8 @@ public class VitaRaizDbContext : DbContext
             entity.Property(e => e.Price).HasColumnName("UNIT_PRICE").HasPrecision(10, 2);
             entity.Property(e => e.Stock).HasColumnName("STOCK_QUANTITY")
                 .HasColumnType("NUMBER(10)");
+            entity.Property(e => e.CategoryId).HasColumnName("CATEGORY_ID")
+                .HasColumnType("NUMBER(10)");
             entity.Property(e => e.Category).HasColumnName("CATEGORY").HasMaxLength(100);
             entity.Property(e => e.PhotoUrl).HasColumnName("PHOTO_URL").HasMaxLength(500);
             entity.Ignore(e => e.UnitPrice); // Propiedad computada, no es columna

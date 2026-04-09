@@ -23,6 +23,7 @@ public class ProductDto
     public string? Description { get; set; }
     public decimal UnitPrice { get; set; }
     public int Stock { get; set; }
+    public int? CategoryId { get; set; }
     public string? Category { get; set; }
     public string? PhotoUrl { get; set; }
     public bool IsActive { get; set; }

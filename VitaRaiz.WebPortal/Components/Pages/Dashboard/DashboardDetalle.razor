@@ -87,8 +87,6 @@ else
                         <MudChip T="string" Size="MudSize.Small" Color="@GetSaleStatusColor(context.Status)">@context.Status</MudChip>
                     </MudTd>
                     <MudTd>
-                        <MudIconButton Icon="@Icons.Material.Filled.OpenInNew" Size="MudSize.Small"
-                                       OnClick="@(() => Nav.NavigateTo($"/ventas/{context.SaleId}"))" />
                     </MudTd>
                 </RowTemplate>
                 <FooterContent>
@@ -124,8 +122,7 @@ else
                         <MudChip T="string" Size="MudSize.Small" Color="@GetPayStatusColor(context.Status)">@context.Status</MudChip>
                     </MudTd>
                     <MudTd>
-                        <MudIconButton Icon="@Icons.Material.Filled.OpenInNew" Size="MudSize.Small"
-                                       OnClick="@(() => Nav.NavigateTo($"/ventas/{context.SaleId}"))" />
+
                     </MudTd>
                 </RowTemplate>
                 <FooterContent>

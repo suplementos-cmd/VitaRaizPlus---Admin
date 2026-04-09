@@ -22,10 +22,10 @@ public interface ICustomerRepository
 
 public interface IProductRepository
 {
-    Task<int> CreateProductAsync(string productName, string? description, decimal unitPrice, int stock, string? category);
+    Task<int> CreateProductAsync(string productName, string? description, decimal unitPrice, int stock, int? categoryId);
     
     Task<bool> UpdateProductAsync(int productId, string productName, string? description, 
-        decimal unitPrice, int stock, bool isActive, string? category);
+        decimal unitPrice, int stock, bool isActive, int? categoryId);
 
     Task<bool> UpdateProductPhotoAsync(int productId, string photoUrl);
     

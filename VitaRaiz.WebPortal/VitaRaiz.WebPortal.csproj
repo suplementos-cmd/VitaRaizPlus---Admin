@@ -21,4 +21,8 @@
     </None>
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\VitaRaiz.Application\VitaRaiz.Application.csproj" />
+  </ItemGroup>
+
 </Project>

@@ -46,7 +46,7 @@ else
     <!-- -- KPI Cards -- -->
     <MudGrid Spacing="3" Class="mb-5">
         <MudItem xs="12" sm="6" lg="3">
-            <MudPaper Class="vr-kpi-card vr-kpi-clickable" Elevation="2" @onclick='() => Nav.NavigateTo("/ventas")'>
+            <MudPaper Class="vr-kpi-card" Elevation="2">
                 <div class="vr-kpi-accent" style="background:#1976D2"></div>
                 <div class="vr-kpi-body">
                     <div class="vr-kpi-icon-wrap" style="background:#E3F2FD">
@@ -76,7 +76,7 @@ else
         </MudItem>
 
         <MudItem xs="12" sm="6" lg="3">
-            <MudPaper Class="vr-kpi-card vr-kpi-clickable" Elevation="2" @onclick='() => Nav.NavigateTo("/ventas?status=active")'>
+            <MudPaper Class="vr-kpi-card" Elevation="2">
                 <div class="vr-kpi-accent" style="background:#FF9800"></div>
                 <div class="vr-kpi-body">
                     <div class="vr-kpi-icon-wrap" style="background:#FFF3E0">
@@ -108,7 +108,7 @@ else
         <AuthorizeView Roles="AdminFull,Admin,admin,adminfull">
             <Authorized>
                 <MudItem xs="12" sm="6" lg="3">
-                    <MudPaper Class="vr-kpi-card vr-kpi-clickable" Elevation="2" @onclick='() => Nav.NavigateTo("/ventas?risk=rojo")'>
+                    <MudPaper Class="vr-kpi-card" Elevation="2">
                         <div class="vr-kpi-accent" style="background:#D84315"></div>
                         <div class="vr-kpi-body">
                             <div class="vr-kpi-icon-wrap" style="background:#FBE9E7">

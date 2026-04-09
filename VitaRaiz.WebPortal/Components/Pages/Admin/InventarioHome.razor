@@ -1,0 +1,355 @@
+@page "/admin/inventario"
+@attribute [Authorize(Roles = "AdminFull,Admin")]
+@inject NavigationManager Nav
+
+<style>
+    .inventory-hero {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 20px;
+        padding: 40px;
+        margin-bottom: 32px;
+        color: white;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 8px 32px rgba(102,126,234,.3);
+    }
+    .inventory-hero::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -10%;
+        width: 500px;
+        height: 500px;
+        background: rgba(255,255,255,.1);
+        border-radius: 50%;
+    }
+    .inventory-hero::after {
+        content: '';
+        position: absolute;
+        bottom: -30%;
+        left: -5%;
+        width: 400px;
+        height: 400px;
+        background: rgba(255,255,255,.05);
+        border-radius: 50%;
+    }
+    .category-card {
+        background: white;
+        border-radius: 16px;
+        padding: 28px 24px;
+        cursor: pointer;
+        transition: all .3s cubic-bezier(0.4, 0, 0.2, 1);
+        border: 2px solid transparent;
+        height: 100%;
+        position: relative;
+        overflow: hidden;
+    }
+    .category-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, var(--card-color-start), var(--card-color-end));
+        transform: scaleX(0);
+        transition: transform .3s;
+    }
+    .category-card:hover::before {
+        transform: scaleX(1);
+    }
+    .category-card:hover {
+        transform: translateY(-8px) scale(1.02);
+        box-shadow: 0 16px 40px rgba(0,0,0,.12);
+        border-color: var(--card-color-start);
+    }
+    .category-icon {
+        width: 64px;
+        height: 64px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 16px;
+        background: linear-gradient(135deg, var(--card-color-start), var(--card-color-end));
+        box-shadow: 0 8px 20px rgba(0,0,0,.15);
+        transition: all .3s;
+    }
+    .category-card:hover .category-icon {
+        transform: rotate(5deg) scale(1.1);
+        box-shadow: 0 12px 28px rgba(0,0,0,.2);
+    }
+    .category-badge {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        background: rgba(102,126,234,.1);
+        color: #667eea;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 32px;
+    }
+    .stat-box {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        border-left: 4px solid var(--stat-color);
+        box-shadow: 0 2px 8px rgba(0,0,0,.06);
+        transition: all .25s;
+    }
+    .stat-box:hover {
+        box-shadow: 0 6px 20px rgba(0,0,0,.1);
+        transform: translateY(-2px);
+    }
+</style>
+
+<PageTitle>Inventario - VitaRaiz</PageTitle>
+
+<!-- Hero Section -->
+<div class="inventory-hero" style="position:relative; z-index:1">
+    <MudStack Spacing="3" Style="position:relative; z-index:2">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+            <div style="background:rgba(255,255,255,.2); backdrop-filter:blur(10px); border-radius:16px; padding:16px; line-height:0">
+                <MudIcon Icon="@Icons.Material.Filled.Inventory" Size="Size.Large" Color="Color.Surface" />
+            </div>
+            <MudStack Spacing="1">
+                <MudText Typo="Typo.h3" Style="font-weight:800; text-shadow:0 2px 10px rgba(0,0,0,.1)">
+                    Gestión de Inventario
+                </MudText>
+                <MudText Typo="Typo.body1" Style="opacity:.9; font-weight:500">
+                    Administra productos, kits de ventas, muestras y todo tu inventario desde un solo lugar
+                </MudText>
+            </MudStack>
+        </MudStack>
+    </MudStack>
+</div>
+
+<!-- Quick Stats -->
+<div class="stats-grid">
+    <div class="stat-box" style="--stat-color:#667eea">
+        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+            <MudStack Spacing="0">
+                <MudText Style="font-size:2rem; font-weight:800; line-height:1; color:#667eea">0</MudText>
+                <MudText Typo="Typo.caption" Style="font-weight:600; color:#666; text-transform:uppercase; letter-spacing:0.5px">Total Items</MudText>
+            </MudStack>
+            <MudIcon Icon="@Icons.Material.Filled.Inventory2" Style="color:rgba(102,126,234,.2); font-size:3rem" />
+        </MudStack>
+    </div>
+    <div class="stat-box" style="--stat-color:#2e7d32">
+        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+            <MudStack Spacing="0">
+                <MudText Style="font-size:2rem; font-weight:800; line-height:1; color:#2e7d32">0</MudText>
+                <MudText Typo="Typo.caption" Style="font-weight:600; color:#666; text-transform:uppercase; letter-spacing:0.5px">En Stock</MudText>
+            </MudStack>
+            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Style="color:rgba(46,125,50,.2); font-size:3rem" />
+        </MudStack>
+    </div>
+    <div class="stat-box" style="--stat-color:#f57c00">
+        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+            <MudStack Spacing="0">
+                <MudText Style="font-size:2rem; font-weight:800; line-height:1; color:#f57c00">0</MudText>
+                <MudText Typo="Typo.caption" Style="font-weight:600; color:#666; text-transform:uppercase; letter-spacing:0.5px">Stock Bajo</MudText>
+            </MudStack>
+            <MudIcon Icon="@Icons.Material.Filled.Warning" Style="color:rgba(245,124,0,.2); font-size:3rem" />
+        </MudStack>
+    </div>
+    <div class="stat-box" style="--stat-color:#d32f2f">
+        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+            <MudStack Spacing="0">
+                <MudText Style="font-size:2rem; font-weight:800; line-height:1; color:#d32f2f">0</MudText>
+                <MudText Typo="Typo.caption" Style="font-weight:600; color:#666; text-transform:uppercase; letter-spacing:0.5px">Agotados</MudText>
+            </MudStack>
+            <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Style="color:rgba(211,47,47,.2); font-size:3rem" />
+        </MudStack>
+    </div>
+</div>
+
+<!-- Categories Grid -->
+<MudText Typo="Typo.h5" Style="font-weight:700; margin-bottom:20px; color:#333">
+    Categorías de Inventario
+</MudText>
+
+<MudGrid Spacing="3">
+    <!-- Productos -->
+    <MudItem xs="12" sm="6" md="4">
+        <div class="category-card" 
+             style="--card-color-start:#667eea; --card-color-end:#764ba2"
+             @onclick='() => Nav.NavigateTo("/admin/productos")'>
+            <span class="category-badge">Principal</span>
+            <div class="category-icon">
+                <MudIcon Icon="@Icons.Material.Filled.ShoppingCart" Color="Color.Surface" Size="Size.Large" />
+            </div>
+            <MudStack Spacing="1">
+                <MudText Typo="Typo.h6" Style="font-weight:700; color:#333">Productos</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Style="line-height:1.5">
+                    Gestiona el catálogo completo de productos disponibles para la venta
+                </MudText>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mt-3">
+                    <MudChip T="string" Size="Size.Small" Style="background:rgba(102,126,234,.1); color:#667eea">
+                        0 items
+                    </MudChip>
+                    <MudIcon Icon="@Icons.Material.Filled.ArrowForward" 
+                             Style="color:#667eea; font-size:1.2rem; margin-left:auto" />
+                </MudStack>
+            </MudStack>
+        </div>
+    </MudItem>
+
+    <!-- Papelería -->
+    <MudItem xs="12" sm="6" md="4">
+        <div class="category-card" 
+             style="--card-color-start:#00bcd4; --card-color-end:#0097a7"
+             @onclick='() => Nav.NavigateTo("/admin/papeleria")'>
+            <div class="category-icon">
+                <MudIcon Icon="@Icons.Material.Filled.Description" Color="Color.Surface" Size="Size.Large" />
+            </div>
+            <MudStack Spacing="1">
+                <MudText Typo="Typo.h6" Style="font-weight:700; color:#333">Papelería</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Style="line-height:1.5">
+                    Control de material de papelería, formularios y documentación
+                </MudText>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mt-3">
+                    <MudChip T="string" Size="Size.Small" Style="background:rgba(0,188,212,.1); color:#00bcd4">
+                        0 items
+                    </MudChip>
+                    <MudIcon Icon="@Icons.Material.Filled.ArrowForward" 
+                             Style="color:#00bcd4; font-size:1.2rem; margin-left:auto" />
+                </MudStack>
+            </MudStack>
+        </div>
+    </MudItem>
+
+    <!-- Uniformes -->
+    <MudItem xs="12" sm="6" md="4">
+        <div class="category-card" 
+             style="--card-color-start:#e91e63; --card-color-end:#c2185b"
+             @onclick='() => Nav.NavigateTo("/admin/uniformes")'>
+            <div class="category-icon">
+                <MudIcon Icon="@Icons.Material.Filled.Checkroom" Color="Color.Surface" Size="Size.Large" />
+            </div>
+            <MudStack Spacing="1">
+                <MudText Typo="Typo.h6" Style="font-weight:700; color:#333">Uniformes</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Style="line-height:1.5">
+                    Inventario de uniformes del personal y equipamiento
+                </MudText>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mt-3">
+                    <MudChip T="string" Size="Size.Small" Style="background:rgba(233,30,99,.1); color:#e91e63">
+                        0 items
+                    </MudChip>
+                    <MudIcon Icon="@Icons.Material.Filled.ArrowForward" 
+                             Style="color:#e91e63; font-size:1.2rem; margin-left:auto" />
+                </MudStack>
+            </MudStack>
+        </div>
+    </MudItem>
+
+    <!-- Muestras -->
+    <MudItem xs="12" sm="6" md="4">
+        <div class="category-card" 
+             style="--card-color-start:#ff9800; --card-color-end:#f57c00"
+             @onclick='() => Nav.NavigateTo("/admin/muestras")'>
+            <div class="category-icon">
+                <MudIcon Icon="@Icons.Material.Filled.Science" Color="Color.Surface" Size="Size.Large" />
+            </div>
+            <MudStack Spacing="1">
+                <MudText Typo="Typo.h6" Style="font-weight:700; color:#333">Muestras</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Style="line-height:1.5">
+                    Gestión de muestras de productos para demostración
+                </MudText>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mt-3">
+                    <MudChip T="string" Size="Size.Small" Style="background:rgba(255,152,0,.1); color:#ff9800">
+                        0 items
+                    </MudChip>
+                    <MudIcon Icon="@Icons.Material.Filled.ArrowForward" 
+                             Style="color:#ff9800; font-size:1.2rem; margin-left:auto" />
+                </MudStack>
+            </MudStack>
+        </div>
+    </MudItem>
+
+    <!-- Kits de Ventas -->
+    <MudItem xs="12" sm="6" md="4">
+        <div class="category-card" 
+             style="--card-color-start:#4caf50; --card-color-end:#388e3c"
+             @onclick='() => Nav.NavigateTo("/admin/kits-ventas")'>
+            <span class="category-badge">Popular</span>
+            <div class="category-icon">
+                <MudIcon Icon="@Icons.Material.Filled.CardGiftcard" Color="Color.Surface" Size="Size.Large" />
+            </div>
+            <MudStack Spacing="1">
+                <MudText Typo="Typo.h6" Style="font-weight:700; color:#333">Kits de Ventas</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Style="line-height:1.5">
+                    Paquetes y kits promocionales para vendedores
+                </MudText>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mt-3">
+                    <MudChip T="string" Size="Size.Small" Style="background:rgba(76,175,80,.1); color:#4caf50">
+                        0 kits
+                    </MudChip>
+                    <MudIcon Icon="@Icons.Material.Filled.ArrowForward" 
+                             Style="color:#4caf50; font-size:1.2rem; margin-left:auto" />
+                </MudStack>
+            </MudStack>
+        </div>
+    </MudItem>
+
+    <!-- Kits de Cobros -->
+    <MudItem xs="12" sm="6" md="4">
+        <div class="category-card" 
+             style="--card-color-start:#9c27b0; --card-color-end:#7b1fa2"
+             @onclick='() => Nav.NavigateTo("/admin/kits-cobros")'>
+            <div class="category-icon">
+                <MudIcon Icon="@Icons.Material.Filled.AccountBalanceWallet" Color="Color.Surface" Size="Size.Large" />
+            </div>
+            <MudStack Spacing="1">
+                <MudText Typo="Typo.h6" Style="font-weight:700; color:#333">Kits de Cobros</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Style="line-height:1.5">
+                    Material y herramientas para gestión de cobranza
+                </MudText>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mt-3">
+                    <MudChip T="string" Size="Size.Small" Style="background:rgba(156,39,176,.1); color:#9c27b0">
+                        0 kits
+                    </MudChip>
+                    <MudIcon Icon="@Icons.Material.Filled.ArrowForward" 
+                             Style="color:#9c27b0; font-size:1.2rem; margin-left:auto" />
+                </MudStack>
+            </MudStack>
+        </div>
+    </MudItem>
+</MudGrid>
+
+<!-- Quick Actions -->
+<MudPaper Elevation="0" Class="mt-6 pa-5" Style="background:linear-gradient(135deg, rgba(102,126,234,.05) 0%, rgba(118,75,162,.05) 100%); border-radius:16px; border:2px dashed rgba(102,126,234,.2)">
+    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+        <MudStack Spacing="1">
+            <MudText Typo="Typo.h6" Style="font-weight:700; color:#667eea">
+                ¿Necesitas ayuda?
+            </MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Consulta la guía de uso o contacta al soporte técnico
+            </MudText>
+        </MudStack>
+        <MudButtonGroup Variant="Variant.Outlined">
+            <MudButton StartIcon="@Icons.Material.Filled.Help" 
+                       Style="border-color:#667eea; color:#667eea">
+                Guía de Uso
+            </MudButton>
+            <MudButton StartIcon="@Icons.Material.Filled.Support" 
+                       Style="border-color:#764ba2; color:#764ba2">
+                Soporte
+            </MudButton>
+        </MudButtonGroup>
+    </MudStack>
+</MudPaper>
+
+@code {
+    // Aquí puedes agregar lógica para cargar estadísticas reales
+}

@@ -19,7 +19,7 @@ public class CreateProductCommandHandler : IRequestHandler<CreateProductCommand,
             request.Description,
             request.UnitPrice,
             request.Stock,
-            request.Category
+            request.CategoryId
         );
     }
 }
@@ -42,7 +42,7 @@ public class UpdateProductCommandHandler : IRequestHandler<UpdateProductCommand,
             request.UnitPrice,
             request.Stock,
             request.IsActive,
-            request.Category
+            request.CategoryId
         );
     }
 }

@@ -207,7 +207,7 @@
                                 p_description IN VARCHAR2 DEFAULT NULL,
                                 p_unit_price  IN NUMBER,
                                 p_stock       IN NUMBER,
-                                p_category    IN VARCHAR2 DEFAULT NULL,
+                                p_category_id IN NUMBER DEFAULT NULL,
                                 p_photo_url   IN VARCHAR2 DEFAULT NULL);
 
   /**
@@ -219,7 +219,7 @@
                               p_unit_price  IN NUMBER,
                               p_stock       IN NUMBER,
                               p_is_active   IN NUMBER DEFAULT 1,
-                              p_category    IN VARCHAR2 DEFAULT NULL,
+                              p_category_id IN NUMBER DEFAULT NULL,
                               p_photo_url   IN VARCHAR2 DEFAULT NULL);
 
   /**
@@ -1297,37 +1297,49 @@ PROCEDURE sp_register_sale(p_sale_id               OUT NUMBER,
                                 p_description IN VARCHAR2 DEFAULT NULL,
                                 p_unit_price  IN NUMBER,
                                 p_stock       IN NUMBER,
-                                p_category    IN VARCHAR2 DEFAULT NULL,
+                                p_category_id IN NUMBER DEFAULT NULL,
                                 p_photo_url   IN VARCHAR2 DEFAULT NULL) IS
+    v_product_id NUMBER;
+    v_product_code VARCHAR2(50);
   BEGIN
-    --
+    -- Obtener siguiente ID de secuencia
+    SELECT seq_products.NEXTVAL INTO v_product_id FROM DUAL;
+    
+    -- Generar código de producto automático: PROD-000001, PROD-000002, etc.
+    v_product_code := 'PROD-' || LPAD(v_product_id, 6, '0');
+    
+    -- Insertar producto con código generado
     INSERT INTO products
       (product_id,
+       product_code,
        product_name,
        description,
+       category_id,
        unit_price,
        stock_quantity,
        is_active,
-       category,
        photo_url,
        created_at)
     VALUES
-      (seq_products.NEXTVAL,
+      (v_product_id,
+       v_product_code,
        p_name,
        p_description,
+       p_category_id,
        p_unit_price,
        NVL(p_stock, 0),
        1,
-       p_category,
        p_photo_url,
-       SYSTIMESTAMP)
-    RETURNING product_id INTO p_product_id;
+       SYSTIMESTAMP);
+    
+    -- Devolver ID generado
+    p_product_id := v_product_id;
     --
     log_audit('PRODUCT',
               p_product_id,
               'INSERT',
               NULL,
-              'Producto: ' || p_name);
+              'Producto: ' || p_name || ' [' || v_product_code || ']');
     COMMIT;
     --
   EXCEPTION
@@ -1342,7 +1354,7 @@ PROCEDURE sp_register_sale(p_sale_id               OUT NUMBER,
                               p_unit_price  IN NUMBER,
                               p_stock       IN NUMBER,
                               p_is_active   IN NUMBER DEFAULT 1,
-                              p_category    IN VARCHAR2 DEFAULT NULL,
+                              p_category_id IN NUMBER DEFAULT NULL,
                               p_photo_url   IN VARCHAR2 DEFAULT NULL) IS
   BEGIN
     --
@@ -1351,14 +1363,12 @@ PROCEDURE sp_register_sale(p_sale_id               OUT NUMBER,
            description    = p_description,
            unit_price     = p_unit_price,
            stock_quantity = NVL(p_stock, stock_quantity),
-           category       = p_category,
+           category_id    = p_category_id,
            photo_url      = CASE WHEN p_photo_url IS NOT NULL THEN p_photo_url ELSE photo_url END,
-           is_active = CASE
-                         WHEN p_is_active = 1 THEN
-                          1
-                         ELSE
-                          0
-                       END,
+           is_active      = CASE
+                              WHEN p_is_active = 1 THEN 1
+                              ELSE 0
+                            END,
            updated_at     = SYSTIMESTAMP
      WHERE product_id = p_product_id;
     --
