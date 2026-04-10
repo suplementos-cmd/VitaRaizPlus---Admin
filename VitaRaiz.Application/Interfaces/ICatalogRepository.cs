@@ -15,5 +15,6 @@ public interface ICatalogRepository
     Task<List<CatalogNotificationTemplate>> GetNotificationTemplatesAsync(string? templateType = null);
     Task<List<CatalogAppSetting>> GetAppSettingsAsync(string? category = null, bool isPublic = true);
     Task<List<CatalogVisitAction>> GetVisitActionsAsync();
+    Task<List<CatalogProductCategory>> GetProductCategoriesAsync();
     Task<string?> GetSettingValueAsync(string settingKey);
 }

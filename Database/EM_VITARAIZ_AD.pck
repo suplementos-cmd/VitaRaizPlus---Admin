@@ -551,6 +551,11 @@
   PROCEDURE sp_get_visit_actions(p_cursor OUT SYS_REFCURSOR);
 
   /**
+  * Obtiene todas las categorías de productos activas
+  */
+  PROCEDURE sp_get_product_categories(p_cursor OUT SYS_REFCURSOR);
+
+  /**
   * Obtiene un setting específico por key 
   */
   FUNCTION fn_get_setting_value(p_setting_key IN VARCHAR2) RETURN VARCHAR2;
@@ -575,6 +580,246 @@
   */
   PROCEDURE sp_get_user_permissions(p_user_id IN NUMBER,
                                     p_cursor  OUT SYS_REFCURSOR);
+
+  -- ========================================================================
+  -- MÓDULO DE RECURSOS HUMANOS (HR)
+  -- ========================================================================
+
+  /**
+  * Registra un nuevo empleado
+  */
+  PROCEDURE sp_register_employee(
+    p_employee_id       OUT NUMBER,
+    p_user_id           IN NUMBER,
+    p_employee_code     IN VARCHAR2,
+    p_job_title         IN VARCHAR2 DEFAULT NULL,
+    p_department        IN VARCHAR2 DEFAULT NULL,
+    p_base_salary       IN NUMBER DEFAULT 0,
+    p_commission_rate   IN NUMBER DEFAULT 0,
+    p_hire_date         IN DATE DEFAULT SYSDATE,
+    p_bank_name         IN VARCHAR2 DEFAULT NULL,
+    p_bank_account      IN VARCHAR2 DEFAULT NULL,
+    p_created_by        IN NUMBER DEFAULT NULL
+  );
+
+  /**
+  * Actualiza datos de un empleado
+  */
+  PROCEDURE sp_update_employee(
+    p_employee_id       IN NUMBER,
+    p_job_title         IN VARCHAR2 DEFAULT NULL,
+    p_department        IN VARCHAR2 DEFAULT NULL,
+    p_base_salary       IN NUMBER DEFAULT NULL,
+    p_commission_rate   IN NUMBER DEFAULT NULL,
+    p_employment_status IN VARCHAR2 DEFAULT NULL,
+    p_bank_name         IN VARCHAR2 DEFAULT NULL,
+    p_bank_account      IN VARCHAR2 DEFAULT NULL,
+    p_updated_by        IN NUMBER DEFAULT NULL
+  );
+
+  /**
+  * Da de baja a un empleado
+  */
+  PROCEDURE sp_terminate_employee(
+    p_employee_id       IN NUMBER,
+    p_termination_date  IN DATE DEFAULT SYSDATE,
+    p_reason            IN VARCHAR2 DEFAULT NULL,
+    p_updated_by        IN NUMBER DEFAULT NULL
+  );
+
+  /**
+  * Obtiene lista de empleados con filtros
+  */
+  PROCEDURE sp_get_employees(
+    p_status           IN VARCHAR2 DEFAULT NULL,
+    p_department       IN VARCHAR2 DEFAULT NULL,
+    p_search_term      IN VARCHAR2 DEFAULT NULL,
+    p_cursor           OUT SYS_REFCURSOR
+  );
+
+  /**
+  * Obtiene un empleado por ID
+  */
+  PROCEDURE sp_get_employee_by_id(
+    p_employee_id      IN NUMBER,
+    p_cursor           OUT SYS_REFCURSOR
+  );
+
+  /**
+  * Registra asistencia de empleado
+  */
+  PROCEDURE sp_register_attendance(
+    p_attendance_id    OUT NUMBER,
+    p_employee_id      IN NUMBER,
+    p_attendance_date  IN DATE DEFAULT SYSDATE,
+    p_attendance_type  IN VARCHAR2,
+    p_check_in_time    IN TIMESTAMP DEFAULT SYSTIMESTAMP,
+    p_check_out_time   IN TIMESTAMP DEFAULT NULL,
+    p_gps_lat          IN NUMBER DEFAULT NULL,
+    p_gps_lon          IN NUMBER DEFAULT NULL,
+    p_notes            IN VARCHAR2 DEFAULT NULL
+  );
+
+  /**
+  * Obtiene asistencias de un empleado
+  */
+  PROCEDURE sp_get_attendance_by_employee(
+    p_employee_id      IN NUMBER,
+    p_start_date       IN DATE DEFAULT NULL,
+    p_end_date         IN DATE DEFAULT NULL,
+    p_cursor           OUT SYS_REFCURSOR
+  );
+
+  /**
+  * Obtiene resumen de asistencias mensual
+  */
+  PROCEDURE sp_get_attendance_summary(
+    p_employee_id      IN NUMBER,
+    p_year             IN NUMBER DEFAULT EXTRACT(YEAR FROM SYSDATE),
+    p_month            IN NUMBER DEFAULT EXTRACT(MONTH FROM SYSDATE),
+    p_cursor           OUT SYS_REFCURSOR
+  );
+
+  /**
+  * Genera nómina de un empleado
+  */
+  PROCEDURE sp_generate_payroll(
+    p_payroll_id       OUT NUMBER,
+    p_employee_id      IN NUMBER,
+    p_period_start     IN DATE,
+    p_period_end       IN DATE,
+    p_created_by       IN NUMBER DEFAULT NULL
+  );
+
+  /**
+  * Aprueba una nómina
+  */
+  PROCEDURE sp_approve_payroll(
+    p_payroll_id       IN NUMBER,
+    p_approved_by      IN NUMBER
+  );
+
+  /**
+  * Marca nómina como pagada
+  */
+  PROCEDURE sp_pay_payroll(
+    p_payroll_id       IN NUMBER,
+    p_payment_date     IN DATE DEFAULT SYSDATE,
+    p_payment_method   IN VARCHAR2,
+    p_payment_ref      IN VARCHAR2 DEFAULT NULL,
+    p_paid_by          IN NUMBER
+  );
+
+  /**
+  * Obtiene nóminas de un empleado
+  */
+  PROCEDURE sp_get_payroll_by_employee(
+    p_employee_id      IN NUMBER,
+    p_year             IN NUMBER DEFAULT NULL,
+    p_cursor           OUT SYS_REFCURSOR
+  );
+
+  /**
+  * Registra comisión por venta
+  */
+  PROCEDURE sp_register_commission_from_sale(
+    p_commission_id    OUT NUMBER,
+    p_employee_id      IN NUMBER,
+    p_sale_id          IN NUMBER,
+    p_commission_rate  IN NUMBER
+  );
+
+  /**
+  * Registra comisión por cobro
+  */
+  PROCEDURE sp_register_commission_from_payment(
+    p_commission_id    OUT NUMBER,
+    p_employee_id      IN NUMBER,
+    p_payment_id       IN NUMBER,
+    p_commission_rate  IN NUMBER
+  );
+
+  /**
+  * Obtiene comisiones pendientes
+  */
+  PROCEDURE sp_get_commissions_pending(
+    p_employee_id      IN NUMBER DEFAULT NULL,
+    p_cursor           OUT SYS_REFCURSOR
+  );
+
+  /**
+  * Calcula años de antigüedad de un empleado
+  */
+  FUNCTION fn_get_employee_seniority_years(p_employee_id IN NUMBER) RETURN NUMBER;
+
+  /**
+  * Calcula total de comisiones en un periodo
+  */
+  FUNCTION fn_get_employee_total_commissions(
+    p_employee_id      IN NUMBER,
+    p_period_start     IN DATE,
+    p_period_end       IN DATE
+  ) RETURN NUMBER;
+
+  /**
+  * Calcula horas trabajadas entre entrada y salida
+  */
+  FUNCTION fn_calculate_worked_hours(
+    p_check_in         IN TIMESTAMP,
+    p_check_out        IN TIMESTAMP
+  ) RETURN NUMBER;
+
+  -- ========================================================================
+  -- GESTIÓN DE DOCUMENTOS DE EMPLEADOS
+  -- ========================================================================
+
+  /**
+  * Registra un documento de empleado
+  */
+  PROCEDURE sp_upload_employee_document(
+    p_document_id      OUT NUMBER,
+    p_employee_id      IN NUMBER,
+    p_doc_type_id      IN NUMBER,
+    p_file_name        IN VARCHAR2,
+    p_file_path        IN VARCHAR2,
+    p_file_size        IN NUMBER,
+    p_mime_type        IN VARCHAR2 DEFAULT 'application/pdf',
+    p_expiration_date  IN DATE DEFAULT NULL,
+    p_notes            IN VARCHAR2 DEFAULT NULL,
+    p_uploaded_by      IN NUMBER DEFAULT NULL
+  );
+
+  /**
+  * Obtiene documentos de un empleado
+  */
+  PROCEDURE sp_get_employee_documents(
+    p_employee_id      IN NUMBER,
+    p_doc_type_id      IN NUMBER DEFAULT NULL,
+    p_cursor           OUT SYS_REFCURSOR
+  );
+
+  /**
+  * Obtiene un documento específico por ID
+  */
+  PROCEDURE sp_get_document_by_id(
+    p_document_id      IN NUMBER,
+    p_cursor           OUT SYS_REFCURSOR
+  );
+
+  /**
+  * Elimina un documento de empleado
+  */
+  PROCEDURE sp_delete_employee_document(
+    p_document_id      IN NUMBER,
+    p_deleted_by       IN NUMBER DEFAULT NULL
+  );
+
+  /**
+  * Obtiene tipos de documentos del catálogo
+  */
+  PROCEDURE sp_get_document_types(
+    p_cursor           OUT SYS_REFCURSOR
+  );
   --
 END EM_VITARAIZ_AD;
 /
@@ -2408,6 +2653,17 @@ PROCEDURE sp_register_sale(p_sale_id               OUT NUMBER,
        ORDER BY PARENT_STATUS_ID NULLS FIRST, DISPLAY_ORDER, STATUS_NAME;
   END sp_get_visit_actions;
 
+  PROCEDURE sp_get_product_categories(p_cursor OUT SYS_REFCURSOR) IS
+  BEGIN
+    OPEN p_cursor FOR
+      SELECT CATEGORY_ID   AS "categoryId",
+             CATEGORY_NAME AS "categoryName",
+             DESCRIPTION   AS "description",
+             CREATED_AT    AS "createdAt"
+        FROM PRODUCT_CATEGORIES
+       ORDER BY CATEGORY_ID;
+  END sp_get_product_categories;
+
   FUNCTION fn_get_setting_value(p_setting_key IN VARCHAR2) RETURN VARCHAR2 IS
     v_value VARCHAR2(4000);
   BEGIN
@@ -2494,6 +2750,653 @@ PROCEDURE sp_register_sale(p_sale_id               OUT NUMBER,
     WHEN OTHERS THEN
       OPEN p_cursor FOR SELECT NULL, NULL, NULL FROM DUAL WHERE 1 = 0;
   END sp_get_user_permissions;
+
+  -- ========================================================================
+  -- MÓDULO DE RECURSOS HUMANOS (HR) - IMPLEMENTACIÓN
+  -- ========================================================================
+
+  PROCEDURE sp_register_employee(
+    p_employee_id       OUT NUMBER,
+    p_user_id           IN NUMBER,
+    p_employee_code     IN VARCHAR2,
+    p_job_title         IN VARCHAR2 DEFAULT NULL,
+    p_department        IN VARCHAR2 DEFAULT NULL,
+    p_base_salary       IN NUMBER DEFAULT 0,
+    p_commission_rate   IN NUMBER DEFAULT 0,
+    p_hire_date         IN DATE DEFAULT SYSDATE,
+    p_bank_name         IN VARCHAR2 DEFAULT NULL,
+    p_bank_account      IN VARCHAR2 DEFAULT NULL,
+    p_created_by        IN NUMBER DEFAULT NULL
+  ) IS
+  BEGIN
+    INSERT INTO employees (
+      employee_id, user_id, employee_code, job_title, department,
+      base_salary, commission_rate, hire_date, employment_status,
+      bank_name, bank_account, created_by, created_at
+    ) VALUES (
+      seq_employees.NEXTVAL, p_user_id, p_employee_code, p_job_title, p_department,
+      NVL(p_base_salary, 0), NVL(p_commission_rate, 0), NVL(p_hire_date, SYSDATE), 'ACTIVO',
+      p_bank_name, p_bank_account, p_created_by, SYSTIMESTAMP
+    ) RETURNING employee_id INTO p_employee_id;
+    
+    log_audit('EMPLOYEE', p_employee_id, 'INSERT', p_created_by, 
+              'Empleado registrado: ' || p_employee_code);
+    COMMIT;
+  EXCEPTION
+    WHEN OTHERS THEN
+      ROLLBACK;
+      RAISE;
+  END sp_register_employee;
+
+  PROCEDURE sp_update_employee(
+    p_employee_id       IN NUMBER,
+    p_job_title         IN VARCHAR2 DEFAULT NULL,
+    p_department        IN VARCHAR2 DEFAULT NULL,
+    p_base_salary       IN NUMBER DEFAULT NULL,
+    p_commission_rate   IN NUMBER DEFAULT NULL,
+    p_employment_status IN VARCHAR2 DEFAULT NULL,
+    p_bank_name         IN VARCHAR2 DEFAULT NULL,
+    p_bank_account      IN VARCHAR2 DEFAULT NULL,
+    p_updated_by        IN NUMBER DEFAULT NULL
+  ) IS
+  BEGIN
+    UPDATE employees
+    SET job_title         = COALESCE(p_job_title, job_title),
+        department        = COALESCE(p_department, department),
+        base_salary       = COALESCE(p_base_salary, base_salary),
+        commission_rate   = COALESCE(p_commission_rate, commission_rate),
+        employment_status = COALESCE(p_employment_status, employment_status),
+        bank_name         = COALESCE(p_bank_name, bank_name),
+        bank_account      = COALESCE(p_bank_account, bank_account),
+        updated_by        = p_updated_by,
+        updated_at        = SYSTIMESTAMP
+    WHERE employee_id = p_employee_id;
+    
+    log_audit('EMPLOYEE', p_employee_id, 'UPDATE', p_updated_by, 'Empleado actualizado');
+    COMMIT;
+  EXCEPTION
+    WHEN OTHERS THEN
+      ROLLBACK;
+      RAISE;
+  END sp_update_employee;
+
+  PROCEDURE sp_terminate_employee(
+    p_employee_id       IN NUMBER,
+    p_termination_date  IN DATE DEFAULT SYSDATE,
+    p_reason            IN VARCHAR2 DEFAULT NULL,
+    p_updated_by        IN NUMBER DEFAULT NULL
+  ) IS
+  BEGIN
+    UPDATE employees
+    SET employment_status = 'BAJA',
+        termination_date  = NVL(p_termination_date, SYSDATE),
+        notes             = NVL(notes, TO_CLOB('')) || TO_CLOB(CHR(10) || 
+                           'BAJA: ' || TO_CHAR(SYSDATE, 'DD/MM/YYYY') || 
+                           CASE WHEN p_reason IS NOT NULL THEN ' - ' || p_reason ELSE '' END),
+        updated_by        = p_updated_by,
+        updated_at        = SYSTIMESTAMP
+    WHERE employee_id = p_employee_id;
+    
+    -- También desactivar el usuario
+    UPDATE users SET is_active = '0' 
+    WHERE user_id = (SELECT user_id FROM employees WHERE employee_id = p_employee_id);
+    
+    log_audit('EMPLOYEE', p_employee_id, 'TERMINATE', p_updated_by, p_reason);
+    COMMIT;
+  EXCEPTION
+    WHEN OTHERS THEN
+      ROLLBACK;
+      RAISE;
+  END sp_terminate_employee;
+
+  PROCEDURE sp_get_employees(
+    p_status           IN VARCHAR2 DEFAULT NULL,
+    p_department       IN VARCHAR2 DEFAULT NULL,
+    p_search_term      IN VARCHAR2 DEFAULT NULL,
+    p_cursor           OUT SYS_REFCURSOR
+  ) IS
+  BEGIN
+    OPEN p_cursor FOR
+      SELECT 
+        e.employee_id        AS "employeeId",
+        e.employee_code      AS "employeeCode",
+        e.user_id            AS "userId",
+        u.username           AS "username",
+        u.full_name          AS "fullName",
+        u.email              AS "email",
+        u.phone              AS "phone",
+        r.role_name          AS "roleName",
+        z.zone_name          AS "zoneName",
+        e.job_title          AS "jobTitle",
+        e.department         AS "department",
+        e.base_salary        AS "baseSalary",
+        e.commission_rate    AS "commissionRate",
+        e.hire_date          AS "hireDate",
+        e.termination_date   AS "terminationDate",
+        e.employment_status  AS "employmentStatus",
+        TRUNC(MONTHS_BETWEEN(SYSDATE, e.hire_date) / 12) AS "yearsOfService",
+        MOD(TRUNC(MONTHS_BETWEEN(SYSDATE, e.hire_date)), 12) AS "monthsOfService",
+        e.bank_name          AS "bankName",
+        e.bank_account       AS "bankAccount",
+        e.emergency_contact_1 AS "emergencyContact1",
+        e.emergency_phone_1   AS "emergencyPhone1"
+      FROM employees e
+      JOIN users u ON e.user_id = u.user_id
+      JOIN roles r ON u.role_id = r.role_id
+      LEFT JOIN zones z ON u.zone_id = z.zone_id
+      WHERE (p_status IS NULL OR e.employment_status = p_status)
+        AND (p_department IS NULL OR UPPER(e.department) = UPPER(p_department))
+        AND (p_search_term IS NULL OR 
+             UPPER(u.full_name) LIKE '%' || UPPER(p_search_term) || '%' OR
+             UPPER(e.employee_code) LIKE '%' || UPPER(p_search_term) || '%')
+      ORDER BY u.full_name;
+  END sp_get_employees;
+
+  PROCEDURE sp_get_employee_by_id(
+    p_employee_id      IN NUMBER,
+    p_cursor           OUT SYS_REFCURSOR
+  ) IS
+  BEGIN
+    OPEN p_cursor FOR
+      SELECT 
+        e.employee_id, e.employee_code, e.user_id, u.username, u.full_name,
+        u.email, u.phone, r.role_name, z.zone_name,
+        e.job_title, e.department, e.base_salary, e.commission_rate,
+        e.hire_date, e.termination_date, e.employment_status,
+        TRUNC(MONTHS_BETWEEN(SYSDATE, e.hire_date) / 12) AS years_of_service,
+        e.bank_name, e.bank_account, e.clabe,
+        e.emergency_contact_1, e.emergency_phone_1, e.emergency_relation_1,
+        e.emergency_contact_2, e.emergency_phone_2, e.emergency_relation_2,
+        e.beneficiary_name, e.beneficiary_relation,
+        e.address, e.gps_latitude, e.gps_longitude, e.notes
+      FROM employees e
+      JOIN users u ON e.user_id = u.user_id
+      JOIN roles r ON u.role_id = r.role_id
+      LEFT JOIN zones z ON u.zone_id = z.zone_id
+      WHERE e.employee_id = p_employee_id;
+  END sp_get_employee_by_id;
+
+  PROCEDURE sp_register_attendance(
+    p_attendance_id    OUT NUMBER,
+    p_employee_id      IN NUMBER,
+    p_attendance_date  IN DATE DEFAULT SYSDATE,
+    p_attendance_type  IN VARCHAR2,
+    p_check_in_time    IN TIMESTAMP DEFAULT SYSTIMESTAMP,
+    p_check_out_time   IN TIMESTAMP DEFAULT NULL,
+    p_gps_lat          IN NUMBER DEFAULT NULL,
+    p_gps_lon          IN NUMBER DEFAULT NULL,
+    p_notes            IN VARCHAR2 DEFAULT NULL
+  ) IS
+    v_worked_hours NUMBER;
+  BEGIN
+    v_worked_hours := fn_calculate_worked_hours(p_check_in_time, p_check_out_time);
+    
+    INSERT INTO employee_attendance (
+      attendance_id, employee_id, attendance_date, attendance_type,
+      check_in_time, check_out_time, worked_hours,
+      gps_latitude, gps_longitude, notes, created_at
+    ) VALUES (
+      seq_employee_attendance.NEXTVAL, p_employee_id, 
+      TRUNC(NVL(p_attendance_date, SYSDATE)), p_attendance_type,
+      p_check_in_time, p_check_out_time, v_worked_hours,
+      p_gps_lat, p_gps_lon, p_notes, SYSTIMESTAMP
+    ) RETURNING attendance_id INTO p_attendance_id;
+    
+    COMMIT;
+  EXCEPTION
+    WHEN OTHERS THEN
+      ROLLBACK;
+      RAISE;
+  END sp_register_attendance;
+
+  PROCEDURE sp_get_attendance_by_employee(
+    p_employee_id      IN NUMBER,
+    p_start_date       IN DATE DEFAULT NULL,
+    p_end_date         IN DATE DEFAULT NULL,
+    p_cursor           OUT SYS_REFCURSOR
+  ) IS
+  BEGIN
+    OPEN p_cursor FOR
+      SELECT 
+        attendance_id       AS "attendanceId",
+        employee_id         AS "employeeId",
+        attendance_date     AS "attendanceDate",
+        attendance_type     AS "attendanceType",
+        check_in_time       AS "checkInTime",
+        check_out_time      AS "checkOutTime",
+        worked_hours        AS "workedHours",
+        notes               AS "notes"
+      FROM employee_attendance
+      WHERE employee_id = p_employee_id
+        AND (p_start_date IS NULL OR attendance_date >= p_start_date)
+        AND (p_end_date IS NULL OR attendance_date <= p_end_date)
+      ORDER BY attendance_date DESC;
+  END sp_get_attendance_by_employee;
+
+  PROCEDURE sp_get_attendance_summary(
+    p_employee_id      IN NUMBER,
+    p_year             IN NUMBER DEFAULT EXTRACT(YEAR FROM SYSDATE),
+    p_month            IN NUMBER DEFAULT EXTRACT(MONTH FROM SYSDATE),
+    p_cursor           OUT SYS_REFCURSOR
+  ) IS
+  BEGIN
+    OPEN p_cursor FOR
+      SELECT 
+        COUNT(CASE WHEN attendance_type = 'ASISTENCIA' THEN 1 END) AS "asistencias",
+        COUNT(CASE WHEN attendance_type = 'RETARDO' THEN 1 END) AS "retardos",
+        COUNT(CASE WHEN attendance_type = 'FALTA' THEN 1 END) AS "faltas",
+        COUNT(CASE WHEN attendance_type = 'FALTA_JUSTIFICADA' THEN 1 END) AS "faltasJustificadas",
+        SUM(NVL(worked_hours, 0)) AS "totalHoras"
+      FROM employee_attendance
+      WHERE employee_id = p_employee_id
+        AND EXTRACT(YEAR FROM attendance_date) = p_year
+        AND EXTRACT(MONTH FROM attendance_date) = p_month;
+  END sp_get_attendance_summary;
+
+  PROCEDURE sp_generate_payroll(
+    p_payroll_id       OUT NUMBER,
+    p_employee_id      IN NUMBER,
+    p_period_start     IN DATE,
+    p_period_end       IN DATE,
+    p_created_by       IN NUMBER DEFAULT NULL
+  ) IS
+    v_base_salary      NUMBER;
+    v_commission_rate  NUMBER;
+    v_commissions      NUMBER := 0;
+    v_days_worked      NUMBER := 0;
+    v_absences_count   NUMBER := 0;
+    v_late_count       NUMBER := 0;
+    v_sales_count      NUMBER := 0;
+    v_sales_amount     NUMBER := 0;
+    v_collections_count NUMBER := 0;
+    v_collections_amount NUMBER := 0;
+    v_gross_total      NUMBER;
+    v_net_total        NUMBER;
+  BEGIN
+    SELECT base_salary, commission_rate
+    INTO v_base_salary, v_commission_rate
+    FROM employees
+    WHERE employee_id = p_employee_id;
+    
+    SELECT 
+      COUNT(CASE WHEN attendance_type IN ('ASISTENCIA', 'RETARDO') THEN 1 END),
+      COUNT(CASE WHEN attendance_type = 'FALTA' THEN 1 END),
+      COUNT(CASE WHEN attendance_type = 'RETARDO' THEN 1 END)
+    INTO v_days_worked, v_absences_count, v_late_count
+    FROM employee_attendance
+    WHERE employee_id = p_employee_id
+      AND attendance_date BETWEEN p_period_start AND p_period_end;
+    
+    v_commissions := fn_get_employee_total_commissions(p_employee_id, p_period_start, p_period_end);
+    
+    v_gross_total := v_base_salary + v_commissions;
+    v_net_total   := v_gross_total;
+    
+    INSERT INTO employee_payroll (
+      payroll_id, employee_id, period_start, period_end,
+      base_salary, commissions, gross_total, net_total,
+      days_worked, absences_count, late_count,
+      sales_count, collections_count,
+      status, created_by, created_at
+    ) VALUES (
+      seq_employee_payroll.NEXTVAL, p_employee_id, p_period_start, p_period_end,
+      v_base_salary, v_commissions, v_gross_total, v_net_total,
+      v_days_worked, v_absences_count, v_late_count,
+      v_sales_count, v_collections_count,
+      'PENDIENTE', p_created_by, SYSTIMESTAMP
+    ) RETURNING payroll_id INTO p_payroll_id;
+    
+    UPDATE employee_commissions
+    SET payroll_id = p_payroll_id,
+        status = 'PROCESADA',
+        processed_at = SYSTIMESTAMP
+    WHERE employee_id = p_employee_id
+      AND status = 'PENDIENTE'
+      AND reference_date BETWEEN p_period_start AND p_period_end;
+    
+    COMMIT;
+  EXCEPTION
+    WHEN OTHERS THEN
+      ROLLBACK;
+      RAISE;
+  END sp_generate_payroll;
+
+  PROCEDURE sp_approve_payroll(
+    p_payroll_id       IN NUMBER,
+    p_approved_by      IN NUMBER
+  ) IS
+  BEGIN
+    UPDATE employee_payroll
+    SET status = 'APROBADA',
+        approved_by = p_approved_by,
+        approved_at = SYSTIMESTAMP
+    WHERE payroll_id = p_payroll_id;
+    
+    COMMIT;
+  END sp_approve_payroll;
+
+  PROCEDURE sp_pay_payroll(
+    p_payroll_id       IN NUMBER,
+    p_payment_date     IN DATE DEFAULT SYSDATE,
+    p_payment_method   IN VARCHAR2,
+    p_payment_ref      IN VARCHAR2 DEFAULT NULL,
+    p_paid_by          IN NUMBER
+  ) IS
+  BEGIN
+    UPDATE employee_payroll
+    SET status = 'PAGADA',
+        payment_date = NVL(p_payment_date, SYSDATE),
+        payment_method = p_payment_method,
+        payment_reference = p_payment_ref,
+        paid_by = p_paid_by,
+        paid_at = SYSTIMESTAMP
+    WHERE payroll_id = p_payroll_id;
+    
+    UPDATE employee_commissions
+    SET status = 'PAGADA'
+    WHERE payroll_id = p_payroll_id;
+    
+    COMMIT;
+  END sp_pay_payroll;
+
+  PROCEDURE sp_get_payroll_by_employee(
+    p_employee_id      IN NUMBER,
+    p_year             IN NUMBER DEFAULT NULL,
+    p_cursor           OUT SYS_REFCURSOR
+  ) IS
+  BEGIN
+    OPEN p_cursor FOR
+      SELECT 
+        payroll_id AS "payrollId",
+        period_start AS "periodStart",
+        period_end AS "periodEnd",
+        payment_date AS "paymentDate",
+        base_salary AS "baseSalary",
+        commissions AS "commissions",
+        gross_total AS "grossTotal",
+        net_total AS "netTotal",
+        days_worked AS "daysWorked",
+        absences_count AS "absencesCount",
+        late_count AS "lateCount",
+        status AS "status"
+      FROM employee_payroll
+      WHERE employee_id = p_employee_id
+        AND (p_year IS NULL OR EXTRACT(YEAR FROM period_start) = p_year)
+      ORDER BY period_start DESC;
+  END sp_get_payroll_by_employee;
+
+  PROCEDURE sp_register_commission_from_sale(
+    p_commission_id    OUT NUMBER,
+    p_employee_id      IN NUMBER,
+    p_sale_id          IN NUMBER,
+    p_commission_rate  IN NUMBER
+  ) IS
+    v_base_amount NUMBER;
+    v_sale_date DATE;
+  BEGIN
+    SELECT total_amount, sale_date 
+    INTO v_base_amount, v_sale_date
+    FROM sales WHERE sale_id = p_sale_id;
+    
+    INSERT INTO employee_commissions (
+      commission_id, employee_id, commission_type, reference_id,
+      reference_date, base_amount, commission_rate, commission_amount,
+      status, created_at
+    ) VALUES (
+      seq_employee_commissions.NEXTVAL, p_employee_id, 'VENTA', p_sale_id,
+      v_sale_date, v_base_amount, p_commission_rate, 
+      v_base_amount * (p_commission_rate / 100),
+      'PENDIENTE', SYSTIMESTAMP
+    ) RETURNING commission_id INTO p_commission_id;
+    
+    COMMIT;
+  END sp_register_commission_from_sale;
+
+  PROCEDURE sp_register_commission_from_payment(
+    p_commission_id    OUT NUMBER,
+    p_employee_id      IN NUMBER,
+    p_payment_id       IN NUMBER,
+    p_commission_rate  IN NUMBER
+  ) IS
+    v_base_amount NUMBER;
+    v_payment_date DATE;
+  BEGIN
+    SELECT amount, payment_date
+    INTO v_base_amount, v_payment_date
+    FROM payments WHERE payment_id = p_payment_id;
+    
+    INSERT INTO employee_commissions (
+      commission_id, employee_id, commission_type, reference_id,
+      reference_date, base_amount, commission_rate, commission_amount,
+      status, created_at
+    ) VALUES (
+      seq_employee_commissions.NEXTVAL, p_employee_id, 'COBRO', p_payment_id,
+      v_payment_date, v_base_amount, p_commission_rate,
+      v_base_amount * (p_commission_rate / 100),
+      'PENDIENTE', SYSTIMESTAMP
+    ) RETURNING commission_id INTO p_commission_id;
+    
+    COMMIT;
+  END sp_register_commission_from_payment;
+
+  PROCEDURE sp_get_commissions_pending(
+    p_employee_id      IN NUMBER DEFAULT NULL,
+    p_cursor           OUT SYS_REFCURSOR
+  ) IS
+  BEGIN
+    OPEN p_cursor FOR
+      SELECT 
+        commission_id AS "commissionId",
+        employee_id AS "employeeId",
+        commission_type AS "commissionType",
+        reference_id AS "referenceId",
+        reference_date AS "referenceDate",
+        base_amount AS "baseAmount",
+        commission_rate AS "commissionRate",
+        commission_amount AS "commissionAmount",
+        status AS "status"
+      FROM employee_commissions
+      WHERE status = 'PENDIENTE'
+        AND (p_employee_id IS NULL OR employee_id = p_employee_id)
+      ORDER BY reference_date;
+  END sp_get_commissions_pending;
+
+  FUNCTION fn_get_employee_seniority_years(p_employee_id IN NUMBER) 
+    RETURN NUMBER IS
+    v_years NUMBER;
+  BEGIN
+    SELECT TRUNC(MONTHS_BETWEEN(SYSDATE, hire_date) / 12)
+    INTO v_years
+    FROM employees
+    WHERE employee_id = p_employee_id;
+    
+    RETURN v_years;
+  EXCEPTION
+    WHEN OTHERS THEN
+      RETURN 0;
+  END fn_get_employee_seniority_years;
+
+  FUNCTION fn_get_employee_total_commissions(
+    p_employee_id      IN NUMBER,
+    p_period_start     IN DATE,
+    p_period_end       IN DATE
+  ) RETURN NUMBER IS
+    v_total NUMBER;
+  BEGIN
+    SELECT NVL(SUM(commission_amount), 0)
+    INTO v_total
+    FROM employee_commissions
+    WHERE employee_id = p_employee_id
+      AND status = 'PENDIENTE'
+      AND reference_date BETWEEN p_period_start AND p_period_end;
+    
+    RETURN v_total;
+  EXCEPTION
+    WHEN OTHERS THEN
+      RETURN 0;
+  END fn_get_employee_total_commissions;
+
+  FUNCTION fn_calculate_worked_hours(
+    p_check_in         IN TIMESTAMP,
+    p_check_out        IN TIMESTAMP
+  ) RETURN NUMBER IS
+    v_hours NUMBER;
+  BEGIN
+    IF p_check_in IS NULL OR p_check_out IS NULL THEN
+      RETURN 0;
+    END IF;
+    
+    v_hours := EXTRACT(DAY FROM (p_check_out - p_check_in)) * 24 +
+               EXTRACT(HOUR FROM (p_check_out - p_check_in)) +
+               EXTRACT(MINUTE FROM (p_check_out - p_check_in)) / 60;
+    
+    RETURN ROUND(v_hours, 2);
+  EXCEPTION
+    WHEN OTHERS THEN
+      RETURN 0;
+  END fn_calculate_worked_hours;
+
+  -- ========================================================================
+  -- GESTIÓN DE DOCUMENTOS DE EMPLEADOS
+  -- ========================================================================
+
+  PROCEDURE sp_upload_employee_document(
+    p_document_id      OUT NUMBER,
+    p_employee_id      IN NUMBER,
+    p_doc_type_id      IN NUMBER,
+    p_file_name        IN VARCHAR2,
+    p_file_path        IN VARCHAR2,
+    p_file_size        IN NUMBER,
+    p_mime_type        IN VARCHAR2 DEFAULT 'application/pdf',
+    p_expiration_date  IN DATE DEFAULT NULL,
+    p_notes            IN VARCHAR2 DEFAULT NULL,
+    p_uploaded_by      IN NUMBER DEFAULT NULL
+  ) IS
+  BEGIN
+    INSERT INTO employees_documents (
+      document_id, employee_id, doc_type_id, file_name, file_path,
+      file_size, mime_type, upload_date, expiration_date, notes,
+      uploaded_by
+    ) VALUES (
+      seq_employee_documents.NEXTVAL, p_employee_id, p_doc_type_id, p_file_name, p_file_path,
+      p_file_size, p_mime_type, SYSDATE, p_expiration_date, p_notes,
+      p_uploaded_by
+    ) RETURNING document_id INTO p_document_id;
+    
+    log_audit('EMPLOYEE_DOCUMENT', p_document_id, 'INSERT', p_uploaded_by, 
+              'Documento subido: ' || p_file_name);
+    COMMIT;
+  EXCEPTION
+    WHEN OTHERS THEN
+      ROLLBACK;
+      RAISE;
+  END sp_upload_employee_document;
+
+  PROCEDURE sp_get_employee_documents(
+    p_employee_id      IN NUMBER,
+    p_doc_type_id      IN NUMBER DEFAULT NULL,
+    p_cursor           OUT SYS_REFCURSOR
+  ) IS
+  BEGIN
+    OPEN p_cursor FOR
+      SELECT 
+        d.document_id,
+        d.employee_id,
+        d.doc_type_id,
+        dt.doc_type_code,
+        dt.doc_type_name,
+        dt.description AS doc_type_description,
+        dt.is_required,
+        d.file_name,
+        d.file_path,
+        d.file_size,
+        d.mime_type,
+        d.upload_date,
+        d.expiration_date,
+        CASE 
+          WHEN d.expiration_date IS NOT NULL AND d.expiration_date < SYSDATE THEN 'VENCIDO'
+          WHEN d.expiration_date IS NOT NULL AND d.expiration_date < ADD_MONTHS(SYSDATE, 1) THEN 'POR_VENCER'
+          ELSE 'VIGENTE'
+        END AS status,
+        d.notes,
+        d.uploaded_by,
+        u.full_name AS uploaded_by_name,
+        d.upload_date AS upload_timestamp
+      FROM employees_documents d
+      INNER JOIN catalog_employee_doc_types dt ON d.doc_type_id = dt.doc_type_id
+      LEFT JOIN users u ON d.uploaded_by = u.user_id
+      WHERE d.employee_id = p_employee_id
+        AND (p_doc_type_id IS NULL OR d.doc_type_id = p_doc_type_id)
+      ORDER BY dt.display_order, d.upload_date DESC;
+  END sp_get_employee_documents;
+
+  PROCEDURE sp_get_document_by_id(
+    p_document_id      IN NUMBER,
+    p_cursor           OUT SYS_REFCURSOR
+  ) IS
+  BEGIN
+    OPEN p_cursor FOR
+      SELECT 
+        d.document_id,
+        d.employee_id,
+        d.doc_type_id,
+        dt.doc_type_code,
+        dt.doc_type_name,
+        d.file_name,
+        d.file_path,
+        d.file_size,
+        d.mime_type,
+        d.upload_date,
+        d.expiration_date,
+        d.notes,
+        d.uploaded_by,
+        u.full_name AS uploaded_by_name,
+        d.upload_date AS upload_timestamp
+      FROM employees_documents d
+      INNER JOIN catalog_employee_doc_types dt ON d.doc_type_id = dt.doc_type_id
+      LEFT JOIN users u ON d.uploaded_by = u.user_id
+      WHERE d.document_id = p_document_id;
+  END sp_get_document_by_id;
+
+  PROCEDURE sp_delete_employee_document(
+    p_document_id      IN NUMBER,
+    p_deleted_by       IN NUMBER DEFAULT NULL
+  ) IS
+    v_file_name VARCHAR2(500);
+  BEGIN
+    SELECT file_name INTO v_file_name
+    FROM employees_documents
+    WHERE document_id = p_document_id;
+    
+    DELETE FROM employees_documents
+    WHERE document_id = p_document_id;
+    
+    log_audit('EMPLOYEE_DOCUMENT', p_document_id, 'DELETE', p_deleted_by, 
+              'Documento eliminado: ' || v_file_name);
+    COMMIT;
+  EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+      RAISE_APPLICATION_ERROR(-20001, 'Documento no encontrado');
+    WHEN OTHERS THEN
+      ROLLBACK;
+      RAISE;
+  END sp_delete_employee_document;
+
+  PROCEDURE sp_get_document_types(
+    p_cursor           OUT SYS_REFCURSOR
+  ) IS
+  BEGIN
+    OPEN p_cursor FOR
+      SELECT 
+        doc_type_id,
+        doc_type_code,
+        doc_type_name,
+        description,
+        is_required,
+        display_order
+      FROM catalog_employee_doc_types
+      ORDER BY display_order;
+  END sp_get_document_types;
   --
 END EM_VITARAIZ_AD;
 /

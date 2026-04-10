@@ -597,12 +597,23 @@ else if (_viewMode == "detail")
     private const int CATEGORY_ID = 2; // Papelería
     
     private bool _loading, _dialogOpen, _saving, _imagePreviewOpen;
+    private bool _photoDialogOpen, _uploading;
     private string _search = "", _statusFilter = "all", _viewMode = "grid";
     private List<ProductDto> _all = new(), _filtered = new();
-    private ProductDto? _editing, _previewProduct;
-    private IBrowserFile? _editingPhotoFile;
+    private List<CategoryDto> _categories = new();
+    private ProductDto? _editing, _previewProduct, _photoProduct;
+    private IBrowserFile? _editingPhotoFile, _selectedFile;
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCategoriesAsync();
+        await LoadAsync();
+    }
+
+    private async Task LoadCategoriesAsync()
+    {
+        _categories = await Api.GetAsync<List<CategoryDto>>("api/catalogs/product-categories") ?? new();
+    }
 
     private async Task LoadAsync()
     {

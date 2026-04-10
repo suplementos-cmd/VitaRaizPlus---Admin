@@ -1,0 +1,901 @@
+@page "/admin/empleados"
+@attribute [Authorize(Roles = "AdminFull,Admin,Manager")]
+@using VitaRaiz.Application.DTOs
+@using Microsoft.AspNetCore.Components.Forms
+@inject ApiService Api
+@inject IDialogService Dialog
+@inject NotificationService Notify
+@inject IJSRuntime JS
+
+<PageTitle>Empleados – VitaRaiz Admin</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+    <MudStack Spacing="1">
+        <MudText Typo="Typo.h4" Class="fw-bold">Empleados</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">
+            @_totalEmployees empleados · @_activeEmployees activos · @_inactiveEmployees bajas
+        </MudText>
+    </MudStack>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.PersonAdd" OnClick="OpenCreateDialog">Nuevo Empleado</MudButton>
+</MudStack>
+
+<!-- KPI Cards -->
+<MudGrid Class="mb-4" Spacing="3">
+    <MudItem xs="12" sm="6" md="3">
+        <MudCard Elevation="2">
+            <MudCardContent>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Total Empleados</MudText>
+                        <MudText Typo="Typo.h5" Class="fw-bold">@_totalEmployees</MudText>
+                    </MudStack>
+                    <MudIcon Icon="@Icons.Material.Filled.People" Size="Size.Large" Color="Color.Primary" />
+                </MudStack>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudCard Elevation="2">
+            <MudCardContent>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Asistencias Hoy</MudText>
+                        <MudText Typo="Typo.h5" Class="fw-bold">@_attendanceToday</MudText>
+                    </MudStack>
+                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Large" Color="Color.Success" />
+                </MudStack>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudCard Elevation="2">
+            <MudCardContent>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Nóminas Pendientes</MudText>
+                        <MudText Typo="Typo.h5" Class="fw-bold">@_pendingPayrolls</MudText>
+                    </MudStack>
+                    <MudIcon Icon="@Icons.Material.Filled.AttachMoney" Size="Size.Large" Color="Color.Warning" />
+                </MudStack>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudCard Elevation="2">
+            <MudCardContent>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Comisiones Pendientes</MudText>
+                        <MudText Typo="Typo.h5" Class="fw-bold">@_pendingCommissions</MudText>
+                    </MudStack>
+                    <MudIcon Icon="@Icons.Material.Filled.TrendingUp" Size="Size.Large" Color="Color.Info" />
+                </MudStack>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+</MudGrid>
+
+<!-- Filtros -->
+<MudPaper Class="pa-3 mb-4" Elevation="1">
+    <MudGrid Spacing="2">
+        <MudItem xs="12" sm="4">
+            <MudTextField @bind-Value="_search" Label="Buscar empleado..."
+                          Variant="Variant.Outlined" Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search" Clearable="true"
+                          Dense="true" Immediate="true" DebounceInterval="300"
+                          OnDebounceIntervalElapsed="ApplyFilters" />
+        </MudItem>
+        <MudItem xs="6" sm="3">
+            <MudSelect T="string" @bind-Value="_statusFilter" Label="Estado"
+                       Variant="Variant.Outlined" Dense="true" OnChange="ApplyFilters">
+                <MudSelectItem Value="@("")">Todos</MudSelectItem>
+                <MudSelectItem Value="@("ACTIVO")">Activos</MudSelectItem>
+                <MudSelectItem Value="@("BAJA")">Bajas</MudSelectItem>
+                <MudSelectItem Value="@("SUSPENDIDO")">Suspendidos</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="6" sm="3">
+            <MudSelect T="string" @bind-Value="_departmentFilter" Label="Departamento"
+                       Variant="Variant.Outlined" Dense="true" OnChange="ApplyFilters">
+                <MudSelectItem Value="@("")">Todos</MudSelectItem>
+                @foreach (var dept in _departments)
+                {
+                    <MudSelectItem Value="@dept">@dept</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="2">
+            <MudButton Variant="Variant.Outlined" FullWidth="true"
+                       StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadDataAsync">Recargar</MudButton>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+<!-- Tabla de Empleados -->
+<MudPaper Elevation="2">
+    <MudTable Items="_filteredEmployees" Hover="true" Dense="true" Loading="_loading" RowsPerPage="15">
+        <ToolBarContent>
+            <MudText Typo="Typo.subtitle1">@_filteredEmployees.Count empleados</MudText>
+            <MudSpacer />
+            <MudTooltip Text="Exportar a Excel">
+                <MudIconButton Icon="@Icons.Material.Filled.Download" Size="Size.Small" />
+            </MudTooltip>
+        </ToolBarContent>
+        <HeaderContent>
+            <MudTh>Código</MudTh>
+            <MudTh>Nombre</MudTh>
+            <MudTh>Puesto</MudTh>
+            <MudTh>Departamento</MudTh>
+            <MudTh>Sueldo Base</MudTh>
+            <MudTh>Comisión %</MudTh>
+            <MudTh>Antigüedad</MudTh>
+            <MudTh>Estado</MudTh>
+            <MudTh>Acciones</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>
+                <MudText Typo="Typo.body2" Class="fw-medium">@context.EmployeeCode</MudText>
+            </MudTd>
+            <MudTd>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                    <MudAvatar Size="Size.Small" Color="Color.Primary">
+                        @context.FullName[0].ToString().ToUpper()
+                    </MudAvatar>
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.body2" Class="fw-medium">@context.FullName</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">@context.RoleName</MudText>
+                    </MudStack>
+                </MudStack>
+            </MudTd>
+            <MudTd>@context.JobTitle</MudTd>
+            <MudTd>@context.Department</MudTd>
+            <MudTd>
+                <MudText Typo="Typo.body2" Class="fw-medium">
+                    @context.BaseSalary.ToString("C2")
+                </MudText>
+            </MudTd>
+            <MudTd>
+                <MudChip T="string" Size="Size.Small" Color="Color.Info">
+                    @context.CommissionRate.ToString("0.00")%
+                </MudChip>
+            </MudTd>
+            <MudTd>
+                <MudText Typo="Typo.caption">
+                    @context.YearsOfService años @context.MonthsOfService meses
+                </MudText>
+            </MudTd>
+            <MudTd>
+                <MudChip T="string" Size="Size.Small"
+                         Color="@GetStatusColor(context.EmploymentStatus)">
+                    @context.EmploymentStatus
+                </MudChip>
+            </MudTd>
+            <MudTd>
+                <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true">
+                    <MudMenuItem Icon="@Icons.Material.Filled.Visibility" OnClick="() => ViewDetails(context)">Ver Detalles</MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Filled.Edit" OnClick="() => OpenEditDialog(context)">Editar</MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Filled.CheckCircle" OnClick="() => RegisterAttendance(context)">Registrar Asistencia</MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Filled.AttachMoney" OnClick="() => ViewPayroll(context)">Ver Nóminas</MudMenuItem>
+                    <MudDivider />
+                    <MudMenuItem Icon="@Icons.Material.Filled.PersonOff" IconColor="Color.Error"
+                                 OnClick="() => TerminateEmployee(context)" Disabled="@(context.EmploymentStatus != "ACTIVO")">
+                        Dar de Baja
+                    </MudMenuItem>
+                </MudMenu>
+            </MudTd>
+        </RowTemplate>
+        <PagerContent>
+            <MudTablePager PageSizeOptions="new int[] { 15, 25, 50, 100 }" />
+        </PagerContent>
+    </MudTable>
+</MudPaper>
+
+<!-- Dialog Crear/Editar Empleado -->
+<MudDialog @bind-Visible="_dialogOpen" Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            @(_editingEmployee?.EmployeeId > 0 ? "Editar" : "Nuevo") Empleado
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_editingEmployee != null)
+        {
+            <MudTabs Elevation="0" Rounded="true" Color="Color.Primary">
+                <MudTabPanel Text="Datos Generales" Icon="@Icons.Material.Filled.Person">
+                    <MudGrid Spacing="2" Class="mt-2">
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="_editingEmployee.EmployeeCode" Label="Código"
+                                          Variant="Variant.Outlined" ReadOnly="true"
+                                          HelperText="Se genera automáticamente" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudSelect T="int" @bind-Value="_selectedUserId" Label="Usuario*"
+                                       Variant="Variant.Outlined" Required="true"
+                                       Disabled="@(_editingEmployee.EmployeeId > 0)">
+                                @if (_availableUsers.Count == 0)
+                                {
+                                    <MudSelectItem Value="0" Disabled="true">No hay usuarios disponibles</MudSelectItem>
+                                }
+                                else
+                                {
+                                    @foreach (var user in _availableUsers)
+                                    {
+                                        <MudSelectItem Value="@user.UserId">@user.FullName (@user.Username)</MudSelectItem>
+                                    }
+                                }
+                            </MudSelect>
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="_editingEmployee.JobTitle" Label="Puesto"
+                                          Variant="Variant.Outlined" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="_editingEmployee.Department" Label="Departamento"
+                                          Variant="Variant.Outlined" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudNumericField @bind-Value="_editingEmployee.BaseSalary" Label="Sueldo Base*"
+                                             Variant="Variant.Outlined" Format="C2" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudNumericField @bind-Value="_editingEmployee.CommissionRate" Label="% Comisión"
+                                             Variant="Variant.Outlined" Min="0" Max="100" Step="0.5M" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudDatePicker @bind-Date="_hireDate" Label="Fecha de Ingreso*"
+                                           Variant="Variant.Outlined" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudSelect T="string" @bind-Value="_editingEmployee.EmploymentStatus" Label="Estado"
+                                       Variant="Variant.Outlined" Disabled="@(_editingEmployee.EmployeeId == 0)">
+                                <MudSelectItem Value="@("ACTIVO")">Activo</MudSelectItem>
+                                <MudSelectItem Value="@("SUSPENDIDO")">Suspendido</MudSelectItem>
+                                <MudSelectItem Value="@("BAJA")">Baja</MudSelectItem>
+                            </MudSelect>
+                        </MudItem>
+                    </MudGrid>
+                </MudTabPanel>
+
+                <MudTabPanel Text="Documentación" Icon="@Icons.Material.Filled.Description">
+                    <MudGrid Spacing="2" Class="mt-2">
+                        @if (_editingEmployee.EmployeeId == 0)
+                        {
+                            <MudItem xs="12">
+                                <MudAlert Severity="Severity.Info">
+                                    Debe guardar el empleado antes de poder subir documentos.
+                                </MudAlert>
+                            </MudItem>
+                        }
+                        else
+                        {
+                            <MudItem xs="12" sm="8">
+                                <MudSelect T="int" @bind-Value="_selectedDocTypeId" Label="Tipo de Documento*"
+                                           Variant="Variant.Outlined" Required="true">
+                                    @foreach (var docType in _documentTypes)
+                                    {
+                                        <MudSelectItem Value="@docType.DocTypeId">
+                                            @docType.DocTypeName
+                                            @if (docType.IsRequired)
+                                            {
+                                                <MudChip T="string" Size="Size.Small" Color="Color.Error">Requerido</MudChip>
+                                            }
+                                        </MudSelectItem>
+                                    }
+                                </MudSelect>
+                            </MudItem>
+                            <MudItem xs="12" sm="4">
+                                <MudDatePicker @bind-Date="_documentExpirationDate" Label="Fecha de Vencimiento"
+                                               Variant="Variant.Outlined" MinDate="DateTime.Today" />
+                            </MudItem>
+                            <MudItem xs="12">
+                                <InputFile id="fileInput" OnChange="HandleFileSelected" hidden accept=".pdf,.jpg,.jpeg,.png" />
+                                <MudButton HtmlTag="label" for="fileInput" Variant="Variant.Filled" 
+                                           Color="Color.Primary" StartIcon="@Icons.Material.Filled.UploadFile">
+                                    Seleccionar Archivo
+                                </MudButton>
+                                @if (_selectedFile != null)
+                                {
+                                    <MudChip T="string" Color="Color.Success" Icon="@Icons.Material.Filled.Check">
+                                        @_selectedFile.Name (@FormatFileSize(_selectedFile.Size))
+                                    </MudChip>
+                                    <MudButton OnClick="UploadDocument" Variant="Variant.Filled" Color="Color.Success"
+                                               StartIcon="@Icons.Material.Filled.CloudUpload" Disabled="@_uploading">
+                                        @(_uploading ? "Subiendo..." : "Subir Documento")
+                                    </MudButton>
+                                }
+                            </MudItem>
+                            <MudItem xs="12">
+                                <MudTextField @bind-Value="_documentNotes" Label="Notas (opcional)"
+                                              Variant="Variant.Outlined" Lines="3" />
+                            </MudItem>
+                            
+                            <MudItem xs="12" Class="mt-4">
+                                <MudText Typo="Typo.h6">Documentos Subidos</MudText>
+                                <MudDivider Class="my-2" />
+                            </MudItem>
+                            
+                            @if (_employeeDocuments.Count == 0)
+                            {
+                                <MudItem xs="12">
+                                    <MudAlert Severity="Severity.Info">
+                                        No hay documentos subidos para este empleado.
+                                    </MudAlert>
+                                </MudItem>
+                            }
+                            else
+                            {
+                                <MudItem xs="12">
+                                    <MudTable Items="_employeeDocuments" Dense="true" Hover="true">
+                                        <HeaderContent>
+                                            <MudTh>Tipo</MudTh>
+                                            <MudTh>Archivo</MudTh>
+                                            <MudTh>Tamaño</MudTh>
+                                            <MudTh>Fecha Subida</MudTh>
+                                            <MudTh>Vencimiento</MudTh>
+                                            <MudTh>Estado</MudTh>
+                                            <MudTh>Acciones</MudTh>
+                                        </HeaderContent>
+                                        <RowTemplate>
+                                            <MudTd>
+                                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                                    <MudIcon Icon="@GetDocumentIcon(context.MimeType)" Size="Size.Small" />
+                                                    <MudText Typo="Typo.body2">@context.DocTypeName</MudText>
+                                                </MudStack>
+                                            </MudTd>
+                                            <MudTd>@context.FileName</MudTd>
+                                            <MudTd>@FormatFileSize(context.FileSize)</MudTd>
+                                            <MudTd>@context.UploadDate.ToString("dd/MM/yyyy")</MudTd>
+                                            <MudTd>
+                                                @if (context.ExpirationDate.HasValue)
+                                                {
+                                                    @context.ExpirationDate.Value.ToString("dd/MM/yyyy")
+                                                }
+                                                else
+                                                {
+                                                    <MudText Typo="Typo.body2" Color="Color.Secondary">N/A</MudText>
+                                                }
+                                            </MudTd>
+                                            <MudTd>
+                                                <MudChip T="string" Size="Size.Small" Color="@GetDocStatusColor(context.Status)">
+                                                    @GetDocStatusText(context.Status)
+                                                </MudChip>
+                                            </MudTd>
+                                            <MudTd>
+                                                <MudIconButton Icon="@Icons.Material.Filled.Download" Size="Size.Small"
+                                                               Color="Color.Primary" Title="Descargar"
+                                                               OnClick="@(() => DownloadDocument(context.DocumentId))" />
+                                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                                               Color="Color.Error" Title="Eliminar"
+                                                               OnClick="@(() => DeleteDocument(context.DocumentId))" />
+                                            </MudTd>
+                                        </RowTemplate>
+                                    </MudTable>
+                                </MudItem>
+                            }
+                        }
+                    </MudGrid>
+                </MudTabPanel>
+
+                <MudTabPanel Text="Datos Bancarios" Icon="@Icons.Material.Filled.AccountBalance">
+                    <MudGrid Spacing="2" Class="mt-2">
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="_editingEmployee.BankName" Label="Banco"
+                                          Variant="Variant.Outlined" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="_editingEmployee.BankAccount" Label="Número de Cuenta"
+                                          Variant="Variant.Outlined" />
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="_editingEmployee.Clabe" Label="CLABE Interbancaria"
+                                          Variant="Variant.Outlined" MaxLength="18" />
+                        </MudItem>
+                    </MudGrid>
+                </MudTabPanel>
+
+                <MudTabPanel Text="Contacto Emergencia" Icon="@Icons.Material.Filled.ContactPhone">
+                    <MudGrid Spacing="2" Class="mt-2">
+                        <MudItem xs="12"><MudText Typo="Typo.subtitle2" Class="fw-bold">Contacto 1</MudText></MudItem>
+                        <MudItem xs="12" sm="4">
+                            <MudTextField @bind-Value="_editingEmployee.EmergencyContact1" Label="Nombre"
+                                          Variant="Variant.Outlined" />
+                        </MudItem>
+                        <MudItem xs="12" sm="4">
+                            <MudTextField @bind-Value="_editingEmployee.EmergencyPhone1" Label="Teléfono"
+                                          Variant="Variant.Outlined" />
+                        </MudItem>
+                        <MudItem xs="12" sm="4">
+                            <MudTextField @bind-Value="_editingEmployee.EmergencyRelation1" Label="Parentesco"
+                                          Variant="Variant.Outlined" />
+                        </MudItem>
+                        <MudItem xs="12"><MudDivider /></MudItem>
+                        <MudItem xs="12"><MudText Typo="Typo.subtitle2" Class="fw-bold">Contacto 2</MudText></MudItem>
+                        <MudItem xs="12" sm="4">
+                            <MudTextField @bind-Value="_editingEmployee.EmergencyContact2" Label="Nombre"
+                                          Variant="Variant.Outlined" />
+                        </MudItem>
+                        <MudItem xs="12" sm="4">
+                            <MudTextField @bind-Value="_editingEmployee.EmergencyPhone2" Label="Teléfono"
+                                          Variant="Variant.Outlined" />
+                        </MudItem>
+                        <MudItem xs="12" sm="4">
+                            <MudTextField @bind-Value="_editingEmployee.EmergencyRelation2" Label="Parentesco"
+                                          Variant="Variant.Outlined" />
+                        </MudItem>
+                    </MudGrid>
+                </MudTabPanel>
+            </MudTabs>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseDialog">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveEmployeeAsync">
+            @(_editingEmployee?.EmployeeId > 0 ? "Actualizar" : "Crear")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    // Data
+    private List<EmployeeDto> _employees = new();
+    private List<EmployeeDto> _filteredEmployees = new();
+    private List<VitaRaiz.Application.DTOs.UserDto> _availableUsers = new();
+    private List<string> _departments = new();
+
+    // Filters
+    private string _search = "";
+    private string _statusFilter = "";
+    private string _departmentFilter = "";
+
+    // KPIs
+    private int _totalEmployees;
+    private int _activeEmployees;
+    private int _inactiveEmployees;
+    private int _attendanceToday;
+    private int _pendingPayrolls;
+    private int _pendingCommissions;
+
+    // Dialog
+    private bool _dialogOpen;
+    private EmployeeEditModel? _editingEmployee;
+    private DateTime? _hireDate;
+    private int _selectedUserId;
+    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Medium, FullWidth = true };
+
+    // Documents
+    private List<EmployeeDocumentDto> _employeeDocuments = new();
+    private List<DocumentTypeDto> _documentTypes = new();
+    private int _selectedDocTypeId;
+    private DateTime? _documentExpirationDate;
+    private string _documentNotes = "";
+    private IBrowserFile? _selectedFile;
+    private bool _uploading;
+
+    // State
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+        
+        // Cargar tipos de documentos
+        try
+        {
+            _documentTypes = await Api.GetAsync<List<DocumentTypeDto>>("employees/documents/types") ?? new();
+        }
+        catch
+        {
+            // Silencioso si falla
+        }
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _loading = true;
+        try
+        {
+            // Cargar empleados
+            _employees = await Api.GetAsync<List<EmployeeDto>>("employees") ?? new();
+            
+            // Cargar usuarios disponibles (para crear nuevos empleados)
+            _availableUsers = await Api.GetAsync<List<VitaRaiz.Application.DTOs.UserDto>>("users") ?? new();
+            
+            // Calcular KPIs
+            _totalEmployees = _employees.Count;
+            _activeEmployees = _employees.Count(e => e.EmploymentStatus == "ACTIVO");
+            _inactiveEmployees = _employees.Count(e => e.EmploymentStatus == "BAJA");
+            
+            // Obtener departamentos únicos
+            _departments = _employees
+                .Where(e => !string.IsNullOrWhiteSpace(e.Department))
+                .Select(e => e.Department!)
+                .Distinct()
+                .OrderBy(d => d)
+                .ToList();
+            
+            // Aplicar filtros
+            ApplyFilters();
+        }
+        catch (Exception ex)
+        {
+            Notify.Error($"Error al cargar empleados: {ex.Message}");
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void ApplyFilters()
+    {
+        _filteredEmployees = _employees
+            .Where(e => string.IsNullOrWhiteSpace(_search) ||
+                       e.FullName.Contains(_search, StringComparison.OrdinalIgnoreCase) ||
+                       e.EmployeeCode.Contains(_search, StringComparison.OrdinalIgnoreCase))
+            .Where(e => string.IsNullOrWhiteSpace(_statusFilter) || e.EmploymentStatus == _statusFilter)
+            .Where(e => string.IsNullOrWhiteSpace(_departmentFilter) || e.Department == _departmentFilter)
+            .ToList();
+    }
+
+    private Color GetStatusColor(string status) => status switch
+    {
+        "ACTIVO" => Color.Success,
+        "SUSPENDIDO" => Color.Warning,
+        "BAJA" => Color.Error,
+        _ => Color.Default
+    };
+
+    private void OpenCreateDialog()
+    {
+        // Generar código automático para nuevo empleado
+        var nextNumber = _employees.Count > 0 
+            ? _employees.Max(e => int.TryParse(e.EmployeeCode.Replace("EMP-", ""), out var num) ? num : 1000) + 1
+            : 1000;
+        
+        _editingEmployee = new EmployeeEditModel
+        {
+            EmployeeCode = $"EMP-{nextNumber:D6}",
+            BaseSalary = 0,
+            CommissionRate = 0,
+            EmploymentStatus = "ACTIVO"
+        };
+        _hireDate = DateTime.Now;
+        _selectedUserId = 0;
+        _dialogOpen = true;
+    }
+
+    private async Task OpenEditDialog(EmployeeDto employee)
+    {
+        _editingEmployee = new EmployeeEditModel
+        {
+            EmployeeId = employee.EmployeeId,
+            EmployeeCode = employee.EmployeeCode,
+            JobTitle = employee.JobTitle,
+            Department = employee.Department,
+            BaseSalary = employee.BaseSalary,
+            CommissionRate = employee.CommissionRate,
+            EmploymentStatus = employee.EmploymentStatus,
+            BankName = employee.BankName,
+            BankAccount = employee.BankAccount,
+            Clabe = employee.Clabe,
+            EmergencyContact1 = employee.EmergencyContact1,
+            EmergencyPhone1 = employee.EmergencyPhone1,
+            EmergencyRelation1 = employee.EmergencyRelation1,
+            EmergencyContact2 = employee.EmergencyContact2,
+            EmergencyPhone2 = employee.EmergencyPhone2,
+            EmergencyRelation2 = employee.EmergencyRelation2
+        };
+        _hireDate = employee.HireDate;
+        _selectedUserId = employee.UserId;
+        
+        // Cargar documentos del empleado
+        await LoadEmployeeDocuments(employee.EmployeeId);
+        
+        _dialogOpen = true;
+    }
+
+    private async Task SaveEmployeeAsync()
+    {
+        try
+        {
+            if (_editingEmployee == null) return;
+
+            if (_editingEmployee.EmployeeId == 0)
+            {
+                // Crear
+                var createDto = new
+                {
+                    userId = _selectedUserId,
+                    employeeCode = _editingEmployee.EmployeeCode,
+                    jobTitle = _editingEmployee.JobTitle,
+                    department = _editingEmployee.Department,
+                    baseSalary = _editingEmployee.BaseSalary,
+                    commissionRate = _editingEmployee.CommissionRate,
+                    hireDate = _hireDate ?? DateTime.Now,
+                    bankName = _editingEmployee.BankName,
+                    bankAccount = _editingEmployee.BankAccount,
+                    clabe = _editingEmployee.Clabe,
+                    emergencyContact1 = _editingEmployee.EmergencyContact1,
+                    emergencyPhone1 = _editingEmployee.EmergencyPhone1,
+                    emergencyRelation1 = _editingEmployee.EmergencyRelation1
+                };
+
+                await Api.PostAsync("employees", createDto);
+                Notify.Success("Empleado creado exitosamente");
+            }
+            else
+            {
+                // Actualizar
+                var updateDto = new
+                {
+                    jobTitle = _editingEmployee.JobTitle,
+                    department = _editingEmployee.Department,
+                    baseSalary = _editingEmployee.BaseSalary,
+                    commissionRate = _editingEmployee.CommissionRate,
+                    employmentStatus = _editingEmployee.EmploymentStatus,
+                    bankName = _editingEmployee.BankName,
+                    bankAccount = _editingEmployee.BankAccount
+                };
+
+                await Api.PutAsync($"employees/{_editingEmployee.EmployeeId}", updateDto);
+                Notify.Success("Empleado actualizado exitosamente");
+            }
+
+            CloseDialog();
+            await LoadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            Notify.Error($"Error al guardar: {ex.Message}");
+        }
+    }
+
+    private async Task RegisterAttendance(EmployeeDto employee)
+    {
+        var parameters = new DialogParameters
+        {
+            { "EmployeeId", employee.EmployeeId },
+            { "EmployeeName", employee.FullName }
+        };
+
+        var dialog = await Dialog.ShowAsync<RegisterAttendanceDialog>("Registrar Asistencia", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await LoadDataAsync();
+        }
+    }
+
+    private void ViewDetails(EmployeeDto employee)
+    {
+        // TODO: Implementar vista de detalles completos
+        Notify.Info($"Ver detalles de {employee.FullName}");
+    }
+
+    private void ViewPayroll(EmployeeDto employee)
+    {
+        // TODO: Implementar vista de nóminas
+        Notify.Info($"Ver nóminas de {employee.FullName}");
+    }
+
+    private async Task TerminateEmployee(EmployeeDto employee)
+    {
+        var confirmed = await Dialog.ShowMessageBox(
+            "Confirmar Baja",
+            $"¿Estás seguro de dar de baja a {employee.FullName}?",
+            yesText: "Dar de Baja",
+            cancelText: "Cancelar");
+
+        if (confirmed == true)
+        {
+            try
+            {
+                await Api.DeleteAsync($"employees/{employee.EmployeeId}");
+                Notify.Success($"{employee.FullName} dado de baja exitosamente");
+                await LoadDataAsync();
+            }
+            catch (Exception ex)
+            {
+                Notify.Error($"Error: {ex.Message}");
+            }
+        }
+    }
+
+    private void CloseDialog()
+    {
+        _dialogOpen = false;
+        _editingEmployee = null;
+        _employeeDocuments.Clear();
+        _documentTypes.Clear();
+        _selectedFile = null;
+    }
+
+    // ========================================================================
+    // DOCUMENTOS
+    // ========================================================================
+
+    private async Task LoadEmployeeDocuments(int employeeId)
+    {
+        try
+        {
+            _employeeDocuments = await Api.GetAsync<List<EmployeeDocumentDto>>($"employees/{employeeId}/documents") ?? new();
+            _documentTypes = await Api.GetAsync<List<DocumentTypeDto>>("employees/documents/types") ?? new();
+        }
+        catch (Exception ex)
+        {
+            Notify.Error($"Error al cargar documentos: {ex.Message}");
+        }
+    }
+
+    private void HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        _selectedFile = e.File;
+    }
+
+    private async Task UploadDocument()
+    {
+        if (_selectedFile == null || _selectedDocTypeId == 0 || _editingEmployee == null)
+        {
+            Notify.Warning("Debe seleccionar un tipo de documento y un archivo");
+            return;
+        }
+
+        // Validaciones
+        const long maxFileSize = 10 * 1024 * 1024; // 10MB
+        if (_selectedFile.Size > maxFileSize)
+        {
+            Notify.Error("El archivo no debe superar 10MB");
+            return;
+        }
+
+        _uploading = true;
+        try
+        {
+            // Crear directorio si no existe
+            var uploadPath = Path.Combine("wwwroot", "uploads", "employees", _editingEmployee.EmployeeId.ToString());
+            if (!Directory.Exists(uploadPath))
+                Directory.CreateDirectory(uploadPath);
+
+            // Generar nombre único
+            var fileName = $"{Guid.NewGuid()}{Path.GetExtension(_selectedFile.Name)}";
+            var filePath = Path.Combine(uploadPath, fileName);
+
+            // Guardar archivo
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await _selectedFile.OpenReadStream(maxFileSize).CopyToAsync(stream);
+            }
+
+            // Registrar en base de datos
+            var uploadDto = new
+            {
+                employeeId = _editingEmployee.EmployeeId,
+                docTypeId = _selectedDocTypeId,
+                fileName = _selectedFile.Name,
+                filePath = filePath,
+                fileSize = _selectedFile.Size,
+                mimeType = _selectedFile.ContentType,
+                expirationDate = _documentExpirationDate,
+                notes = string.IsNullOrWhiteSpace(_documentNotes) ? null : _documentNotes
+            };
+
+            await Api.PostAsync($"employees/{_editingEmployee.EmployeeId}/documents", uploadDto);
+
+            Notify.Success("Documento subido exitosamente");
+
+            // Limpiar y recargar
+            _selectedFile = null;
+            _documentNotes = "";
+            _documentExpirationDate = null;
+            await LoadEmployeeDocuments(_editingEmployee.EmployeeId);
+        }
+        catch (Exception ex)
+        {
+            Notify.Error($"Error al subir documento: {ex.Message}");
+        }
+        finally
+        {
+            _uploading = false;
+        }
+    }
+
+    private async Task DownloadDocument(int documentId)
+    {
+        if (_editingEmployee == null) return;
+
+        try
+        {
+            var url = Api.GetPhotoUrl($"/api/employees/{_editingEmployee.EmployeeId}/documents/{documentId}/download");
+            await JS.InvokeVoidAsync("open", url, "_blank");
+        }
+        catch (Exception ex)
+        {
+            Notify.Error($"Error al descargar: {ex.Message}");
+        }
+    }
+
+    private async Task DeleteDocument(int documentId)
+    {
+        if (_editingEmployee == null) return;
+
+        var confirmed = await Dialog.ShowMessageBox(
+            "Confirmar Eliminación",
+            "¿Estás seguro de eliminar este documento?",
+            yesText: "Eliminar",
+            cancelText: "Cancelar");
+
+        if (confirmed == true)
+        {
+            try
+            {
+                await Api.DeleteAsync($"employees/{_editingEmployee.EmployeeId}/documents/{documentId}");
+                Notify.Success("Documento eliminado exitosamente");
+                await LoadEmployeeDocuments(_editingEmployee.EmployeeId);
+            }
+            catch (Exception ex)
+            {
+                Notify.Error($"Error al eliminar: {ex.Message}");
+            }
+        }
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB" };
+        double len = bytes;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len = len / 1024;
+        }
+        return $"{len:0.##} {sizes[order]}";
+    }
+
+    private string GetDocumentIcon(string mimeType) => mimeType.ToLower() switch
+    {
+        string s when s.Contains("pdf") => Icons.Material.Filled.PictureAsPdf,
+        string s when s.Contains("image") => Icons.Material.Filled.Image,
+        string s when s.Contains("word") => Icons.Material.Filled.Description,
+        _ => Icons.Material.Filled.InsertDriveFile
+    };
+
+    private Color GetDocStatusColor(string status) => status switch
+    {
+        "VIGENTE" => Color.Success,
+        "POR_VENCER" => Color.Warning,
+        "VENCIDO" => Color.Error,
+        _ => Color.Default
+    };
+
+    private string GetDocStatusText(string status) => status switch
+    {
+        "VIGENTE" => "Vigente",
+        "POR_VENCER" => "Por Vencer",
+        "VENCIDO" => "Vencido",
+        _ => status
+    };
+
+    // Model
+    public class EmployeeEditModel
+    {
+        public int EmployeeId { get; set; }
+        public string EmployeeCode { get; set; } = "";
+        public string? JobTitle { get; set; }
+        public string? Department { get; set; }
+        public decimal BaseSalary { get; set; }
+        public decimal CommissionRate { get; set; }
+        public string EmploymentStatus { get; set; } = "ACTIVO";
+        public string? BankName { get; set; }
+        public string? BankAccount { get; set; }
+        public string? Clabe { get; set; }
+        public string? EmergencyContact1 { get; set; }
+        public string? EmergencyPhone1 { get; set; }
+        public string? EmergencyRelation1 { get; set; }
+        public string? EmergencyContact2 { get; set; }
+        public string? EmergencyPhone2 { get; set; }
+        public string? EmergencyRelation2 { get; set; }
+    }
+}

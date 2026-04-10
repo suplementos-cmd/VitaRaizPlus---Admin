@@ -250,6 +250,36 @@ public class CatalogRepository : BaseOracleRepository, ICatalogRepository
         return actions;
     }
 
+    public async Task<List<CatalogProductCategory>> GetProductCategoriesAsync()
+    {
+        var connection = await GetOpenConnectionAsync();
+        using var command = CreatePackageProcedureCommand(connection, "sp_get_product_categories");
+        
+        var cursorParam = new OracleParameter("p_cursor", OracleDbType.RefCursor)
+        {
+            Direction = ParameterDirection.Output
+        };
+        command.Parameters.Add(cursorParam);
+        
+        await command.ExecuteNonQueryAsync();
+        
+        var categories = new List<CatalogProductCategory>();
+        using var reader = ((OracleRefCursor)cursorParam.Value).GetDataReader();
+        
+        while (await reader.ReadAsync())
+        {
+            categories.Add(new CatalogProductCategory
+            {
+                CategoryId = reader.GetInt32("categoryId"),
+                CategoryName = reader.GetString("categoryName"),
+                Description = reader.IsDBNull("description") ? null : reader.GetString("description"),
+                CreatedAt = reader.IsDBNull("createdAt") ? (DateTime?)null : reader.GetDateTime("createdAt")
+            });
+        }
+        
+        return categories;
+    }
+
     public async Task<string?> GetSettingValueAsync(string settingKey)
     {
         var connection = await GetOpenConnectionAsync();

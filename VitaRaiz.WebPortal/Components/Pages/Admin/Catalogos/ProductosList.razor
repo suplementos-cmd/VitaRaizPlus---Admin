@@ -545,10 +545,15 @@ else if (_viewMode == "detail")
                               Placeholder="Descripcion detallada del producto..." />
             </MudItem>
             <MudItem xs="12" sm="6">
-                <MudTextField @bind-Value="_editing!.Category" Label="Categoria"
-                              Variant="Variant.Outlined"
-                              Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Category"
-                              Placeholder="Ej: Electrodomesticos" />
+                <MudSelect @bind-Value="_editing!.CategoryId" Label="Categoria*"
+                           Variant="Variant.Outlined" Required="true"
+                           Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Category"
+                           Placeholder="Seleccione una categoria">
+                    @foreach (var category in _categories)
+                    {
+                        <MudSelectItem Value="@((int?)category.CategoryId)">@category.CategoryName</MudSelectItem>
+                    }
+                </MudSelect>
             </MudItem>
             <MudItem xs="12" sm="6">
                 <MudNumericField @bind-Value="_editing!.UnitPrice" Label="Precio unitario*"
@@ -683,18 +688,31 @@ else if (_viewMode == "detail")
 </MudDialog>
 
 @code {
+    private const int CATEGORY_ID = 1; // Suplementos
+    
     private bool _loading, _dialogOpen, _photoDialogOpen, _saving, _uploading, _imagePreviewOpen;
     private string _search = "", _statusFilter = "all", _viewMode = "grid";
     private List<ProductDto> _all = new(), _filtered = new();
+    private List<CategoryDto> _categories = new();
     private ProductDto? _editing, _photoProduct, _previewProduct;
     private IBrowserFile? _selectedFile, _editingPhotoFile;
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCategoriesAsync();
+        await LoadAsync();
+    }
+
+    private async Task LoadCategoriesAsync()
+    {
+        _categories = await Api.GetAsync<List<CategoryDto>>("api/catalogs/product-categories") ?? new();
+    }
 
     private async Task LoadAsync()
     {
         _loading = true;
-        _all = await Api.GetAsync<List<ProductDto>>("api/products") ?? new();
+        var allProducts = await Api.GetAsync<List<ProductDto>>("api/products") ?? new();
+        _all = allProducts.Where(p => p.CategoryId == CATEGORY_ID).ToList();
         ApplyFilter();
         _loading = false;
     }
@@ -715,7 +733,7 @@ else if (_viewMode == "detail")
 
     private void OpenCreate() 
     { 
-        _editing = new ProductDto { IsActive = true }; 
+        _editing = new ProductDto { IsActive = true, CategoryId = CATEGORY_ID }; 
         _editingPhotoFile = null;
         _dialogOpen = true; 
     }
@@ -725,7 +743,7 @@ else if (_viewMode == "detail")
         _editing = new ProductDto
         {
             ProductId = p.ProductId, ProductName = p.ProductName,
-            Description = p.Description, Category = p.Category,
+            Description = p.Description, CategoryId = p.CategoryId,
             UnitPrice = p.UnitPrice, Stock = p.Stock,
             IsActive = p.IsActive, PhotoUrl = p.PhotoUrl
         };

@@ -37,6 +37,7 @@ public class CatalogsController : ControllerBase
             var paymentStatuses = await _catalogRepository.GetPaymentStatusesAsync();
             var riskStatuses    = await _catalogRepository.GetRiskStatusesAsync();
             var visitActions    = await _catalogRepository.GetVisitActionsAsync();
+            var productCategories = await _catalogRepository.GetProductCategoriesAsync();
             var settings        = await _catalogRepository.GetAppSettingsAsync(null, true);
 
             // Tema contextual: si el token tiene roleId, usar el tema del perfil
@@ -71,6 +72,7 @@ public class CatalogsController : ControllerBase
                 riskStatuses,
                 theme,
                 visitActions,
+                productCategories,
                 settings = settings.ToDictionary(s => s.SettingKey, s => new
                 {
                     value       = s.SettingValue,
@@ -127,6 +129,28 @@ public class CatalogsController : ControllerBase
         }
         catch (Exception ex)
         {
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    [AllowAnonymous]
+    [HttpGet("product-categories")]
+    public async Task<IActionResult> GetProductCategories()
+    {
+        try
+        {
+            var categories = await _catalogRepository.GetProductCategoriesAsync();
+            return Ok(categories.Select(c => new CategoryDto
+            {
+                CategoryId = c.CategoryId,
+                CategoryName = c.CategoryName,
+                Description = c.Description,
+                CreatedAt = c.CreatedAt
+            }));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[CatalogsController] Error loading product categories");
             return StatusCode(500, new { error = ex.Message });
         }
     }

@@ -109,3 +109,11 @@ public class CatalogVisitAction
     /// <summary>NULL = acción raíz; STATUS_ID numérico del padre cuando es sub-acción</summary>
     public int? ParentStatusId { get; set; }
 }
+
+public class CatalogProductCategory
+{
+    public int CategoryId { get; set; }
+    public string CategoryName { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public DateTime? CreatedAt { get; set; }
+}

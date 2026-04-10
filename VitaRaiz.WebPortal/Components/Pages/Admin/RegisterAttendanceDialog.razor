@@ -1,0 +1,199 @@
+@inject ApiService Api
+@inject NotificationService Notify
+
+<MudDialog>
+    <DialogContent>
+        <MudGrid Spacing="2">
+            <MudItem xs="12">
+                <MudAlert Severity="Severity.Info" Dense="true">
+                    Registrando asistencia para: <strong>@EmployeeName</strong>
+                </MudAlert>
+            </MudItem>
+
+            <MudItem xs="12" sm="6">
+                <MudSelect T="string" @bind-Value="_attendanceType" Label="Tipo de Asistencia*"
+                           Variant="Variant.Outlined" Required="true">
+                    <MudSelectItem Value="@("ASISTENCIA")">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" />
+                            <MudText>Asistencia</MudText>
+                        </MudStack>
+                    </MudSelectItem>
+                    <MudSelectItem Value="@("RETARDO")">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                            <MudIcon Icon="@Icons.Material.Filled.Schedule" Color="Color.Warning" Size="Size.Small" />
+                            <MudText>Retardo</MudText>
+                        </MudStack>
+                    </MudSelectItem>
+                    <MudSelectItem Value="@("FALTA")">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                            <MudIcon Icon="@Icons.Material.Filled.Cancel" Color="Color.Error" Size="Size.Small" />
+                            <MudText>Falta</MudText>
+                        </MudStack>
+                    </MudSelectItem>
+                    <MudSelectItem Value="@("FALTA_JUSTIFICADA")">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                            <MudIcon Icon="@Icons.Material.Filled.EventBusy" Color="Color.Info" Size="Size.Small" />
+                            <MudText>Falta Justificada</MudText>
+                        </MudStack>
+                    </MudSelectItem>
+                    <MudSelectItem Value="@("PERMISO")">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                            <MudIcon Icon="@Icons.Material.Filled.EventAvailable" Color="Color.Primary" Size="Size.Small" />
+                            <MudText>Permiso</MudText>
+                        </MudStack>
+                    </MudSelectItem>
+                    <MudSelectItem Value="@("VACACIONES")">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                            <MudIcon Icon="@Icons.Material.Filled.BeachAccess" Color="Color.Tertiary" Size="Size.Small" />
+                            <MudText>Vacaciones</MudText>
+                        </MudStack>
+                    </MudSelectItem>
+                    <MudSelectItem Value="@("INCAPACIDAD")">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                            <MudIcon Icon="@Icons.Material.Filled.LocalHospital" Color="Color.Secondary" Size="Size.Small" />
+                            <MudText>Incapacidad</MudText>
+                        </MudStack>
+                    </MudSelectItem>
+                </MudSelect>
+            </MudItem>
+
+            <MudItem xs="12" sm="6">
+                <MudDatePicker @bind-Date="_attendanceDate" Label="Fecha*"
+                               Variant="Variant.Outlined" Required="true" />
+            </MudItem>
+
+            @if (_attendanceType is "ASISTENCIA" or "RETARDO")
+            {
+                <MudItem xs="12" sm="6">
+                    <MudTimePicker @bind-Time="_checkInTime" Label="Hora de Entrada"
+                                   Variant="Variant.Outlined" AmPm="true" />
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <MudTimePicker @bind-Time="_checkOutTime" Label="Hora de Salida"
+                                   Variant="Variant.Outlined" AmPm="true" />
+                </MudItem>
+            }
+
+            <MudItem xs="12">
+                <MudTextField @bind-Value="_notes" Label="Notas / Observaciones"
+                              Variant="Variant.Outlined" Lines="3" />
+            </MudItem>
+
+            @if (_attendanceType == "FALTA_JUSTIFICADA")
+            {
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="_justification" Label="Justificación*"
+                                  Variant="Variant.Outlined" Lines="2" Required="true"
+                                  HelperText="Describe el motivo de la falta justificada" />
+                </MudItem>
+            }
+        </MudGrid>
+    </DialogContent>
+    
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" 
+                   OnClick="RegisterAsync" Disabled="_saving">
+            @if (_saving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                <MudText>Guardando...</MudText>
+            }
+            else
+            {
+                <MudText>Registrar</MudText>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public int EmployeeId { get; set; }
+    [Parameter] public string EmployeeName { get; set; } = "";
+
+    private string _attendanceType = "ASISTENCIA";
+    private DateTime? _attendanceDate = DateTime.Now;
+    private TimeSpan? _checkInTime;
+    private TimeSpan? _checkOutTime;
+    private string? _notes;
+    private string? _justification;
+    private bool _saving;
+
+    protected override void OnInitialized()
+    {
+        // Por defecto, hora actual como check-in
+        if (_attendanceType == "ASISTENCIA")
+        {
+            _checkInTime = DateTime.Now.TimeOfDay;
+        }
+    }
+
+    private async Task RegisterAsync()
+    {
+        try
+        {
+            _saving = true;
+
+            // Validaciones
+            if (!_attendanceDate.HasValue)
+            {
+                Notify.Warning("La fecha es requerida");
+                return;
+            }
+
+            if (_attendanceType == "FALTA_JUSTIFICADA" && string.IsNullOrWhiteSpace(_justification))
+            {
+                Notify.Warning("La justificación es requerida para faltas justificadas");
+                return;
+            }
+
+            // Construir timestamps
+            DateTime? checkInTimestamp = null;
+            DateTime? checkOutTimestamp = null;
+
+            if (_checkInTime.HasValue && _attendanceDate.HasValue)
+            {
+                checkInTimestamp = _attendanceDate.Value.Date.Add(_checkInTime.Value);
+            }
+
+            if (_checkOutTime.HasValue && _attendanceDate.HasValue)
+            {
+                checkOutTimestamp = _attendanceDate.Value.Date.Add(_checkOutTime.Value);
+            }
+
+            // Construir DTO
+            var dto = new
+            {
+                employeeId = EmployeeId,
+                attendanceDate = _attendanceDate.Value,
+                attendanceType = _attendanceType,
+                checkInTime = checkInTimestamp,
+                checkOutTime = checkOutTimestamp,
+                notes = string.IsNullOrWhiteSpace(_notes) ? null : _notes
+            };
+
+            // Enviar a API
+            await Api.PostAsync($"employees/{EmployeeId}/attendance", dto);
+
+            Notify.Success("Asistencia registrada exitosamente");
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Notify.Error($"Error al registrar asistencia: {ex.Message}");
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+}
